@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHER — 沉浸式数字体验</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+  (function(){
+    try{
+      var c = document.createElement('canvas');
+      var gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) throw 0;
+    }catch(e){
+      document.documentElement.classList.add('no-webgl');
+    }
+  })();
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root{
+    --bg:      #05060a;
+    --fg:      #eef2f8;
+    --muted:   #7d879b;
+    --dim:     #4a5266;
+    --cyan:    #3fdcff;
+    --violet:  #a97cff;
+    --gold:    #ffd28a;
+    --line:    rgba(255,255,255,.08);
+    --ease:    cubic-bezier(.16, 1, .3, 1);
+  }
+
+  html{ scroll-behavior: smooth; }
+  body{
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  html.no-webgl #webgl{ display: none; }
+  html.no-webgl body{
+    background:
+      radial-gradient(1200px 800px at 50% 25%, #0e1d33 0%, transparent 68%),
+      radial-gradient(900px 700px at 82% 82%, #180e2e 0%, transparent 70%),
+      #05060a;
+  }
+  html.no-webgl .cursor-dot,
+  html.no-webgl .cursor-ring{ display: none; }
+
+  #webgl{
+    position: fixed;
+    inset: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    display: block;
+  }
+
+  .grain{
+    position: fixed; inset: -50%;
+    z-index: 3; pointer-events: none;
+    opacity: .032;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grainShift 8s steps(6) infinite;
+    will-change: transform;
+  }
+  @keyframes grainShift{
+    0%,100%{ transform: translate(0,0); }
+    20%{ transform: translate(-2%, 2%); }
+    40%{ transform: translate(2%, -1%); }
+    60%{ transform: translate(-1%, -2%); }
+    80%{ transform: translate(1%, 2%); }
+  }
+
+  .vignette{
+    position: fixed; inset: 0;
+    z-index: 2; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, transparent 32%, rgba(5,6,10,.55) 78%, rgba(5,6,10,.92) 100%);
+  }
+
+  .scanlines{
+    position: fixed; inset: 0; z-index: 3; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,.016) 0 1px, transparent 1px 3px);
+    mix-blend-mode: overlay;
+  }
+
+  .progress-bar{
+    position: fixed; top: 0; left: 0;
+    height: 2px; width: 100%;
+    transform-origin: left center;
+    transform: scaleX(0);
+    background: linear-gradient(90deg, var(--cyan), var(--violet) 60%, var(--gold));
+    z-index: 400;
+    pointer-events: none;
+    box-shadow: 0 0 14px rgba(63,220,255,.45);
+  }
+
+  .site-header{
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 300;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 7vw;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; letter-spacing: .26em; text-transform: uppercase;
+    color: var(--muted);
+    transform: translateY(-102%);
+    transition: transform .9s var(--ease), background .6s var(--ease),
+                backdrop-filter .6s var(--ease), border-color .6s var(--ease);
+    border-bottom: 1px solid transparent;
+  }
+  .site-header.visible{
+    transform: none;
+    background: rgba(5,6,10,.62);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom-color: var(--line);
+  }
+  .brand{
+    color: var(--fg);
+    font-weight: 500;
+    letter-spacing: .34em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand::before{
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan);
+    animation: brandPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes brandPulse{
+    0%,100%{ opacity: 1; transform: scale(1); }
+    50%{ opacity: .45; transform: scale(.75); }
+  }
+  .header-nav{ display: flex; gap: 34px; }
+  .header-nav a{
+    color: var(--muted); text-decoration: none;
+    position: relative; padding: 4px 0;
+    transition: color .5s var(--ease);
+  }
+  .header-nav a::after{
+    content: ''; position: absolute; left: 0; bottom: 0;
+    width: 100%; height: 1px;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    transform: scaleX(0); transform-origin: left;
+    transition: transform .6s var(--ease);
+  }
+  .header-nav a:hover{ color: var(--fg); }
+  .header-nav a:hover::after{ transform: scaleX(1); }
+
+  .rail{
+    position: fixed;
+    right: 26px; top: 50%;
+    transform: translateY(-50%);
+    z-index: 200;
+    display: flex; flex-direction: column;
+    gap: 16px; align-items: flex-end;
+  }
+  .rail-item{
+    display: flex; align-items: center; gap: 12px;
+    text-decoration: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--dim);
+    opacity: .55;
+    transition: opacity .5s var(--ease), color .5s var(--ease);
+  }
+  .rail-label{
+    opacity: 0; transform: translateX(8px);
+    transition: opacity .5s var(--ease), transform .5s var(--ease);
+    white-space: nowrap;
+  }
+  .rail-dot{
+    width: 6px; height: 6px; border-radius: 50%;
+    border: 1px solid currentColor;
+    flex-shrink: 0;
+    transition: all .55s var(--ease);
+  }
+  .rail-item:hover{ opacity: 1; color: var(--fg); }
+  .rail-item:hover .rail-label{ opacity: 1; transform: none; }
+  .rail-item.is-active{ opacity: 1; color: var(--cyan); }
+  .rail-item.is-active .rail-label{ opacity: 1; transform: none; }
+  .rail-item.is-active .rail-dot{
+    background: var(--cyan);
+    border-color: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+    transform: scale(1.5);
+  }
+
+  .cursor-dot, .cursor-ring{
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 9999;
+    border-radius: 50%;
+    mix-blend-mode: screen;
+  }
+  .cursor-dot{
+    width: 6px; height: 6px;
+    background: var(--cyan);
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 12px var(--cyan);
+  }
+  .cursor-ring{
+    width: 38px; height: 38px;
+    border: 1px solid rgba(63,220,255,.45);
+    transform: translate(-50%,-50%);
+    transition: width .35s var(--ease), height .35s var(--ease),
+                border-color .35s var(--ease), background .35s var(--ease);
+  }
+  .cursor-ring.hot{
+    width: 64px; height: 64px;
+    border-color: rgba(169,124,255,.7);
+    background: rgba(169,124,255,.06);
+  }
+  @media (hover: none){ .cursor-dot, .cursor-ring{ display: none; } }
+
+  #loader{
+    position: fixed; inset: 0; z-index: 10000;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 1s var(--ease), visibility 1s;
+  }
+  #loader.done{ opacity: 0; visibility: hidden; }
+  .loader-inner{ width: min(320px, 60vw); text-align: center; }
+  .loader-title{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; letter-spacing: .5em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 26px;
+  }
+  .loader-bar{
+    height: 1px; width: 100%;
+    background: rgba(255,255,255,.08);
+    overflow: hidden; position: relative;
+  }
+  .loader-bar span{
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    transform-origin: left;
+    transform: scaleX(0);
+    animation: load 1.6s var(--ease) forwards;
+    box-shadow: 0 0 14px var(--cyan);
+  }
+  @keyframes load{ to{ transform: scaleX(1); } }
+  .loader-pct{
+    margin-top: 14px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; letter-spacing: .28em; color: var(--dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  main{ position: relative; z-index: 4; }
+
+  .sec{
+    min-height: 100vh;
+    padding: 12vh 7vw;
+    display: flex; flex-direction: column; justify-content: center;
+    position: relative;
+  }
+
+  [data-reveal]{
+    opacity: 0;
+    transform: translateY(42px);
+    transition: opacity 1.2s var(--ease), transform 1.2s var(--ease);
+  }
+  [data-reveal].in{ opacity: 1; transform: none; }
+
+  .hero{
+    justify-content: space-between;
+    padding: 7vh 7vw 9vh;
+  }
+  .hero-top{ display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+  .tag{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; letter-spacing: .34em; text-transform: uppercase;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .tag::before{
+    content: ''; width: 34px; height: 1px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+  .hero-loc{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; letter-spacing: .28em; color: var(--dim); text-align: right;
+    line-height: 1.9;
+  }
+
+  .hero-bottom{ max-width: 1400px; }
+  .hero-title{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: clamp(3.4rem, 13vw, 12rem);
+    line-height: .86;
+    letter-spacing: -.045em;
+    background: linear-gradient(180deg, #ffffff 0%, #cdd8ea 45%, #5d6a86 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 26px;
+    filter: drop-shadow(0 0 60px rgba(63,220,255,.12));
+    will-change: transform;
+  }
+  .hero-meta{
+    display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-end;
+    justify-content: space-between;
+  }
+  .hero-sub{
+    font-size: clamp(.95rem, 1.25vw, 1.15rem);
+    line-height: 1.85; color: #9aa5bb; max-width: 460px; font-weight: 300;
+  }
+  .hero-sub em{
+    font-style: normal;
+    color: var(--fg);
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .scroll-hint{
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px; letter-spacing: .3em; color: var(--dim);
+    text-transform: uppercase;
+  }
+  .scroll-hint .line{
+    width: 1px; height: 56px;
+    background: linear-gradient(180deg, var(--cyan), transparent);
+    position: relative; overflow: hidden;
+  }
+  .scroll-hint .line::after{
+    content: ''; position: absolute; top: -56px; left: 0;
+    width: 1px; height: 56px;
+    background: linear-gradient(180deg, transparent, #fff);
+    animation: drop 2.4s var(--ease) infinite;
+  }
+  @keyframes drop{
+    0%{ transform: translateY(0); }
+    100%{ transform: translateY(112px); }
+  }
+
+  .sec-head{
+    display: flex; align-items: baseline; gap: 22px;
+    margin-bottom: 62px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .idx{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px; letter-spacing: .24em;
+    color: var(--cyan); opacity: .75;
+  }
+  .sec-head h2{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 400;
+    font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+    letter-spacing: -.01em;
+  }
+  .sec-head .spacer{ flex: 1; }
+  .sec-head .note{
+    font-size: 12px; color: var(--dim); letter-spacing: .12em;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .about-grid{
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 7vw;
+    align-items: start;
+  }
+  .lead{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 300;
+    font-size: clamp(1.6rem, 3.6vw, 3.1rem);
+    line-height: 1.32;
+    letter-spacing: -.025em;
+    color: #dfe6f2;
+  }
+  .lead .hl{
+    background: linear-gradient(100deg, var(--cyan) 0%, var(--violet) 55%, var(--gold) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .about-copy p{
+    font-size: .96rem; line-height: 2; color: var(--muted);
+    font-weight: 300; margin-bottom: 22px;
+  }
+  .stats{
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 26px; margin-top: 46px; padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  .stat b{
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(1.8rem, 3.2vw, 2.7rem);
+    font-weight: 400; letter-spacing: -.03em;
+    background: linear-gradient(180deg, #fff, #7c8aa5);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat span{
+    display: block; margin-top: 8px;
+    font-size: 11px; letter-spacing: .2em; color: var(--dim);
+    font-family: 'Space Grotesk', sans-serif; text-transform: uppercase;
+  }
+
+  .cards{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .card{
+    background: rgba(8,10,16,.62);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 40px 30px 46px;
+    position: relative;
+    overflow: hidden;
+    transition: background .6s var(--ease);
+    min-height: 320px;
+    display: flex; flex-direction: column;
+    --mx: 50%; --my: 0%;
+  }
+  .card::after{
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(420px circle at var(--mx) var(--my), rgba(63,220,255,.14), transparent 68%);
+    opacity: 0; transition: opacity .7s var(--ease);
+    pointer-events: none;
+  }
+  .card:hover{ background: rgba(14,18,28,.85); }
+  .card:hover::after{ opacity: 1; }
+
+  .card-top{
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: auto;
+  }
+  .card-num{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; letter-spacing: .26em;
+    color: var(--cyan); opacity: .6;
+  }
+  .card-icon{
+    width: 34px; height: 34px;
+    color: rgba(63,220,255,.5);
+    stroke-width: 1.1;
+    transition: color .6s var(--ease), transform .8s var(--ease);
+  }
+  .card:hover .card-icon{
+    color: var(--cyan);
+    transform: rotate(-6deg) scale(1.08);
+  }
+  .card h3{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 400; font-size: 1.1rem; letter-spacing: -.01em;
+    margin: 34px 0 14px;
+  }
+  .card p{
+    font-size: .82rem; line-height: 1.9; color: var(--muted); font-weight: 300;
+  }
+  .card-line{
+    position: absolute; left: 0; bottom: 0; height: 1px; width: 0;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    transition: width .8s var(--ease);
+  }
+  .card:hover .card-line{ width: 100%; }
+
+  .works{ list-style: none; border-top: 1px solid var(--line); }
+  .works li{
+    display: grid;
+    grid-template-columns: 92px 1fr auto 26px;
+    align-items: center;
+    gap: 26px;
+    padding: 30px 8px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    position: relative;
+    transition: padding .55s var(--ease);
+  }
+  .works li::before{
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    background: linear-gradient(90deg, rgba(63,220,255,.10), transparent);
+    transition: width .6s var(--ease);
+  }
+  .works li:hover::before{ width: 100%; }
+  .works li:hover{ padding-left: 26px; }
+  .w-year{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; letter-spacing: .22em; color: var(--dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .w-name{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(1.05rem, 2.1vw, 1.7rem);
+    font-weight: 300; letter-spacing: -.015em;
+    transition: color .5s var(--ease);
+  }
+  .works li:hover .w-name{ color: var(--cyan); }
+  .w-tag{
+    font-size: 11px; letter-spacing: .2em; color: var(--dim);
+    font-family: 'Space Grotesk', sans-serif; text-transform: uppercase;
+  }
+  .w-arrow{
+    font-size: 1.2rem; color: var(--dim);
+    transition: transform .55s var(--ease), color .5s var(--ease);
+  }
+  .works li:hover .w-arrow{ transform: translateX(10px); color: var(--violet); }
+
+  .contact{ text-align: center; align-items: center; }
+  .contact-big{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.2rem, 7vw, 6.2rem);
+    line-height: 1.05; letter-spacing: -.04em;
+    margin-bottom: 46px;
+    background: linear-gradient(180deg, #ffffff, #6d7a95);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .contact-big span{
+    display: block;
+    font-size: .42em; font-weight: 300;
+    color: var(--muted);
+    -webkit-text-fill-color: var(--muted);
+    letter-spacing: .02em;
+    margin-top: 20px;
+  }
+  .btn{
+    display: inline-flex; align-items: center; gap: 16px;
+    padding: 17px 40px;
+    border: 1px solid rgba(63,220,255,.35);
+    border-radius: 100px;
+    color: var(--fg);
+    text-decoration: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px; letter-spacing: .26em; text-transform: uppercase;
+    position: relative; overflow: hidden;
+    transition: border-color .5s var(--ease), transform .5s var(--ease), color .5s var(--ease);
+    z-index: 1;
+  }
+  .btn::before{
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    transform: translateY(101%);
+    transition: transform .6s var(--ease);
+    z-index: -1;
+  }
+  .btn:hover{ border-color: transparent; transform: translateY(-3px); color: #05060a; }
+  .btn:hover::before{ transform: translateY(0); }
+
+  .footer{
+    margin-top: 110px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; letter-spacing: .18em; color: var(--dim);
+    text-transform: uppercase;
+    width: 100%;
+  }
+  .footer a{ color: var(--dim); text-decoration: none; transition: color .4s; }
+  .footer a:hover{ color: var(--cyan); }
+  #clock{ font-variant-numeric: tabular-nums; color: var(--muted); }
+
+  @media (max-width: 1100px){
+    .rail{ right: 16px; }
+    .rail-label{ display: none; }
+    .header-nav{ display: none; }
+  }
+  @media (max-width: 1024px){
+    .cards{ grid-template-columns: repeat(2, 1fr); }
+    .about-grid{ grid-template-columns: 1fr; gap: 48px; }
+  }
+  @media (max-width: 900px){
+    .rail{ display: none; }
+  }
+  @media (max-width: 680px){
+    .sec{ padding: 10vh 6vw; }
+    .hero{ padding: 6vh 6vw 8vh; }
+    .cards{ grid-template-columns: 1fr; }
+    .card{ min-height: auto; padding: 34px 24px 38px; }
+    .works li{ grid-template-columns: 62px 1fr 26px; gap: 14px; padding: 22px 4px; }
+    .w-tag{ display: none; }
+    .stats{ gap: 14px; }
+    .hero-loc{ display: none; }
+    .site-header{ padding: 14px 6vw; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+    }
+    .grain{ animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="loader-inner">
+    <div class="loader-title">AETHER</div>
+    <div class="loader-bar"><span></span></div>
+    <div class="loader-pct" id="pct">000</div>
+  </div>
+</div>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="site-header" id="siteHeader">
+  <div class="brand">AETHER</div>
+  <nav class="header-nav">
+    <a href="#about">关于</a>
+    <a href="#capabilities">能力</a>
+    <a href="#works">作品</a>
+    <a href="#contact">联系</a>
+  </nav>
+  <span id="clock">--:--:--</span>
+</header>
+
+<nav class="rail" aria-label="章节导航">
+  <a href="#hero" class="rail-item is-active">
+    <span class="rail-label">首页</span><span class="rail-dot"></span>
+  </a>
+  <a href="#about" class="rail-item">
+    <span class="rail-label">关于</span><span class="rail-dot"></span>
+  </a>
+  <a href="#capabilities" class="rail-item">
+    <span class="rail-label">能力</span><span class="rail-dot"></span>
+  </a>
+  <a href="#works" class="rail-item">
+    <span class="rail-label">作品</span><span class="rail-dot"></span>
+  </a>
+  <a href="#contact" class="rail-item">
+    <span class="rail-label">联系</span><span class="rail-dot"></span>
+  </a>
+</nav>
+
+<canvas id="webgl"></canvas>
+
+<div class="vignette"></div>
+<div class="scanlines"></div>
+<div class="grain"></div>
+
+<div class="cursor-ring" id="cRing"></div>
+<div class="cursor-dot" id="cDot"></div>
+
+<main>
+
+  <section class="sec hero" id="hero">
+    <div class="hero-top">
+      <div class="tag" data-reveal>Immersive Digital Studio</div>
+      <div class="hero-loc" data-reveal>
+        EST. 2016<br>SHANGHAI · BERLIN
+      </div>
+    </div>
+
+    <div class="hero-bottom">
+      <h1 class="hero-title" id="heroTitle" data-reveal>AETHER</h1>
+      <div class="hero-meta">
+        <p class="hero-sub" data-reveal>
+          以 <em>光、形态与运动</em> 为语言，<br>
+          构建超越屏幕的沉浸式数字叙事。
+        </p>
+        <div class="scroll-hint" data-reveal>
+          <span>Scroll</span>
+          <div class="line"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="about">
+    <div class="sec-head">
+      <span class="idx" data-reveal>01</span>
+      <h2 data-reveal>关于我们</h2>
+      <div class="spacer"></div>
+      <span class="note" data-reveal>PHILOSOPHY</span>
+    </div>
+
+    <div class="about-grid">
+      <div>
+        <p class="lead" data-reveal>
+          我们不设计页面，<br>
+          我们 <span class="hl">编排感知</span>。
+        </p>
+        <div class="stats">
+          <div class="stat" data-reveal>
+            <b data-count="120" data-suffix="+">0</b><span>Projects</span>
+          </div>
+          <div class="stat" data-reveal>
+            <b data-count="18">0</b><span>Countries</span>
+          </div>
+          <div class="stat" data-reveal>
+            <b data-count="9" data-pad="2">00</b><span>Years</span>
+          </div>
+        </div>
+      </div>
+      <div class="about-copy">
+        <p data-reveal>
+          AETHER 是一支由实时图形工程师、空间设计师与叙事者组成的团队。
+          我们相信，最好的界面是没有界面——只有流动的光、呼吸的几何与恰到好处的延迟。
+        </p>
+        <p data-reveal>
+          从 GPU 着色器到空间音频，从毫秒级交互反馈到跨终端的性能预算，
+          我们在每一个像素的背后做减法，在每一次体验的开头做加法。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="capabilities">
+    <div class="sec-head">
+      <span class="idx" data-reveal>02</span>
+      <h2 data-reveal>核心能力</h2>
+      <div class="spacer"></div>
+      <span class="note" data-reveal>CAPABILITIES</span>
+    </div>
+
+    <div class="cards">
+      <article class="card" data-reveal>
+        <div class="card-top">
+          <div class="card-num">/ 01</div>
+          <svg class="card-icon" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-linejoin="round">
+            <path d="M22 6 L38 15 L38 31 L22 40 L6 31 L6 15 Z"/>
+            <path d="M22 24 L38 15 M22 24 L6 15 M22 24 L22 40"/>
+          </svg>
+        </div>
+        <h3>实时 3D 渲染</h3>
+        <p>基于 WebGL 与自定义着色器管线，在浏览器中交付 60fps 的流畅空间体验。</p>
+        <div class="card-line"></div>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-top">
+          <div class="card-num">/ 02</div>
+          <svg class="card-icon" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 22 H10 C14 22 15 9 20 9 S26 35 31 35 S38 22 42 22"/>
+          </svg>
+        </div>
+        <h3>交互叙事</h3>
+        <p>将滚动、手势与时间作为叙事语法，让用户的每一次操作都推进故事。</p>
+        <div class="card-line"></div>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-top">
+          <div class="card-num">/ 03</div>
+          <svg class="card-icon" viewBox="0 0 44 44" fill="none" stroke="currentColor">
+            <circle cx="22" cy="22" r="15"/>
+            <ellipse cx="22" cy="22" rx="15" ry="6"/>
+            <ellipse cx="22" cy="22" rx="6" ry="15"/>
+          </svg>
+        </div>
+        <h3>空间计算</h3>
+        <p>从平面到立体，为线下装置与空间媒体构建可感知的数字层次。</p>
+        <div class="card-line"></div>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-top">
+          <div class="card-num">/ 04</div>
+          <svg class="card-icon" viewBox="0 0 44 44" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="2"/><circle cx="22" cy="12" r="2"/><circle cx="32" cy="12" r="2"/>
+            <circle cx="12" cy="22" r="2"/><circle cx="22" cy="22" r="2"/><circle cx="32" cy="22" r="2"/>
+            <circle cx="12" cy="32" r="2"/><circle cx="22" cy="32" r="2"/><circle cx="32" cy="32" r="2"/>
+          </svg>
+        </div>
+        <h3>动态视觉系统</h3>
+        <p>可编程的品牌视觉语言，让标识、色彩与运动在数据驱动下持续演化。</p>
+        <div class="card-line"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="sec" id="works">
+    <div class="sec-head">
+      <span class="idx" data-reveal>03</span>
+      <h2 data-reveal>精选作品</h2>
+      <div class="spacer"></div>
+      <span class="note" data-reveal>SELECTED</span>
+    </div>
+
+    <ul class="works">
+      <li data-reveal>
+        <span class="w-year">2024</span>
+        <span class="w-name">PRISM — 光的折射装置</span>
+        <span class="w-tag">Installation</span>
+        <span class="w-arrow">→</span>
+      </li>
+      <li data-reveal>
+        <span class="w-year">2024</span>
+        <span class="w-name">NOCTURNE — 品牌数字孪生</span>
+        <span class="w-tag">WebGL</span>
+        <span class="w-arrow">→</span>
+      </li>
+      <li data-reveal>
+        <span class="w-year">2023</span>
+        <span class="w-name">TIDAL — 数据流动可视化</span>
+        <span class="w-tag">Data Art</span>
+        <span class="w-arrow">→</span>
+      </li>
+      <li data-reveal>
+        <span class="w-year">2023</span>
+        <span class="w-name">ORBITAL — 卫星轨道档案</span>
+        <span class="w-tag">Interface</span>
+        <span class="w-arrow">→</span>
+      </li>
+      <li data-reveal>
+        <span class="w-year">2022</span>
+        <span class="w-name">SILENT FIELD — 声音的形态</span>
+        <span class="w-tag">Sound · 3D</span>
+        <span class="w-arrow">→</span>
+      </li>
+    </ul>
+  </section>
+
+  <section class="sec contact" id="contact">
+    <h2 class="contact-big" data-reveal>
+      一起创造<br>下一个维度
+      <span>Let's build something extraordinary.</span>
+    </h2>
+    <a href="mailto:hello@aether.studio" class="btn" data-reveal>
+      <span>开始对话</span>
+      <span>↗</span>
+    </a>
+
+    <div class="footer" data-reveal>
+      <span>© 2024 AETHER STUDIO</span>
+      <span>
+        <a href="#">Instagram</a> &nbsp;/&nbsp;
+        <a href="#">Behance</a> &nbsp;/&nbsp;
+        <a href="#">GitHub</a>
+      </span>
+      <span>MADE WITH WEBGL</span>
+    </div>
+  </section>
+
+</main>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }       from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass }  from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { RoomEnvironment }  from 'three/addons/environments/RoomEnvironment.js';
+
+const HAS_WEBGL = !document.documentElement.classList.contains('no-webgl');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const canvas = document.getElementById('webgl');
+let renderer, scene, camera, composer, bloom, envRT;
+
+let currentDPR = Math.min(window.devicePixelRatio, 2);
+let elapsed = 0;
+const clock = new THREE.Clock();
+const timeUniforms = [];
+const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+
+const THEMES = [
+  { fog: new THREE.Color(0x05060a), bloom: 0.85 },
+  { fog: new THREE.Color(0x06070f), bloom: 0.90 },
+  { fog: new THREE.Color(0x080513), bloom: 1.00 },
+  { fog: new THREE.Color(0x05070d), bloom: 0.85 },
+  { fog: new THREE.Color(0x07060f), bloom: 0.95 }
+];
+const tmpFog = new THREE.Color();
+
+function sampleTheme(p){
+  const n = THEMES.length - 1;
+  const x = Math.min(Math.max(p, 0), 1) * n;
+  const i = Math.min(Math.floor(x), n - 1);
+  const f = x - i;
+  tmpFog.copy(THEMES[i].fog).lerp(THEMES[i + 1].fog, f);
+  return {
+    fog: tmpFog,
+    bloom: THEMES[i].bloom + (THEMES[i + 1].bloom - THEMES[i].bloom) * f
+  };
+}
+
+const NOISE = /* glsl */`
+vec3 mod289(vec3 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
+vec4 mod289(vec4 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
+vec4 permute(vec4 x){ return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r){ return 1.79284291400159 - 0.85373472095314 * r; }
+float snoise(vec3 v){
+  const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+  vec3 i  = floor(v + dot(v, C.yyy));
+  vec3 x0 = v - i + dot(i, C.xxx);
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min(g.xyz, l.zxy);
+  vec3 i2 = max(g.xyz, l.zxy);
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
+  i = mod289(i);
+  vec4 p = permute( permute( permute(
+             i.z + vec4(0.0, i1.z, i2.z, 1.0))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+  float n_ = 0.142857142857;
+  vec3 ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_);
+  vec4 x = x_ * ns.x + ns.yyyy;
+  vec4 y = y_ * ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+  vec4 b0 = vec4(x.xy, y.xy);
+  vec4 b1 = vec4(x.zw, y.zw);
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+  vec3 p0 = vec3(a0.xy, h.x);
+  vec3 p1 = vec3(a0.zw, h.y);
+  vec3 p2 = vec3(a1.xy, h.z);
+  vec3 p3 = vec3(a1.zw, h.w);
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+  p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+}`;
+
+const g0 = new THREE.Group();
+const g1 = new THREE.Group();
+const g2 = new THREE.Group();
+const g3 = new THREE.Group();
+
+let core, shell, knot, ringA, ringB, instMesh, bigWire;
+let instData = [], instCount = 72;
+const dummy = new THREE.Object3D();
+
+/* ==========================================================
+   分组可见性：距离淡出系统
+   解决"在第二个背景能看到第三个背景"的问题
+   ========================================================== */
+const groupRegistry = [
+  { group: g0, materials: [] },
+  { group: g1, materials: [] },
+  { group: g2, materials: [] },
+  { group: g3, materials: [] }
+];
+
+function collectGroupMaterials(entry){
+  const seen = new Set();
+  entry.group.traverse(obj => {
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach(m => {
+      if (!m || seen.has(m)) return;
+      seen.add(m);
+
+      const info = {
+        mat: m,
+        baseOpacity: (m.opacity !== undefined) ? m.opacity : 1,
+        isShader: m.isShaderMaterial === true
+      };
+
+      if (info.isShader){
+        if (!m.uniforms.uOpacity) m.uniforms.uOpacity = { value: 1 };
+      } else {
+        m.transparent = true;
+      }
+
+      entry.materials.push(info);
+    });
+  });
+}
+
+function applyGroupAlpha(entry, alpha){
+  const a = Math.max(0, Math.min(1, alpha));
+  entry.group.visible = a > 0.002;
+  if (!entry.group.visible) return;
+
+  for (let i = 0; i < entry.materials.length; i++){
+    const e = entry.materials[i];
+    if (e.isShader){
+      if (e.mat.uniforms.uOpacity) e.mat.uniforms.uOpacity.value = a;
+    } else {
+      e.mat.opacity = e.baseOpacity * a;
+    }
+  }
+}
+
+/* 每组在相机靠近时淡入，远离时淡出 */
+const FADE_NEAR = 18;   // 距离小于此值：完全可见
+const FADE_FAR  = 32;   // 距离大于此值：完全不可见
+
+function updateGroupVisibility(camZ){
+  for (let i = 0; i < groupRegistry.length; i++){
+    const entry = groupRegistry[i];
+    const dist = Math.abs(camZ - entry.group.position.z);
+    const alpha = 1 - THREE.MathUtils.smoothstep(dist, FADE_NEAR, FADE_FAR);
+    applyGroupAlpha(entry, alpha);
+  }
+}
+
+/* ============================================================
+   场景构建
+   ============================================================ */
+function buildScene(){
+  renderer = new THREE.WebGLRenderer({
+    canvas, antialias: true, alpha: false,
+    powerPreference: 'high-performance'
+  });
+  renderer.setPixelRatio(currentDPR);
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0x05060a, 1);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x05060a, 0.032);
+
+  camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 400);
+  camera.position.set(0, 0.6, 8.5);
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
+  scene.environment = envRT.texture;
+  pmrem.dispose();
+
+  composer = new EffectComposer(renderer);
+  composer.setPixelRatio(currentDPR);
+  composer.setSize(innerWidth, innerHeight);
+  composer.addPass(new RenderPass(scene, camera));
+
+  bloom = new UnrealBloomPass(
+    new THREE.Vector2(innerWidth, innerHeight),
+    0.85, 0.62, 0.42
+  );
+  composer.addPass(bloom);
+
+  /* ---------- Group 0：有机核心 ---------- */
+  g0.position.z = 0;
+  scene.add(g0);
+
+  const coreUniforms = {
+    uTime:    { value: 0 },
+    uAmp:     { value: 0.30 },
+    uFreq:    { value: 1.55 },
+    uOpacity: { value: 1 },
+    uColorA:  { value: new THREE.Color(0x081426) },
+    uColorB:  { value: new THREE.Color(0x18a8d8) },
+    uColorC:  { value: new THREE.Color(0x9d6bff) }
+  };
+  timeUniforms.push(coreUniforms.uTime);
+
+  const coreMat = new THREE.ShaderMaterial({
+    uniforms: coreUniforms,
+    transparent: true,
+    vertexShader: /* glsl */`
+      uniform float uTime, uAmp, uFreq;
+      varying vec3  vN;
+      varying vec3  vV;
+      varying float vD;
+      ${NOISE}
+      void main(){
+        vec3 n = normalize(normal);
+        float t = uTime * 0.16;
+        float n1 = snoise(n * uFreq + vec3(0.0, 0.0, t));
+        float n2 = snoise(n * uFreq * 2.35 + vec3(t * 1.3, 0.0, 0.0)) * 0.42;
+        float d  = (n1 + n2) * uAmp;
+
+        vec3 pos = position + n * d;
+
+        vD = d;
+        vN = normalize(normalMatrix * n);
+
+        vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+        vV = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */`
+      uniform vec3 uColorA, uColorB, uColorC;
+      uniform float uOpacity;
+      varying vec3  vN;
+      varying vec3  vV;
+      varying float vD;
+      void main(){
+        float f = pow(1.0 - clamp(dot(normalize(vN), normalize(vV)), 0.0, 1.0), 2.1);
+        float t = clamp(vD * 2.4 + 0.5, 0.0, 1.0);
+
+        vec3 col = mix(uColorA, uColorB, t);
+        col += uColorC * f * 1.7;
+        col += vec3(1.0) * pow(f, 9.0) * 0.9;
+
+        gl_FragColor = vec4(col, uOpacity);
+      }
+    `
+  });
+
+  core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.9, 5), coreMat);
+  g0.add(core);
+
+  const innerGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(1.35, 32, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0x3fdcff,
+      transparent: true,
+      opacity: 0.055,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+  );
+  g0.add(innerGlow);
+
+  shell = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(2.95, 2),
+    new THREE.MeshBasicMaterial({
+      color: 0x2b5285, wireframe: true,
+      transparent: true, opacity: 0.16
+    })
+  );
+  g0.add(shell);
+
+  (function(){
+    const COUNT = 2600;
+    const pos  = new Float32Array(COUNT * 3);
+    const size = new Float32Array(COUNT);
+    const rnd  = new Float32Array(COUNT);
+
+    for (let i = 0; i < COUNT; i++){
+      const r     = 3.3 + Math.pow(Math.random(), 0.65) * 5.8;
+      const theta = Math.random() * Math.PI * 2;
+      const phi   = Math.acos(2 * Math.random() - 1);
+
+      pos[i*3]     = r * Math.sin(phi) * Math.cos(theta);
+      pos[i*3 + 1] = r * Math.cos(phi) * 0.75;
+      pos[i*3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+      size[i] = 1.0 + Math.random() * 2.4;
+      rnd[i]  = Math.random();
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aSize',    new THREE.BufferAttribute(size, 1));
+    geo.setAttribute('aRand',    new THREE.BufferAttribute(rnd, 1));
+
+    const uniforms = {
+      uTime:    { value: 0 },
+      uPR:      { value: currentDPR },
+      uOpacity: { value: 1 },
+      uColorA:  { value: new THREE.Color(0x2fd4ff) },
+      uColorB:  { value: new THREE.Color(0xa97cff) }
+    };
+    timeUniforms.push(uniforms.uTime);
+
+    const mat = new THREE.ShaderMaterial({
+      uniforms,
+      transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: /* glsl */`
+        attribute float aSize;
+        attribute float aRand;
+        uniform float uTime, uPR;
+        varying float vRand;
+        void main(){
+          vec3 p = position;
+          float t = uTime * 0.32;
+          p.x += sin(t + aRand * 6.2831) * 0.30;
+          p.y += cos(t * 0.83 + aRand * 6.2831) * 0.30;
+          p.z += sin(t * 0.61 + aRand * 6.2831) * 0.30;
+
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          gl_PointSize = aSize * uPR * (34.0 / max(-mv.z, 0.001));
+          gl_Position  = projectionMatrix * mv;
+          vRand = aRand;
+        }
+      `,
+      fragmentShader: /* glsl */`
+        uniform vec3 uColorA, uColorB;
+        uniform float uOpacity;
+        varying float vRand;
+        void main(){
+          vec2 uv = gl_PointCoord - 0.5;
+          float d = length(uv);
+          if (d > 0.5) discard;
+          float a = pow(smoothstep(0.5, 0.0, d), 2.0);
+          vec3 col = mix(uColorA, uColorB, vRand);
+          gl_FragColor = vec4(col, a * 0.85 * uOpacity);
+        }
+      `
+    });
+
+    const points = new THREE.Points(geo, mat);
+    g0.add(points);
+    g0.userData.particles = points;
+  })();
+
+  /* ---------- Group 1：铬金属结 ---------- */
+  g1.position.z = -40;
+  scene.add(g1);
+
+  const chromeMat = new THREE.MeshPhysicalMaterial({
+    color: 0x1b2231, metalness: 1.0, roughness: 0.12,
+    envMapIntensity: 1.5, clearcoat: 1.0, clearcoatRoughness: 0.08,
+    iridescence: 1.0, iridescenceIOR: 1.55,
+    iridescenceThicknessRange: [120, 720]
+  });
+
+  knot = new THREE.Mesh(
+    new THREE.TorusKnotGeometry(1.5, 0.42, 260, 40),
+    chromeMat
+  );
+  g1.add(knot);
+
+  const darkChrome = new THREE.MeshPhysicalMaterial({
+    color: 0x0d1420, metalness: 1.0, roughness: 0.22, envMapIntensity: 1.2
+  });
+
+  ringA = new THREE.Mesh(new THREE.TorusGeometry(3.15, 0.045, 12, 220), darkChrome);
+  ringA.rotation.x = Math.PI / 2.15;
+  ringA.rotation.y = 0.35;
+  g1.add(ringA);
+
+  ringB = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.028, 12, 220), darkChrome);
+  ringB.rotation.x = Math.PI / 1.75;
+  ringB.rotation.z = 0.6;
+  g1.add(ringB);
+
+  (function(){
+    const COUNT = 900;
+    const pos = new Float32Array(COUNT * 3);
+    const rnd = new Float32Array(COUNT);
+    const siz = new Float32Array(COUNT);
+
+    for (let i = 0; i < COUNT; i++){
+      const r  = 2.2 + Math.random() * 5.0;
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      pos[i*3]     = r * Math.sin(ph) * Math.cos(th);
+      pos[i*3 + 1] = r * Math.cos(ph) * 0.8;
+      pos[i*3 + 2] = r * Math.sin(ph) * Math.sin(th);
+      rnd[i] = Math.random();
+      siz[i] = 0.8 + Math.random() * 1.6;
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aRand', new THREE.BufferAttribute(rnd, 1));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(siz, 1));
+
+    const uniforms = {
+      uTime:    { value: 0 },
+      uPR:      { value: currentDPR },
+      uOpacity: { value: 1 },
+      uA:       { value: new THREE.Color(0xffd28a) },
+      uB:       { value: new THREE.Color(0x3fdcff) }
+    };
+    timeUniforms.push(uniforms.uTime);
+
+    const mat = new THREE.ShaderMaterial({
+      uniforms,
+      transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: /* glsl */`
+        attribute float aRand, aSize;
+        uniform float uTime, uPR;
+        varying float vR;
+        void main(){
+          vec3 p = position;
+          float t = uTime * 0.25;
+          p.x += sin(t + aRand * 6.2831) * 0.45;
+          p.y += cos(t * 0.9 + aRand * 6.2831) * 0.45;
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          gl_PointSize = aSize * uPR * (30.0 / max(-mv.z, 0.001));
+          gl_Position = projectionMatrix * mv;
+          vR = aRand;
+        }
+      `,
+      fragmentShader: /* glsl */`
+        uniform vec3 uA, uB;
+        uniform float uOpacity;
+        varying float vR;
+        void main(){
+          vec2 uv = gl_PointCoord - 0.5;
+          float d = length(uv);
+          if (d > 0.5) discard;
+          float a = pow(smoothstep(0.5, 0.0, d), 2.0);
+          gl_FragColor = vec4(mix(uA, uB, vR), a * 0.7 * uOpacity);
+        }
+      `
+    });
+
+    g1.add(new THREE.Points(geo, mat));
+  })();
+
+  /* ---------- Group 2：波形粒子场 ---------- */
+  g2.position.z = -80;
+  scene.add(g2);
+
+  (function(){
+    const W = 130, H = 130;
+    const COUNT = W * H;
+    const pos = new Float32Array(COUNT * 3);
+    const rnd = new Float32Array(COUNT);
+
+    let k = 0;
+    for (let i = 0; i < W; i++){
+      for (let j = 0; j < H; j++){
+        pos[k*3]     = (i / (W - 1) - 0.5) * 22;
+        pos[k*3 + 1] = 0;
+        pos[k*3 + 2] = (j / (H - 1) - 0.5) * 22;
+        rnd[k] = Math.random();
+        k++;
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aRand', new THREE.BufferAttribute(rnd, 1));
+
+    const uniforms = {
+      uTime:    { value: 0 },
+      uPR:      { value: currentDPR },
+      uOpacity: { value: 1 },
+      uA:       { value: new THREE.Color(0x3fdcff) },
+      uB:       { value: new THREE.Color(0xa97cff) },
+      uC:       { value: new THREE.Color(0xffd28a) }
+    };
+    timeUniforms.push(uniforms.uTime);
+
+    const mat = new THREE.ShaderMaterial({
+      uniforms,
+      transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: /* glsl */`
+        attribute float aRand;
+        uniform float uTime, uPR;
+        varying float vH;
+        varying float vR;
+        void main(){
+          vec3 p = position;
+          float d = length(p.xz);
+
+          float h = sin(d * 1.05 - uTime * 1.7) * 0.95 * exp(-d * 0.13);
+          h += sin(p.x * 0.58 + uTime * 0.95) * 0.34 * exp(-d * 0.19);
+          h += cos(p.z * 0.71 - uTime * 0.75) * 0.34 * exp(-d * 0.19);
+
+          p.y += h;
+
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          gl_PointSize = (1.6 + h * 1.8) * uPR * (44.0 / max(-mv.z, 0.001));
+          gl_Position  = projectionMatrix * mv;
+
+          vH = h;
+          vR = aRand;
+        }
+      `,
+      fragmentShader: /* glsl */`
+        uniform vec3 uA, uB, uC;
+        uniform float uOpacity;
+        varying float vH;
+        varying float vR;
+        void main(){
+          vec2 uv = gl_PointCoord - 0.5;
+          float d = length(uv);
+          if (d > 0.5) discard;
+
+          float a = pow(smoothstep(0.5, 0.0, d), 1.8);
+          float t = clamp(vH * 1.1 + 0.5, 0.0, 1.0);
+          vec3 col = mix(uA, uB, t);
+          col = mix(col, uC, smoothstep(0.72, 1.0, t));
+
+          gl_FragColor = vec4(col, a * 0.62 * uOpacity);
+        }
+      `
+    });
+
+    const pts = new THREE.Points(geo, mat);
+    g2.add(pts);
+    g2.userData.wave = pts;
+  })();
+
+  const halo = new THREE.Mesh(
+    new THREE.RingGeometry(0.6, 6.2, 96),
+    new THREE.MeshBasicMaterial({
+      color: 0x3fdcff, transparent: true, opacity: 0.045,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+  );
+  halo.rotation.x = -Math.PI / 2;
+  halo.position.y = 0.02;
+  g2.add(halo);
+
+  /* ---------- Group 3：球面实例阵列 ---------- */
+  g3.position.z = -120;
+  scene.add(g3);
+
+  const instGeo = new THREE.IcosahedronGeometry(0.20, 1);
+  const instMat = new THREE.MeshPhysicalMaterial({
+    color: 0x111a2c, metalness: 0.95, roughness: 0.18, envMapIntensity: 1.4
+  });
+  instMesh = new THREE.InstancedMesh(instGeo, instMat, instCount);
+  instMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < instCount; i++){
+    const y     = 1 - (i / (instCount - 1)) * 2;
+    const rad   = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = GOLDEN * i;
+    const R     = 3.35;
+
+    instData.push({
+      base: new THREE.Vector3(
+        Math.cos(theta) * rad * R,
+        y * R,
+        Math.sin(theta) * rad * R
+      ),
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.35 + Math.random() * 0.7,
+      scale: 0.55 + Math.random() * 0.9
+    });
+  }
+  g3.add(instMesh);
+
+  bigWire = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(4.6, 1),
+    new THREE.MeshBasicMaterial({
+      color: 0x2a3f66, wireframe: true,
+      transparent: true, opacity: 0.14
+    })
+  );
+  g3.add(bigWire);
+
+  /* ---------- 收集所有组的材质，供距离淡出使用 ---------- */
+  groupRegistry.forEach(collectGroupMaterials);
+}
+
+/* ============================================================
+   相机轨迹
+   ============================================================ */
+const camKeys = [
+  { p: 0.00, pos: [ 0.0,  0.60,    8.5], look: [ 0.0, -0.40,    0.0] },
+  { p: 0.13, pos: [ 1.4,  1.00,    7.6], look: [ 0.0, -0.20,    0.0] },
+  { p: 0.26, pos: [ 2.4,  0.60,  -31.0], look: [ 0.5,  0.00,  -40.0] },
+  { p: 0.40, pos: [ 2.6,  1.40,  -33.0], look: [ 0.4,  0.10,  -40.0] },
+  { p: 0.54, pos: [ 0.0,  4.60,  -71.0], look: [ 0.0, -1.00,  -80.0] },
+  { p: 0.68, pos: [-0.6,  5.40,  -72.5], look: [ 0.0, -0.80,  -80.0] },
+  { p: 0.82, pos: [ 0.0,  0.60, -111.0], look: [ 0.0,  0.00, -120.0] },
+  { p: 1.00, pos: [ 0.4,  0.70, -112.5], look: [ 0.0,  0.00, -120.0] }
+];
+
+function sampleCamera(p){
+  if (p <= camKeys[0].p) return camKeys[0];
+  const last = camKeys[camKeys.length - 1];
+  if (p >= last.p) return last;
+
+  for (let i = 0; i < camKeys.length - 1; i++){
+    const a = camKeys[i], b = camKeys[i + 1];
+    if (p >= a.p && p <= b.p){
+      let t = (p - a.p) / (b.p - a.p);
+      t = t * t * (3 - 2 * t);
+
+      return {
+        pos: [
+          a.pos[0] + (b.pos[0] - a.pos[0]) * t,
+          a.pos[1] + (b.pos[1] - a.pos[1]) * t,
+          a.pos[2] + (b.pos[2] - a.pos[2]) * t
+        ],
+        look: [
+          a.look[0] + (b.look[0] - a.look[0]) * t,
+          a.look[1] + (b.look[1] - a.look[1]) * t,
+          a.look[2] + (b.look[2] - a.look[2]) * t
+        ]
+      };
+    }
+  }
+  return camKeys[0];
+}
+
+/* ============================================================
+   UI 交互
+   ============================================================ */
+const progressBar = document.getElementById('progressBar');
+const siteHeader  = document.getElementById('siteHeader');
+const heroEl      = document.getElementById('hero');
+const heroTitle   = document.getElementById('heroTitle');
+
+let targetProgress = 0;
+let smoothProgress = 0;
+
+function computeProgress(){
+  const max = document.documentElement.scrollHeight - innerHeight;
+  targetProgress = max > 0 ? window.scrollY / max : 0;
+}
+computeProgress();
+window.addEventListener('scroll', computeProgress, { passive: true });
+
+window.addEventListener('mousemove', (e) => {
+  mouse.tx = (e.clientX / innerWidth)  * 2 - 1;
+  mouse.ty = (e.clientY / innerHeight) * 2 - 1;
+
+  const dot  = document.getElementById('cDot');
+  const ring = document.getElementById('cRing');
+  dot.style.transform  = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%,-50%)`;
+  ring.style.left = e.clientX + 'px';
+  ring.style.top  = e.clientY + 'px';
+});
+window.addEventListener('mousedown', () => document.getElementById('cRing').classList.add('hot'));
+window.addEventListener('mouseup',   () => document.getElementById('cRing').classList.remove('hot'));
+
+document.querySelectorAll('a, .card, .works li').forEach(el => {
+  el.addEventListener('mouseenter', () => document.getElementById('cRing').classList.add('hot'));
+  el.addEventListener('mouseleave', () => document.getElementById('cRing').classList.remove('hot'));
+});
+
+document.querySelectorAll('.card').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+    card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+  });
+});
+
+(function(){
+  const el = document.getElementById('clock');
+  function tick(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    el.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+function animateCount(el){
+  const target = parseFloat(el.dataset.count);
+  const suffix = el.dataset.suffix || '';
+  const pad    = parseInt(el.dataset.pad || '0', 10);
+  const dur    = 1600;
+  const t0     = performance.now();
+
+  function step(now){
+    const e = Math.min((now - t0) / dur, 1);
+    const eased = 1 - Math.pow(1 - e, 3);
+    let v = Math.round(eased * target);
+    let s = String(v);
+    if (pad) s = s.padStart(pad, '0');
+    el.textContent = s + suffix;
+    if (e < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+const countObserver = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    const el = en.target.querySelector('[data-count]');
+    if (el && !el.dataset.done){
+      el.dataset.done = '1';
+      animateCount(el);
+    }
+    countObserver.unobserve(en.target);
+  });
+}, { threshold: 0.6 });
+document.querySelectorAll('.stat').forEach(s => countObserver.observe(s));
+
+(function(){
+  const railLinks = [...document.querySelectorAll('.rail-item')];
+  const sections  = railLinks.map(a => document.querySelector(a.getAttribute('href')));
+
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const idx = sections.indexOf(en.target);
+      if (idx < 0) return;
+      railLinks.forEach((l, i) => l.classList.toggle('is-active', i === idx));
+    });
+  }, { threshold: 0.35, rootMargin: '-10% 0px -30% 0px' });
+
+  sections.forEach(s => s && spy.observe(s));
+})();
+
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting){
+      const el = entry.target;
+      const delay = Number(el.dataset.delay || 0);
+      setTimeout(() => el.classList.add('in'), delay);
+      io.unobserve(el);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+const revealEls = [...document.querySelectorAll('[data-reveal]')];
+revealEls.forEach((el, i) => { el.dataset.delay = (i % 6) * 90; });
+function startReveal(){ revealEls.forEach(el => io.observe(el)); }
+
+/* ============================================================
+   性能自适应
+   ============================================================ */
+let frames = 0;
+let fpsTimer = performance.now();
+let docVisible = true;
+
+document.addEventListener('visibilitychange', () => {
+  docVisible = !document.hidden;
+  if (docVisible){ fpsTimer = performance.now(); frames = 0; }
+});
+
+function applyDPR(){
+  if (!renderer) return;
+  renderer.setPixelRatio(currentDPR);
+  composer.setPixelRatio(currentDPR);
+  scene.traverse(obj => {
+    const m = obj.material;
+    if (m && m.uniforms && m.uniforms.uPR){
+      m.uniforms.uPR.value = currentDPR;
+    }
+  });
+}
+
+function adaptQuality(){
+  frames++;
+  const now = performance.now();
+  if (now - fpsTimer > 1200){
+    const fps = frames * 1000 / (now - fpsTimer);
+    frames = 0; fpsTimer = now;
+
+    if (fps < 45 && currentDPR > 1.0){
+      currentDPR = Math.max(1.0, currentDPR - 0.35);
+      applyDPR();
+    }
+  }
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+function onResize(){
+  if (!renderer) return;
+  const w = innerWidth, h = innerHeight;
+
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+  bloom.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 220));
+
+/* ============================================================
+   渲染循环
+   ============================================================ */
+function animate(){
+  requestAnimationFrame(animate);
+
+  if (!renderer || !docVisible) { clock.getDelta(); return; }
+
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const speed = reduceMotion ? 0.22 : 1.0;
+  elapsed += dt * speed;
+  const t = elapsed;
+
+  smoothProgress += (targetProgress - smoothProgress) * 0.075;
+  const p = smoothProgress;
+
+  mouse.x += (mouse.tx - mouse.x) * 0.055;
+  mouse.y += (mouse.ty - mouse.y) * 0.055;
+
+  /* --- 相机 --- */
+  const cam = sampleCamera(p);
+  camera.position.set(
+    cam.pos[0] + mouse.x * 0.65,
+    cam.pos[1] - mouse.y * 0.45,
+    cam.pos[2]
+  );
+  camera.lookAt(
+    cam.look[0] + mouse.x * 0.5,
+    cam.look[1] - mouse.y * 0.35,
+    cam.look[2]
+  );
+
+  /* --- ★ 根据相机距离隐藏/淡出远处的组（核心修复） --- */
+  updateGroupVisibility(camera.position.z);
+
+  /* --- 环境主题插值 --- */
+  const theme = sampleTheme(p);
+  scene.fog.color.copy(theme.fog);
+  renderer.setClearColor(theme.fog, 1);
+  bloom.strength = theme.bloom;
+
+  for (let i = 0; i < timeUniforms.length; i++){
+    timeUniforms[i].value = t;
+  }
+
+  /* --- Group 0 --- */
+  if (core){
+    core.rotation.y = t * 0.10;
+    core.rotation.x = Math.sin(t * 0.13) * 0.18;
+  }
+  if (shell){
+    shell.rotation.y = -t * 0.055;
+    shell.rotation.z =  t * 0.03;
+    shell.scale.setScalar(1 + Math.sin(t * 0.55) * 0.018);
+  }
+  if (g0.userData.particles){
+    g0.userData.particles.rotation.y = t * 0.035;
+  }
+
+  /* --- Group 1 --- */
+  if (knot){
+    knot.rotation.x = t * 0.22;
+    knot.rotation.y = t * 0.31;
+  }
+  if (ringA) ringA.rotation.z = t * 0.16;
+  if (ringB) ringB.rotation.y = -t * 0.12;
+  g1.rotation.y = Math.sin(t * 0.14) * 0.16;
+
+  /* --- Group 2 --- */
+  if (g2.userData.wave){
+    g2.userData.wave.rotation.y = Math.sin(t * 0.09) * 0.10;
+  }
+
+  /* --- Group 3 --- */
+  if (instMesh && instMesh.visible){
+    for (let i = 0; i < instCount; i++){
+      const d = instData[i];
+      const pulse = 1 + Math.sin(t * d.speed * 1.6 + d.phase) * 0.22;
+
+      dummy.position.set(
+        d.base.x * pulse,
+        d.base.y * pulse,
+        d.base.z * pulse
+      );
+      dummy.rotation.set(t * 0.5 + d.phase, t * 0.7 + d.phase, 0);
+      dummy.scale.setScalar(d.scale * (0.85 + Math.sin(t * 1.1 + d.phase) * 0.15));
+      dummy.updateMatrix();
+      instMesh.setMatrixAt(i, dummy.matrix);
+    }
+    instMesh.instanceMatrix.needsUpdate = true;
+  }
+  g3.rotation.y = t * 0.06;
+  if (bigWire){
+    bigWire.rotation.y = -t * 0.04;
+    bigWire.rotation.x =  t * 0.02;
+  }
+
+  /* --- UI --- */
+  progressBar.style.transform = `scaleX(${p})`;
+  siteHeader.classList.toggle('visible', window.scrollY > 120);
+
+  const sy = window.scrollY;
+  if (sy < innerHeight * 1.2){
+    heroEl.style.transform = `translateY(${sy * 0.28}px)`;
+    heroEl.style.opacity   = String(Math.max(0, 1 - sy / (innerHeight * 0.82)));
+  }
+  if (heroTitle){
+    heroTitle.style.transform =
+      `translate3d(${mouse.x * -9}px, ${mouse.y * -6}px, 0)`;
+  }
+
+  composer.render();
+  adaptQuality();
+}
+
+/* ============================================================
+   启动
+   ============================================================ */
+if (HAS_WEBGL){
+  try{
+    buildScene();
+    animate();
+  }catch(err){
+    console.warn('WebGL 初始化失败，已降级：', err);
+    document.documentElement.classList.add('no-webgl');
+  }
+} else {
+  console.warn('当前环境不支持 WebGL，已启用降级背景。');
+}
+
+(function fakeLoad(){
+  const pctEl = document.getElementById('pct');
+  const start = performance.now();
+  const DURATION = 1650;
+
+  function tick(){
+    const e = Math.min((performance.now() - start) / DURATION, 1);
+    const eased = 1 - Math.pow(1 - e, 3);
+    pctEl.textContent = String(Math.round(eased * 100)).padStart(3, '0');
+
+    if (e < 1){
+      requestAnimationFrame(tick);
+    } else {
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('done');
+        computeProgress();
+        startReveal();
+      }, 260);
+    }
+  }
+  tick();
+})();
+</script>
+</body>
+</html>

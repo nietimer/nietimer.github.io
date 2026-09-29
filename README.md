@@ -3,3 +3,4 @@
 - [二进制绘制](/bitpaint.html)
 
 - [设计网页0](/page_0.html)
+- [设计网页1](/page_1.html)
