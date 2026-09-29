@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>点阵动画编辑器 · Pixel Animation Studio</title>
+<style>
+/* ============ 基础 ============ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0c11;
+  --panel:#101319;
+  --panel-2:#151924;
+  --line:#222836;
+  --text:#e8ecf4;
+  --muted:#79839a;
+  --accent:#5b8cff;
+  --accent-2:#9b6bff;
+}
+html,body{height:100%}
+body{
+  background:radial-gradient(1200px 700px at 50% -20%, #1a2133 0%, #0a0c11 55%), #0a0c11;
+  color:var(--text);
+  font:13px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font:inherit;color:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#242b3a;border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:#313a4e;background-clip:padding-box}
+
+/* ============ 布局 ============ */
+.app{height:100vh;display:flex;flex-direction:column}
+.body{flex:1;display:flex;min-height:0}
+
+/* ============ 顶栏 ============ */
+.topbar{
+  height:58px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(255,255,255,.025),transparent);
+}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  font-size:17px;color:#fff;
+  box-shadow:0 6px 20px -6px rgba(91,140,255,.85);
+}
+.title{font-size:13px;font-weight:600;letter-spacing:.3px}
+.sub{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+.spacer{flex:1}
+.top-actions{display:flex;align-items:center;gap:6px}
+.divider{width:1px;height:20px;background:var(--line);margin:0 4px}
+
+.btn{
+  height:32px;padding:0 12px;border-radius:8px;
+  background:var(--panel-2);border:1px solid var(--line);
+  display:inline-flex;align-items:center;gap:6px;justify-content:center;
+  font-size:12px;font-weight:500;color:#cfd6e4;transition:.15s;white-space:nowrap;
+}
+.btn:hover{background:#1c2230;border-color:#2e3648;color:#fff}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.32;pointer-events:none}
+.btn.ghost{background:transparent;border-color:transparent;min-width:34px;padding:0 8px}
+.btn.ghost:hover{background:var(--panel-2);border-color:var(--line)}
+.btn.primary{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  border-color:transparent;color:#fff;
+  box-shadow:0 6px 22px -8px var(--accent);
+}
+.btn.primary:hover{filter:brightness(1.12)}
+.btn svg{width:15px;height:15px}
+
+/* 导出菜单 */
+.menu-wrap{position:relative}
+.menu{
+  position:absolute;right:0;top:calc(100% + 8px);min-width:196px;
+  background:#151924;border:1px solid var(--line);border-radius:10px;
+  padding:6px;display:none;z-index:60;
+  box-shadow:0 24px 60px -22px #000,0 0 0 1px rgba(255,255,255,.03);
+}
+.menu.open{display:block;animation:pop .13s ease}
+@keyframes pop{from{opacity:0;transform:translateY(-5px) scale(.97)}}
+.menu button{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:7px;font-size:12px;color:#c3cbdb;transition:.12s}
+.menu button:hover{background:rgba(91,140,255,.14);color:#fff}
+
+/* ============ 工具栏 ============ */
+.toolbar{
+  width:58px;flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:12px 0;border-right:1px solid var(--line);background:var(--panel);
+}
+.tool{
+  width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  color:var(--muted);transition:.15s;position:relative;
+}
+.tool svg{width:19px;height:19px}
+.tool:hover{background:var(--panel-2);color:var(--text)}
+.tool.active{
+  background:linear-gradient(135deg,rgba(91,140,255,.22),rgba(155,107,255,.18));
+  color:#a9c1ff;
+  box-shadow:inset 0 0 0 1px rgba(91,140,255,.45),0 6px 16px -8px rgba(91,140,255,.9);
+}
+.toolbar .sep{width:22px;height:1px;background:var(--line);margin:5px 0}
+
+/* ============ 舞台 ============ */
+.stage{
+  flex:1;min-width:0;position:relative;display:grid;place-items:center;
+  overflow:hidden;padding:24px;
+}
+.canvas-wrap{
+  position:relative;border-radius:12px;overflow:hidden;
+  background-image:
+    linear-gradient(45deg,#171b23 25%,transparent 25%),
+    linear-gradient(-45deg,#171b23 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#171b23 75%),
+    linear-gradient(-45deg,transparent 75%,#171b23 75%);
+  background-size:8px 8px;
+  background-position:0 0,0 4px,4px -4px,-4px 0;
+  background-color:#0e1118;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.08),
+    0 30px 70px -30px #000,
+    0 0 90px -35px rgba(91,140,255,.75);
+}
+#art{display:block;touch-action:none;cursor:crosshair}
+
+/* ============ 右侧面板 ============ */
+.panel{
+  width:240px;flex:none;border-left:1px solid var(--line);background:var(--panel);
+  padding:16px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:18px;
+}
+.panel section{flex:none}
+.panel h3{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:11px;
+}
+.mini-btn{
+  font-size:9px;letter-spacing:.4px;padding:3px 7px;border-radius:5px;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--muted);
+  text-transform:none;font-weight:500;transition:.14s;
+}
+.mini-btn:hover{color:#fff;border-color:#33405a;background:#1b2130}
+
+.color-row{display:flex;gap:8px;align-items:center}
+input[type="color"]{
+  -webkit-appearance:none;appearance:none;border:none;background:none;
+  width:40px;height:40px;border-radius:10px;cursor:pointer;padding:0;flex:none;
+}
+input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+input[type="color"]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.14);border-radius:10px}
+.hex-input{
+  flex:1;height:40px;border-radius:10px;background:var(--panel-2);
+  border:1px solid var(--line);padding:0 11px;outline:none;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12px;letter-spacing:.6px;text-transform:uppercase;transition:.15s;min-width:0;
+}
+.hex-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,140,255,.13)}
+
+.palette{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.swatch{
+  aspect-ratio:1;border-radius:6px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.09);transition:.13s;
+}
+.swatch:hover{transform:scale(1.15);box-shadow:0 4px 12px -3px rgba(0,0,0,.8)}
+.swatch.active{box-shadow:0 0 0 2px var(--accent),0 0 14px -2px var(--accent)}
+
+.size-row{display:flex;align-items:center;gap:7px}
+.size-row input[type=number]{
+  width:56px;height:32px;text-align:center;border-radius:8px;
+  background:var(--panel-2);border:1px solid var(--line);outline:none;
+  font-family:ui-monospace,monospace;font-size:12px;transition:.15s;
+}
+.size-row input[type=number]:focus{border-color:var(--accent)}
+.size-row .x{color:var(--muted);font-size:12px}
+.btn.small{height:32px;padding:0 10px;font-size:11.5px}
+
+/* 滑块行 */
+.slider-row{
+  display:grid;grid-template-columns:26px 1fr 26px;
+  align-items:center;gap:8px;margin-bottom:10px;
+}
+.slider-row:last-child{margin-bottom:0}
+.slider-row span{font-size:11px;color:var(--muted)}
+.slider-row b{
+  font-family:ui-monospace,monospace;font-size:10px;font-weight:500;
+  color:#a9c1ff;text-align:right;
+}
+.panel input[type="range"]{width:100%}
+
+.check{
+  display:flex;align-items:center;gap:9px;padding:7px 2px;cursor:pointer;
+  font-size:12px;color:#b9c2d4;border-radius:7px;transition:.13s;
+}
+.check:hover{color:#fff}
+.check input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;flex:none}
+
+/* ============ 预设动画 ============ */
+.effects{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.effect-btn{
+  height:30px;border-radius:7px;background:var(--panel-2);border:1px solid var(--line);
+  font-size:11px;color:#a9b3c7;transition:.14s;
+}
+.effect-btn:hover{color:#fff;border-color:#33405a;background:#1b2130}
+.effect-btn.active{
+  background:linear-gradient(135deg,rgba(91,140,255,.25),rgba(155,107,255,.2));
+  color:#a9c1ff;border-color:rgba(91,140,255,.5);
+  box-shadow:0 4px 14px -6px var(--accent);
+}
+
+.dir-row{display:flex;align-items:center;gap:6px;margin-top:10px}
+.dir-label{font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-right:4px;flex:none}
+.dir-btn{
+  width:28px;height:28px;border-radius:7px;background:var(--panel-2);
+  border:1px solid var(--line);display:grid;place-items:center;
+  font-size:14px;color:#8a93a8;transition:.14s;
+}
+.dir-btn:hover:not(:disabled){color:#fff;border-color:#33405a}
+.dir-btn.active{
+  background:linear-gradient(135deg,rgba(91,140,255,.25),rgba(155,107,255,.2));
+  color:#a9c1ff;border-color:rgba(91,140,255,.5);
+  box-shadow:0 4px 14px -6px var(--accent);
+}
+.dir-btn:disabled{opacity:.28;cursor:not-allowed}
+
+/* 缓动行 */
+.ease-row{display:flex;align-items:center;gap:6px;margin-top:10px}
+.ease-select{
+  flex:1;height:28px;border-radius:7px;
+  background:var(--panel-2);border:1px solid var(--line);
+  color:#c3cbdb;font-size:11.5px;padding:0 8px;
+  outline:none;cursor:pointer;transition:.14s;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2379839a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right 7px center;
+  padding-right:24px;
+}
+.ease-select:hover{border-color:#33405a;color:#fff}
+.ease-select:focus{border-color:var(--accent)}
+.ease-select option{background:#151924;color:#e8ecf4}
+.ease-row.hidden,.dir-row.hidden{display:none}
+
+.anim-params{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.anim-params label{
+  display:flex;flex-direction:column;gap:4px;
+  font-size:9.5px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;
+}
+.anim-params input{
+  height:30px;border-radius:7px;background:var(--panel-2);border:1px solid var(--line);
+  padding:0 8px;font-family:ui-monospace,monospace;font-size:12px;outline:none;transition:.15s;
+}
+.anim-params input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,140,255,.12)}
+.anim-params input:disabled{opacity:.35;cursor:not-allowed}
+.anim-params label.hidden{display:none}
+
+.anim-hint{
+  margin-top:9px;padding:7px 9px;border-radius:7px;
+  background:rgba(91,140,255,.07);border:1px solid rgba(91,140,255,.18);
+  font-size:10.5px;color:#8fa6d8;line-height:1.5;
+  transition:.25s;
+}
+
+/* ============ 时间轴 ============ */
+.timeline{height:128px;flex:none;border-top:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column}
+.tl-bar{
+  height:40px;flex:none;display:flex;align-items:center;gap:10px;
+  padding:0 14px;border-bottom:1px solid var(--line);
+}
+.play-btn{
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
+  box-shadow:0 5px 16px -7px var(--accent);font-size:11px;transition:.15s;
+}
+.play-btn:hover{filter:brightness(1.15)}
+.tl-label{font-size:10px;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+.tl-val{
+  font-family:ui-monospace,monospace;font-size:11px;color:#a9c1ff;
+  min-width:20px;text-align:center;
+}
+input[type="range"]{
+  -webkit-appearance:none;appearance:none;height:4px;border-radius:3px;
+  background:#252b38;outline:none;width:88px;cursor:pointer;
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 3px rgba(91,140,255,.35);cursor:pointer;
+}
+.tl-sep{width:1px;height:18px;background:var(--line);margin:0 3px}
+
+.frames{
+  flex:1;display:flex;align-items:center;gap:9px;padding:11px 14px;
+  overflow-x:auto;overflow-y:hidden;
+}
+.frame{
+  flex:none;position:relative;width:64px;height:74px;border-radius:9px;
+  background:var(--panel-2);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  cursor:pointer;transition:.15s;
+}
+.frame:hover{border-color:#33405a;background:#181d29}
+.frame.active{
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px var(--accent),0 8px 22px -10px var(--accent);
+}
+.frame canvas{
+  image-rendering:pixelated;border-radius:3px;display:block;
+  max-width:44px;max-height:44px;
+  background:rgba(255,255,255,.03);
+}
+.frame .num{font-size:9px;color:var(--muted);font-family:ui-monospace,monospace;letter-spacing:.5px}
+.frame.active .num{color:#a9c1ff}
+.frame-add{
+  flex:none;width:46px;height:74px;border-radius:9px;
+  border:1px dashed #2b3344;background:transparent;
+  display:grid;place-items:center;color:#4a5468;font-size:20px;transition:.15s;
+}
+.frame-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(91,140,255,.07)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== 顶栏 ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">▦</div>
+      <div>
+        <div class="title">点阵动画编辑器</div>
+        <div class="sub">Pixel Animation Studio</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="top-actions">
+      <button class="btn ghost" id="undoBtn" title="撤销 (Ctrl+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.1-9.3L3 7"/></svg>
+      </button>
+      <button class="btn ghost" id="redoBtn" title="重做 (Ctrl+Shift+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M20.5 13a9 9 0 1 1-2.1-9.3L21 7"/></svg>
+      </button>
+      <div class="divider"></div>
+      <button class="btn ghost" id="clearBtn" title="清空当前帧">清空</button>
+      <div class="divider"></div>
+      <div class="menu-wrap">
+        <button class="btn primary" id="exportBtn">
+          导出
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="menu" id="exportMenu">
+          <button data-act="sprite">精灵图 PNG（全部帧）</button>
+          <button data-act="frame">当前帧 PNG（放大 8×）</button>
+          <button data-act="json">项目 JSON</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- ===== 工具栏 ===== -->
+    <aside class="toolbar" id="toolbar">
+      <button class="tool active" data-tool="pen" title="铅笔 (B)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+      </button>
+      <button class="tool" data-tool="eraser" title="橡皮 (E)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1.5 1.5 0 0 1 0-2.1l9.6-9.6a1.5 1.5 0 0 1 2.1 0l5.4 5.4a1.5 1.5 0 0 1 0 2.1L12.6 21Z"/><path d="M22 21H7"/><path d="m5 11 8 8"/></svg>
+      </button>
+      <button class="tool" data-tool="bucket" title="油漆桶 (G)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
+      </button>
+      <div class="sep"></div>
+      <button class="tool" data-tool="line" title="直线 (L)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 18.5 18.5 5.5"/><circle cx="5.5" cy="18.5" r="1.7" fill="currentColor" stroke="none"/><circle cx="18.5" cy="5.5" r="1.7" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="tool" data-tool="rect" title="矩形 (R)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="1.6"/></svg>
+      </button>
+      <button class="tool" data-tool="picker" title="取色器 (I)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.12 2.12 0 0 1 3 3L18 9l.9.9a2.12 2.12 0 0 1-3 3l-7.8-7.8a2.12 2.12 0 0 1 3-3l.9.9Z"/></svg>
+      </button>
+      <div class="sep"></div>
+      <button class="tool" id="mirrorBtn" title="水平镜像 (M)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2.5 2.5"/><path d="M8.5 5.5 3.5 12l5 6.5Z"/><path d="m15.5 5.5 5 6.5-5 6.5Z"/></svg>
+      </button>
+    </aside>
+
+    <!-- ===== 画布舞台 ===== -->
+    <main class="stage" id="stage">
+      <div class="canvas-wrap">
+        <canvas id="art"></canvas>
+      </div>
+    </main>
+
+    <!-- ===== 右侧面板 ===== -->
+    <aside class="panel">
+      <section>
+        <h3>颜色</h3>
+        <div class="color-row">
+          <input type="color" id="colorInput" value="#f4f4f4">
+          <input type="text" class="hex-input" id="hexInput" value="#F4F4F4" spellcheck="false" maxlength="7">
+        </div>
+      </section>
+
+      <section>
+        <h3>调色板</h3>
+        <div class="palette" id="palette"></div>
+      </section>
+
+      <section>
+        <h3>画布尺寸</h3>
+        <div class="size-row">
+          <input type="number" id="wInput" min="1" max="64" value="16">
+          <span class="x">×</span>
+          <input type="number" id="hInput" min="1" max="64" value="16">
+          <button class="btn small" id="resizeBtn">应用</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>像素与间距 <button class="mini-btn" id="fitBtn">适应</button></h3>
+        <div class="slider-row">
+          <span>大小</span>
+          <input type="range" id="cellRange" min="3" max="48" value="20">
+          <b id="cellVal">20</b>
+        </div>
+        <div class="slider-row">
+          <span>间隔</span>
+          <input type="range" id="gapRange" min="0" max="8" value="2">
+          <b id="gapVal">2</b>
+        </div>
+        <div class="slider-row">
+          <span>边距</span>
+          <input type="range" id="padRange" min="0" max="24" value="12">
+          <b id="padVal">12</b>
+        </div>
+      </section>
+
+      <!-- ===== 预设动画 ===== -->
+      <section>
+        <h3>预设动画 <button class="mini-btn" id="animHelpBtn">说明</button></h3>
+        <div class="effects" id="effectList">
+          <button class="effect-btn active" data-effect="translate">平移</button>
+          <button class="effect-btn" data-effect="reveal">揭示</button>
+          <button class="effect-btn" data-effect="erase">擦除</button>
+          <button class="effect-btn" data-effect="grow">生长</button>
+          <button class="effect-btn" data-effect="blink">闪烁</button>
+          <button class="effect-btn" data-effect="rotate">旋转</button>
+          <button class="effect-btn" data-effect="bounce">弹跳</button>
+          <button class="effect-btn" data-effect="wave">波浪</button>
+          <button class="effect-btn" data-effect="pulse">脉冲</button>
+        </div>
+
+        <div class="dir-row" id="dirRow">
+          <span class="dir-label">方向</span>
+          <button class="dir-btn" data-dir="up">↑</button>
+          <button class="dir-btn" data-dir="down">↓</button>
+          <button class="dir-btn" data-dir="left">←</button>
+          <button class="dir-btn active" data-dir="right">→</button>
+        </div>
+
+        <div class="ease-row" id="easeRow">
+          <span class="dir-label">缓动</span>
+          <select class="ease-select" id="easeSelect">
+            <option value="linear">线性</option>
+            <option value="easeOut" selected>缓出（推荐）</option>
+            <option value="easeIn">缓入</option>
+            <option value="easeInOut">缓入缓出</option>
+            <option value="overshoot">回弹过冲</option>
+          </select>
+        </div>
+
+        <div class="anim-params">
+          <label id="stepsWrap">帧数<input type="number" id="animSteps" value="8" min="2" max="32"></label>
+          <label id="distWrap">距离<input type="number" id="animDist" value="8" min="1" max="48"></label>
+        </div>
+
+        <button class="btn primary" id="animGenBtn" style="width:100%;margin-top:10px">生成序列帧</button>
+        <div class="anim-hint" id="animHint">在当前帧画好图形后，选择效果与方向，即可生成一段逐帧动画，插入到当前帧之后。</div>
+      </section>
+
+      <section>
+        <h3>选项</h3>
+        <label class="check"><input type="checkbox" id="gridChk" checked><span>显示底格</span></label>
+        <label class="check"><input type="checkbox" id="onionChk"><span>洋葱皮</span></label>
+      </section>
+    </aside>
+  </div>
+
+  <!-- ===== 时间轴 ===== -->
+  <footer class="timeline">
+    <div class="tl-bar">
+      <button class="play-btn" id="playBtn" title="播放 / 暂停 (空格)">▶</button>
+      <div class="tl-sep"></div>
+      <span class="tl-label">FPS</span>
+      <input type="range" id="fpsRange" min="1" max="30" value="12">
+      <span class="tl-val" id="fpsVal">12</span>
+      <div class="tl-sep"></div>
+      <button class="btn ghost" id="dupFrame" title="复制当前帧 (Alt+D)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a2 2 0 0 1 2-2h11"/></svg>
+      </button>
+      <button class="btn ghost" id="delFrame" title="删除当前帧">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      </button>
+      <div class="spacer" style="flex:1"></div>
+      <span class="tl-label" id="frameCount">1 帧</span>
+    </div>
+    <div class="frames" id="frames"></div>
+  </footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ==================== 工具函数 ==================== */
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ==================== 调色板预设 ==================== */
+const PALETTE = [
+  '#1a1c2c','#5d275d','#b13e53','#ef7d57','#ffcd75','#a7f070','#38b764','#257179',
+  '#29366f','#3b5dc9','#41a6f6','#73eff7','#f4f4f4','#94b0c2','#566c86','#333c57',
+  '#000000','#ffffff','#ff004d','#ffa300','#ffec27','#00e436','#29adff','#83769c'
+];
+
+/* ==================== 缓动函数库 ==================== */
+const EASINGS = {
+  linear: {
+    label: '线性',
+    fn: t => t
+  },
+  easeOut: {
+    label: '缓出',
+    fn: t => 1 - Math.pow(1 - t, 3)
+  },
+  easeIn: {
+    label: '缓入',
+    fn: t => t * t * t
+  },
+  easeInOut: {
+    label: '缓入缓出',
+    fn: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+  },
+  overshoot: {
+    label: '回弹过冲',
+    fn: t => {
+      const c1 = 1.70158, c3 = c1 + 1;
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+  }
+};
+
+/* ==================== 状态 ==================== */
+const state = {
+  w: 16, h: 16,
+  frames: [],
+  cur: 0,
+  tool: 'pen',
+  color: '#f4f4f4',
+  cellSize: 20,
+  gap: 2,
+  padding: 12,
+  fps: 12,
+  onion: false,
+  mirror: false,
+  showGrid: true,
+  playing: false
+};
+
+/* 预设动画参数 */
+const anim = {
+  effect: 'translate',
+  direction: 'right',
+  easing: 'easeOut',
+  steps: 8,
+  distance: 8
+};
+
+let autoScale = true;
+let history = [];
+let future  = [];
+
+let drawing = false;
+let lastCell = null;
+let previewShape = null;
+
+/* ==================== DOM ==================== */
+const canvas = $('#art');
+const ctx = canvas.getContext('2d');
+const stage = $('#stage');
+const colorInput = $('#colorInput');
+const hexInput = $('#hexInput');
+
+/* ==================== 颜色工具（支持透明度） ==================== */
+function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return null;
+  const num = parseInt(m[1], 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+/** 给颜色附加 alpha，返回 hex 或 rgba 字符串 */
+function withAlpha(hex, alpha) {
+  if (alpha >= 0.999) return hex;
+  if (alpha <= 0.004) return null;
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha.toFixed(3)})`;
+}
+
+/* ==================== 布局计算 ==================== */
+function canvasSize(w, h, cs, gap, pad){
+  return {
+    W: pad * 2 + w * cs + (w - 1) * gap,
+    H: pad * 2 + h * cs + (h - 1) * gap,
+    step: cs + gap
+  };
+}
+
+function fitCellSize(){
+  const { w, h, gap, padding } = state;
+  const availW = Math.max(80, stage.clientWidth  - 56);
+  const availH = Math.max(80, stage.clientHeight - 56);
+  const maxW = (availW - padding * 2 - (w - 1) * gap) / w;
+  const maxH = (availH - padding * 2 - (h - 1) * gap) / h;
+  const v = Math.floor(Math.min(maxW, maxH));
+  return clamp(v || 3, 3, 48);
+}
+
+function refit(){
+  const max = fitCellSize();
+  if (autoScale) {
+    state.cellSize = max;
+  } else {
+    state.cellSize = clamp(state.cellSize, 3, max);
+  }
+  const cr = $('#cellRange');
+  cr.max = max;
+  cr.value = state.cellSize;
+  $('#cellVal').textContent = state.cellSize;
+
+  $('#gapRange').value = state.gap;
+  $('#gapVal').textContent = state.gap;
+  $('#padRange').value = state.padding;
+  $('#padVal').textContent = state.padding;
+}
+
+/* ==================== 渲染 ==================== */
+function render(){
+  const { w, h, cellSize, gap, padding, frames, cur, color } = state;
+  const { W, H, step } = canvasSize(w, h, cellSize, gap, padding);
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, H);
+
+  const useRound = (typeof ctx.roundRect === 'function') && cellSize >= 8;
+  const radius = useRound ? Math.min(2.5, cellSize * 0.16) : 0;
+
+  function paint(px, py, fill, alpha){
+    if (alpha !== undefined && alpha !== 1) ctx.globalAlpha = alpha;
+    ctx.fillStyle = fill;
+    if (useRound) {
+      ctx.beginPath();
+      ctx.roundRect(px, py, cellSize, cellSize, radius);
+      ctx.fill();
+    } else {
+      ctx.fillRect(px, py, cellSize, cellSize);
+    }
+    if (alpha !== undefined && alpha !== 1) ctx.globalAlpha = 1;
+  }
+
+  /* 洋葱皮 */
+  if (state.onion && !state.playing && frames.length > 1) {
+    drawOnion(cur - 1, 'rgba(255,92,138,0.34)');
+    drawOnion(cur + 1, 'rgba(76,201,255,0.34)');
+  }
+
+  /* 底格 */
+  if (state.showGrid) {
+    for (let y = 0; y < h; y++) {
+      const py = padding + y * step;
+      for (let x = 0; x < w; x++) {
+        paint(padding + x * step, py, 'rgba(255,255,255,0.045)');
+      }
+    }
+  }
+
+  /* 当前帧 */
+  const f = frames[cur];
+  if (f) {
+    for (let y = 0; y < h; y++) {
+      const py = padding + y * step;
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const c = f[row + x];
+        if (c) paint(padding + x * step, py, c);
+      }
+    }
+  }
+
+  /* 形状预览 */
+  if (previewShape) {
+    const { a, b, tool } = previewShape;
+    const cells = tool === 'line' ? lineCells(a, b) : rectCells(a, b);
+    const seen = new Set();
+    for (const c of cells) {
+      const key = c.x + ',' + c.y;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      paint(padding + c.x * step, padding + c.y * step, color, 0.78);
+      if (state.mirror) {
+        const mx = state.w - 1 - c.x;
+        if (mx !== c.x) paint(padding + mx * step, padding + c.y * step, color, 0.78);
+      }
+    }
+  }
+}
+
+function drawOnion(idx, tint){
+  const n = state.frames.length;
+  if (idx < 0 || idx >= n) return;
+  const f = state.frames[idx];
+  const { w, h, cellSize, gap, padding } = state;
+  const step = cellSize + gap;
+  ctx.fillStyle = tint;
+  for (let y = 0; y < h; y++) {
+    const py = padding + y * step;
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      if (f[row + x]) ctx.fillRect(padding + x * step, py, cellSize, cellSize);
+    }
+  }
+}
+
+/* ==================== 几何算法 ==================== */
+function blankFrame(){ return new Array(state.w * state.h).fill(null); }
+
+function lineCells(a, b){
+  const cells = [];
+  let x0 = a.x, y0 = a.y;
+  const x1 = b.x, y1 = b.y;
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy, guard = 0;
+  while (guard++ < 4096) {
+    cells.push({ x: x0, y: y0 });
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 <  dx) { err += dx; y0 += sy; }
+  }
+  return cells;
+}
+
+function rectCells(a, b){
+  const cells = [];
+  const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+  const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+  for (let x = x0; x <= x1; x++) { cells.push({x, y: y0}); cells.push({x, y: y1}); }
+  for (let y = y0; y <= y1; y++) { cells.push({x: x0, y}); cells.push({x: x1, y}); }
+  return cells;
+}
+
+/* ==================== 像素操作 ==================== */
+function setPixel(x, y, color){
+  const { w, h } = state;
+  const f = state.frames[state.cur];
+  if (!f) return;
+  if (x >= 0 && y >= 0 && x < w && y < h) f[y * w + x] = color;
+  if (state.mirror) {
+    const mx = w - 1 - x;
+    if (mx >= 0 && mx < w && y >= 0 && y < h) f[y * w + mx] = color;
+  }
+}
+
+function floodFill(x, y, color){
+  const { w, h } = state;
+  const f = state.frames[state.cur];
+  const target = f[y * w + x];
+  if (target === color) return;
+  const stack = [[x, y]];
+  let guard = 0;
+  while (stack.length && guard++ < 200000) {
+    const [cx, cy] = stack.pop();
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;
+    const i = cy * w + cx;
+    if (f[i] !== target) continue;
+    f[i] = color;
+    stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+  }
+}
+
+/* ==================== 变换原语 ==================== */
+
+/** 平移（保留出界像素） */
+function shiftFrame(src, dx, dy){
+  const { w, h } = state;
+  const out = blankFrame();
+  for (let y = 0; y < h; y++) {
+    const ny = y + dy;
+    if (ny < 0 || ny >= h) continue;
+    for (let x = 0; x < w; x++) {
+      const c = src[y * w + x];
+      if (!c) continue;
+      const nx = x + dx;
+      if (nx < 0 || nx >= w) continue;
+      out[ny * w + nx] = c;
+    }
+  }
+  return out;
+}
+
+/** 揭示：t=0 完全隐藏，t=1 完全显示 */
+function revealFrame(src, dir, t){
+  const { w, h } = state;
+  const out = blankFrame();
+  const horiz = dir === 'left' || dir === 'right';
+  const limit = horiz ? w : h;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const c = src[y * w + x];
+      if (!c) continue;
+      let pos;
+      if (dir === 'left')       pos = x;
+      else if (dir === 'right') pos = w - 1 - x;
+      else if (dir === 'up')    pos = y;
+      else                      pos = h - 1 - y;
+      if (pos / limit < t) out[y * w + x] = c;
+    }
+  }
+  return out;
+}
+
+/** 从中心生长：t=0→1 */
+function growFrame(src, t){
+  const { w, h } = state;
+  const out = blankFrame();
+  const cx = (w - 1) / 2;
+  const cy = (h - 1) / 2;
+  const maxR = Math.hypot(w, h) / 2 + 0.5;
+  const r = t * maxR;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const c = src[y * w + x];
+      if (!c) continue;
+      if (Math.hypot(x - cx, y - cy) <= r) out[y * w + x] = c;
+    }
+  }
+  return out;
+}
+
+/** 应用透明度 */
+function fadeFrame(src, alpha){
+  const out = new Array(src.length);
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (!c) { out[i] = null; continue; }
+    out[i] = withAlpha(c, alpha);
+  }
+  return out;
+}
+
+/** 旋转 90° × turns */
+function rotateFrame(src, turns){
+  const { w, h } = state;
+  const out = blankFrame();
+  const t = ((turns % 4) + 4) % 4;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const c = src[y * w + x];
+      if (!c) continue;
+      let nx, ny;
+      if (t === 0)      { nx = x;           ny = y; }
+      else if (t === 1) { nx = w - 1 - y;   ny = x; }
+      else if (t === 2) { nx = w - 1 - x;   ny = h - 1 - y; }
+      else              { nx = y;           ny = h - 1 - x; }
+      if (nx >= 0 && ny >= 0 && nx < w && ny < h) out[ny * w + nx] = c;
+    }
+  }
+  return out;
+}
+
+/* ==================== 预设动画效果 ==================== */
+
+function effectTranslate(base, dir, steps, dist, easeName){
+  const ease = EASINGS[easeName].fn;
+  const frames = [];
+  const dx = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
+  const dy = dir === 'up'   ? -1 : dir === 'down'  ? 1 : 0;
+  for (let i = 0; i <= steps; i++) {
+    const t = ease(i / steps);
+    frames.push(shiftFrame(base, Math.round(dx * dist * t), Math.round(dy * dist * t)));
+  }
+  return frames;
+}
+
+function effectReveal(base, dir, steps, easeName){
+  const ease = EASINGS[easeName].fn;
+  const frames = [];
+  for (let i = 0; i <= steps; i++) {
+    frames.push(revealFrame(base, dir, ease(i / steps)));
+  }
+  return frames;
+}
+
+function effectErase(base, dir, steps, easeName){
+  const ease = EASINGS[easeName].fn;
+  const frames = [];
+  for (let i = 0; i <= steps; i++) {
+    frames.push(revealFrame(base, dir, 1 - ease(i / steps)));
+  }
+  return frames;
+}
+
+function effectGrow(base, steps, easeName){
+  const ease = EASINGS[easeName].fn;
+  const frames = [];
+  for (let i = 0; i <= steps; i++) {
+    frames.push(growFrame(base, ease(i / steps)));
+  }
+  return frames;
+}
+
+function effectBlink(base, steps){
+  const frames = [];
+  const cycles = 3;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const alpha = 0.10 + 0.90 * (0.5 + 0.5 * Math.cos(t * Math.PI * 2 * cycles));
+    frames.push(fadeFrame(base, alpha));
+  }
+  return frames;
+}
+
+function effectRotate(base){
+  const frames = [];
+  for (let i = 0; i < 4; i++) {
+    frames.push(rotateFrame(base, i));
+  }
+  return frames;
+}
+
+function effectBounce(base, steps, dist){
+  // 回弹缓动，从上方落下并弹跳
+  const ease = EASINGS.overshoot.fn; // 复用 overshoot 的逼近感
+  const frames = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // 起于 -dist，终于 0，中途因 overshoot 反弹
+    const offset = Math.round(-dist * (1 - ease(t)));
+    frames.push(shiftFrame(base, 0, offset));
+  }
+  return frames;
+}
+
+function effectWave(base, steps, dist){
+  const frames = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const offset = Math.round(Math.sin(t * Math.PI * 2) * dist);
+    frames.push(shiftFrame(base, 0, -offset));
+  }
+  return frames;
+}
+
+function effectPulse(base, steps){
+  const frames = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const alpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(t * Math.PI * 2));
+    frames.push(fadeFrame(base, alpha));
+  }
+  return frames;
+}
+
+/* ==================== 生成动画 ==================== */
+function generateAnimation(){
+  const base = state.frames[state.cur];
+  if (!base) return;
+
+  const hasContent = base.some(c => c);
+  if (!hasContent) {
+    flashHint('当前帧是空白的，请先画点东西再生成动画。', true);
+    return;
+  }
+
+  const { effect, direction: dir, easing } = anim;
+  const steps = clamp(anim.steps | 0, 2, 32);
+  const dist  = clamp(anim.distance | 0, 1, 48);
+
+  let newFrames = [];
+
+  switch (effect) {
+    case 'translate': newFrames = effectTranslate(base, dir, steps, dist, easing); break;
+    case 'reveal':    newFrames = effectReveal(base, dir, steps, easing); break;
+    case 'erase':     newFrames = effectErase(base, dir, steps, easing); break;
+    case 'grow':      newFrames = effectGrow(base, steps, easing); break;
+    case 'blink':     newFrames = effectBlink(base, steps); break;
+    case 'rotate':    newFrames = effectRotate(base); break;
+    case 'bounce':    newFrames = effectBounce(base, steps, dist); break;
+    case 'wave':      newFrames = effectWave(base, steps, dist); break;
+    case 'pulse':     newFrames = effectPulse(base, steps); break;
+  }
+
+  if (!newFrames.length) return;
+
+  pushHistory();
+  state.frames.splice(state.cur + 1, 0, ...newFrames);
+  state.cur += 1;
+  render();
+  renderTimeline();
+  updateActiveFrame(true);
+  flashHint(`已生成 ${newFrames.length} 帧「${effectLabel(effect)}」动画 · ${EASINGS[easing].label}。`);
+}
+
+function effectLabel(e){
+  return ({
+    translate:'平移', reveal:'揭示', erase:'擦除',
+    grow:'生长', blink:'闪烁', rotate:'旋转',
+    bounce:'弹跳', wave:'波浪', pulse:'脉冲'
+  })[e] || e;
+}
+
+/* ==================== 提示条 ==================== */
+let hintTimer = null;
+const HINT_DEFAULT = '在当前帧画好图形后，选择效果与方向，即可生成一段逐帧动画，插入到当前帧之后。';
+function flashHint(msg, isWarn){
+  const el = $('#animHint');
+  el.textContent = msg;
+  el.style.color = isWarn ? '#ff9b9b' : '#8fa6d8';
+  el.style.borderColor = isWarn ? 'rgba(255,120,120,.35)' : 'rgba(91,140,255,.18)';
+  el.style.background  = isWarn ? 'rgba(255,90,90,.08)' : 'rgba(91,140,255,.07)';
+  if (hintTimer) clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => {
+    el.textContent = HINT_DEFAULT;
+    el.style.color = '#8fa6d8';
+    el.style.borderColor = 'rgba(91,140,255,.18)';
+    el.style.background = 'rgba(91,140,255,.07)';
+  }, 4200);
+}
+
+/* ==================== 指针交互 ==================== */
+function cellFromEvent(e){
+  const r = canvas.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+
+  const { w, h, cellSize, gap, padding } = state;
+  const { W, H, step } = canvasSize(w, h, cellSize, gap, padding);
+
+  const lx = (e.clientX - r.left) * (W / r.width);
+  const ly = (e.clientY - r.top ) * (H / r.height);
+
+  const x = Math.floor((lx - padding) / step);
+  const y = Math.floor((ly - padding) / step);
+  if (x < 0 || y < 0 || x >= w || y >= h) return null;
+  return { x, y };
+}
+
+function onDown(e){
+  if (state.playing) return;
+  const c = cellFromEvent(e);
+  if (!c) return;
+  try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+
+  const t = state.tool;
+
+  if (t === 'picker') {
+    const col = state.frames[state.cur][c.y * state.w + c.x];
+    if (col) setColor(col);
+    return;
+  }
+
+  pushHistory();
+  drawing = true;
+  lastCell = c;
+
+  if (t === 'pen') {
+    setPixel(c.x, c.y, state.color);
+    render();
+  } else if (t === 'eraser') {
+    setPixel(c.x, c.y, null);
+    render();
+  } else if (t === 'bucket') {
+    floodFill(c.x, c.y, state.color);
+    drawing = false;
+    render(); renderTimeline();
+  } else {
+    previewShape = { a: c, b: c, tool: t };
+    render();
+  }
+  e.preventDefault();
+}
+
+function onMove(e){
+  if (!drawing) return;
+  const c = cellFromEvent(e);
+  if (!c) return;
+
+  const t = state.tool;
+
+  if (t === 'pen' || t === 'eraser') {
+    const col = t === 'pen' ? state.color : null;
+    if (lastCell && (lastCell.x !== c.x || lastCell.y !== c.y)) {
+      for (const p of lineCells(lastCell, c)) setPixel(p.x, p.y, col);
+    } else {
+      setPixel(c.x, c.y, col);
+    }
+    lastCell = c;
+    render();
+  } else if (previewShape) {
+    previewShape.b = c;
+    render();
+  }
+}
+
+function onUp(){
+  if (!drawing) return;
+  drawing = false;
+
+  if (previewShape) {
+    const { a, b, tool } = previewShape;
+    const cells = tool === 'line' ? lineCells(a, b) : rectCells(a, b);
+    for (const p of cells) setPixel(p.x, p.y, state.color);
+    previewShape = null;
+    render();
+  }
+  lastCell = null;
+  renderTimeline();
+}
+
+/* ==================== 历史记录 ==================== */
+function snapshot(){
+  return {
+    w: state.w, h: state.h, cur: state.cur,
+    frames: state.frames.map(f => f.slice())
+  };
+}
+function pushHistory(){
+  history.push(snapshot());
+  if (history.length > 80) history.shift();
+  future.length = 0;
+  updateUndoUI();
+}
+function undo(){
+  if (!history.length) return;
+  future.push(snapshot());
+  restore(history.pop());
+}
+function redo(){
+  if (!future.length) return;
+  history.push(snapshot());
+  restore(future.pop());
+}
+function restore(s){
+  state.w = s.w; state.h = s.h;
+  state.frames = s.frames.map(f => f.slice());
+  state.cur = clamp(s.cur, 0, state.frames.length - 1);
+  $('#wInput').value = state.w;
+  $('#hInput').value = state.h;
+  refit(); render(); renderTimeline(); updateUndoUI();
+}
+function updateUndoUI(){
+  $('#undoBtn').disabled = history.length === 0;
+  $('#redoBtn').disabled = future.length === 0;
+}
+
+/* ==================== 颜色 ==================== */
+function setColor(hex, syncInput){
+  hex = String(hex).toLowerCase();
+  if (!/^#[0-9a-f]{6}$/.test(hex)) return;
+  state.color = hex;
+  colorInput.value = hex;
+  if (syncInput !== false) hexInput.value = hex.toUpperCase();
+  $$('.swatch').forEach(s => s.classList.toggle('active', s.dataset.color === hex));
+}
+
+function buildPalette(){
+  const el = $('#palette');
+  el.innerHTML = '';
+  PALETTE.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'swatch';
+    b.style.background = c;
+    b.dataset.color = c;
+    b.title = c.toUpperCase();
+    b.addEventListener('click', () => setColor(c));
+    el.appendChild(b);
+  });
+}
+
+/* ==================== 时间轴 ==================== */
+function renderTimeline(){
+  const el = $('#frames');
+  el.innerHTML = '';
+
+  const scale = Math.max(1, Math.floor(44 / Math.max(state.w, state.h)));
+
+  state.frames.forEach((f, i) => {
+    const d = document.createElement('div');
+    d.className = 'frame' + (i === state.cur ? ' active' : '');
+
+    const cv = document.createElement('canvas');
+    cv.width  = state.w * scale;
+    cv.height = state.h * scale;
+    const c = cv.getContext('2d');
+    for (let y = 0; y < state.h; y++) {
+      for (let x = 0; x < state.w; x++) {
+        const col = f[y * state.w + x];
+        if (col) { c.fillStyle = col; c.fillRect(x * scale, y * scale, scale, scale); }
+      }
+    }
+    d.appendChild(cv);
+
+    const n = document.createElement('div');
+    n.className = 'num';
+    n.textContent = String(i + 1).padStart(2, '0');
+    d.appendChild(n);
+
+    d.addEventListener('click', () => {
+      state.cur = i;
+      render(); renderTimeline();
+    });
+    el.appendChild(d);
+  });
+
+  const add = document.createElement('button');
+  add.className = 'frame-add';
+  add.textContent = '+';
+  add.title = '新建帧 (Alt+N)';
+  add.addEventListener('click', addFrame);
+  el.appendChild(add);
+
+  $('#frameCount').textContent = state.frames.length + ' 帧';
+}
+
+function updateActiveFrame(scroll){
+  const items = $$('.frame', $('#frames'));
+  items.forEach((it, i) => {
+    const on = i === state.cur;
+    it.classList.toggle('active', on);
+    if (on && scroll) it.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
+}
+
+function addFrame(){
+  pushHistory();
+  state.frames.splice(state.cur + 1, 0, blankFrame());
+  state.cur++;
+  render(); renderTimeline();
+}
+function duplicateFrame(){
+  pushHistory();
+  state.frames.splice(state.cur + 1, 0, state.frames[state.cur].slice());
+  state.cur++;
+  render(); renderTimeline();
+}
+function deleteFrame(){
+  if (state.frames.length <= 1) return;
+  pushHistory();
+  state.frames.splice(state.cur, 1);
+  state.cur = clamp(state.cur, 0, state.frames.length - 1);
+  render(); renderTimeline();
+}
+function clearFrame(){
+  pushHistory();
+  state.frames[state.cur] = blankFrame();
+  render(); renderTimeline();
+}
+function prevFrame(){
+  state.cur = (state.cur - 1 + state.frames.length) % state.frames.length;
+  render(); updateActiveFrame(true);
+}
+function nextFrame(){
+  state.cur = (state.cur + 1) % state.frames.length;
+  render(); updateActiveFrame(true);
+}
+
+/* ==================== 播放 ==================== */
+let rafId = null, lastT = 0;
+
+function startPlay(){
+  if (state.frames.length < 2) return;
+  state.playing = true;
+  $('#playBtn').textContent = '❚❚';
+  lastT = performance.now();
+  rafId = requestAnimationFrame(loop);
+}
+function stopPlay(){
+  state.playing = false;
+  $('#playBtn').textContent = '▶';
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+  render(); renderTimeline();
+}
+function togglePlay(){ state.playing ? stopPlay() : startPlay(); }
+
+function loop(t){
+  if (!state.playing) return;
+  const interval = 1000 / state.fps;
+  if (t - lastT >= interval) {
+    lastT = t - ((t - lastT) % interval);
+    state.cur = (state.cur + 1) % state.frames.length;
+    render();
+    updateActiveFrame(false);
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+/* ==================== 导出 ==================== */
+function download(url, name){
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function exportSprite(){
+  const { w, h, frames } = state;
+  const cv = document.createElement('canvas');
+  cv.width = w * frames.length;
+  cv.height = h;
+  const c = cv.getContext('2d');
+  frames.forEach((f, i) => {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const col = f[y * w + x];
+        if (col) { c.fillStyle = col; c.fillRect(i * w + x, y, 1, 1); }
+      }
+    }
+  });
+  download(cv.toDataURL('image/png'), `sprite_${w}x${h}_${frames.length}f.png`);
+}
+
+function exportFrame(){
+  const { w, h } = state;
+  const S = 8;
+  const cv = document.createElement('canvas');
+  cv.width = w * S; cv.height = h * S;
+  const c = cv.getContext('2d');
+  const f = state.frames[state.cur];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const col = f[y * w + x];
+      if (col) { c.fillStyle = col; c.fillRect(x * S, y * S, S, S); }
+    }
+  }
+  download(cv.toDataURL('image/png'), `frame_${state.cur + 1}.png`);
+}
+
+function exportJSON(){
+  const data = { w: state.w, h: state.h, fps: state.fps, frames: state.frames };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  download(url, 'pixel-animation.json');
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* ==================== 预设动画 UI ==================== */
+function updateAnimUI(){
+  const e = anim.effect;
+
+  $$('.effect-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.effect === e);
+  });
+
+  const needsDir  = ['translate','reveal','erase'].includes(e);
+  const needsEase = ['translate','reveal','erase','grow'].includes(e);
+  const needsSteps = e !== 'rotate';
+  const needsDist = ['translate','bounce','wave'].includes(e);
+
+  /* 方向 */
+  const dirRow = $('#dirRow');
+  dirRow.classList.toggle('hidden', !needsDir);
+  $$('.dir-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.dir === anim.direction);
+    b.disabled = !needsDir;
+  });
+
+  /* 缓动 */
+  $('#easeRow').classList.toggle('hidden', !needsEase);
+  $('#easeSelect').value = anim.easing;
+
+  /* 帧数 / 距离 */
+  $('#stepsWrap').classList.toggle('hidden', !needsSteps);
+  $('#distWrap').classList.toggle('hidden', !needsDist);
+}
+
+function bindAnimEvents(){
+  $$('.effect-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      anim.effect = b.dataset.effect;
+      updateAnimUI();
+    });
+  });
+
+  $$('.dir-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      if (b.disabled) return;
+      anim.direction = b.dataset.dir;
+      updateAnimUI();
+    });
+  });
+
+  $('#easeSelect').addEventListener('change', e => {
+    anim.easing = e.target.value;
+  });
+
+  $('#animSteps').addEventListener('input', e => {
+    anim.steps = clamp(parseInt(e.target.value, 10) || 8, 2, 32);
+  });
+  $('#animSteps').addEventListener('blur', e => {
+    e.target.value = anim.steps;
+  });
+
+  $('#animDist').addEventListener('input', e => {
+    anim.distance = clamp(parseInt(e.target.value, 10) || 8, 1, 48);
+  });
+  $('#animDist').addEventListener('blur', e => {
+    e.target.value = anim.distance;
+  });
+
+  $('#animGenBtn').addEventListener('click', generateAnimation);
+
+  $('#animHelpBtn').addEventListener('click', () => {
+    flashHint('先画好图形 → 选效果 → 调方向/缓动/帧数 → 点「生成序列帧」。新帧会插入到当前帧之后。', false);
+  });
+}
+
+/* ==================== 事件绑定 ==================== */
+function setTool(t){
+  state.tool = t;
+  $$('.tool[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+  canvas.style.cursor = t === 'picker' ? 'copy' : 'crosshair';
+}
+
+function bindEvents(){
+  /* 工具栏 */
+  $$('.tool[data-tool]').forEach(b => {
+    b.addEventListener('click', () => setTool(b.dataset.tool));
+  });
+  $('#mirrorBtn').addEventListener('click', () => {
+    state.mirror = !state.mirror;
+    $('#mirrorBtn').classList.toggle('active', state.mirror);
+  });
+
+  /* 画布 */
+  canvas.addEventListener('pointerdown', onDown);
+  canvas.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* 撤销/重做/清空 */
+  $('#undoBtn').addEventListener('click', undo);
+  $('#redoBtn').addEventListener('click', redo);
+  $('#clearBtn').addEventListener('click', clearFrame);
+
+  /* 颜色 */
+  colorInput.addEventListener('input', e => setColor(e.target.value));
+  hexInput.addEventListener('input', e => {
+    let v = e.target.value.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) setColor(v, false);
+  });
+  hexInput.addEventListener('blur', () => { hexInput.value = state.color.toUpperCase(); });
+
+  /* 画布尺寸 */
+  $('#resizeBtn').addEventListener('click', () => {
+    const nw = clamp(parseInt($('#wInput').value, 10) || 16, 1, 64);
+    const nh = clamp(parseInt($('#hInput').value, 10) || 16, 1, 64);
+    $('#wInput').value = nw; $('#hInput').value = nh;
+    if (nw === state.w && nh === state.h) return;
+
+    pushHistory();
+    const ow = state.w, oh = state.h;
+    state.frames = state.frames.map(f => {
+      const nf = new Array(nw * nh).fill(null);
+      for (let y = 0; y < Math.min(nh, oh); y++) {
+        for (let x = 0; x < Math.min(nw, ow); x++) {
+          nf[y * nw + x] = f[y * ow + x];
+        }
+      }
+      return nf;
+    });
+    state.w = nw; state.h = nh;
+    refit(); render(); renderTimeline();
+  });
+
+  /* 像素框大小 */
+  $('#cellRange').addEventListener('input', e => {
+    autoScale = false;
+    state.cellSize = clamp(parseInt(e.target.value, 10), 3, fitCellSize());
+    e.target.value = state.cellSize;
+    $('#cellVal').textContent = state.cellSize;
+    render();
+  });
+
+  /* 间隔 */
+  $('#gapRange').addEventListener('input', e => {
+    state.gap = parseInt(e.target.value, 10);
+    $('#gapVal').textContent = state.gap;
+    refit();
+    render();
+  });
+
+  /* 内边距 */
+  $('#padRange').addEventListener('input', e => {
+    state.padding = parseInt(e.target.value, 10);
+    $('#padVal').textContent = state.padding;
+    refit();
+    render();
+  });
+
+  /* 适应按钮 */
+  $('#fitBtn').addEventListener('click', () => {
+    autoScale = true;
+    refit();
+    render();
+  });
+
+  /* 选项 */
+  $('#gridChk').addEventListener('change', e => { state.showGrid = e.target.checked; render(); });
+  $('#onionChk').addEventListener('change', e => { state.onion = e.target.checked; render(); });
+
+  /* 时间轴 */
+  $('#playBtn').addEventListener('click', togglePlay);
+  $('#dupFrame').addEventListener('click', duplicateFrame);
+  $('#delFrame').addEventListener('click', deleteFrame);
+  $('#fpsRange').addEventListener('input', e => {
+    state.fps = parseInt(e.target.value, 10);
+    $('#fpsVal').textContent = state.fps;
+  });
+
+  /* 导出菜单 */
+  const exportMenu = $('#exportMenu');
+  $('#exportBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    exportMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => exportMenu.classList.remove('open'));
+  exportMenu.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    exportMenu.classList.remove('open');
+    const act = b.dataset.act;
+    if (act === 'sprite') exportSprite();
+    else if (act === 'frame') exportFrame();
+    else if (act === 'json') exportJSON();
+  });
+
+  /* 键盘 */
+  window.addEventListener('keydown', e => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+      if (e.key === 'Enter') e.target.blur();
+      return;
+    }
+    const k = e.key.toLowerCase();
+    const mod = e.ctrlKey || e.metaKey;
+
+    if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+    if (mod) return;
+
+    if (e.altKey) {
+      if (k === 'n') { e.preventDefault(); addFrame(); return; }
+      if (k === 'd') { e.preventDefault(); duplicateFrame(); return; }
+      return;
+    }
+
+    switch (k) {
+      case 'b': setTool('pen'); break;
+      case 'e': setTool('eraser'); break;
+      case 'g': setTool('bucket'); break;
+      case 'l': setTool('line'); break;
+      case 'r': setTool('rect'); break;
+      case 'i': setTool('picker'); break;
+      case 'm':
+        state.mirror = !state.mirror;
+        $('#mirrorBtn').classList.toggle('active', state.mirror);
+        break;
+      case ' ':
+        e.preventDefault(); togglePlay(); break;
+      case 'arrowleft':  e.preventDefault(); prevFrame(); break;
+      case 'arrowright': e.preventDefault(); nextFrame(); break;
+      case 'delete':
+      case 'backspace': deleteFrame(); break;
+    }
+  });
+
+  /* 舞台尺寸自适应 */
+  let pending = false;
+  const ro = new ResizeObserver(() => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      refit();
+      render();
+    });
+  });
+  ro.observe(stage);
+}
+
+/* ==================== 初始化 ==================== */
+function init(){
+  buildPalette();
+  state.frames = [blankFrame()];
+  setColor('#f4f4f4');
+  bindEvents();
+  bindAnimEvents();
+  updateAnimUI();
+  updateUndoUI();
+
+  requestAnimationFrame(() => {
+    refit();
+    render();
+    renderTimeline();
+  });
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
