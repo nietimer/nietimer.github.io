@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>墨韵</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    width:100%;height:100%;overflow:hidden;
+    background:#ece5d6;
+    font-family:"Songti SC","SimSun","STSong","KaiTi","STKaiti",serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+    overscroll-behavior:none;
+    cursor:crosshair;
+  }
+
+  /* 宣纸底色 */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;
+    background:
+      radial-gradient(circle at 18% 28%, rgba(200,180,140,.10), transparent 52%),
+      radial-gradient(circle at 82% 72%, rgba(160,140,100,.08), transparent 52%),
+      #ece5d6;
+  }
+
+  /* 主画布 — 模糊 + 对比度 造就水墨晕染 */
+  #c{
+    display:block;position:fixed;inset:0;z-index:1;
+    width:100%;height:100%;
+    background:#ece5d6;
+    will-change:filter;
+  }
+
+  /* 纸张纹理层 */
+  .paper{
+    position:fixed;inset:0;z-index:2;pointer-events:none;
+    opacity:.28;
+    mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* 暗角 */
+  .vignette{
+    position:fixed;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(ellipse 88% 72% at 50% 45%, transparent 42%, rgba(70,50,25,.16) 100%);
+  }
+
+  /* ══════ HUD ══════ */
+  .hud{
+    position:fixed;top:0;left:0;right:0;z-index:10;
+    padding:max(32px, env(safe-area-inset-top, 32px)) 40px 0;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    pointer-events:none;
+  }
+
+  .title-block{
+    display:flex;flex-direction:column;align-items:center;gap:16px;
+    animation:fadeDown 1.4s cubic-bezier(.2,.9,.25,1) both .2s;
+  }
+  .title-block h1{
+    writing-mode:vertical-rl;
+    font-size:34px;
+    letter-spacing:.38em;
+    color:#1c1a16;
+    font-weight:500;
+    text-shadow:0 1px 0 rgba(255,255,255,.5);
+    line-height:1;
+  }
+  .seal{
+    width:50px;height:50px;flex:none;
+    background:linear-gradient(135deg,#c13a2c 0%,#a32e22 100%);
+    color:#f5efe0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:24px;font-weight:600;
+    border-radius:3px;
+    letter-spacing:-1px;
+    transform:rotate(-2.5deg);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.22),
+      0 3px 12px rgba(140,30,20,.3),
+      0 0 0 1px rgba(140,30,20,.35);
+    font-family:"STKaiti","KaiTi","SimSun",serif;
+  }
+
+  .hint{
+    text-align:right;font-size:12.5px;letter-spacing:.16em;
+    color:rgba(60,48,32,.42);line-height:2.1;
+    animation:fadeDown 1.4s cubic-bezier(.2,.9,.25,1) both .4s;
+  }
+  .hint b{
+    color:rgba(28,24,18,.72);font-weight:500;
+  }
+
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ══════ 控制台 ══════ */
+  .controls{
+    position:fixed;left:50%;z-index:10;
+    bottom:max(30px, env(safe-area-inset-bottom, 30px));
+    transform:translateX(-50%);
+    display:flex;align-items:center;gap:2px;
+    padding:7px;
+    border-radius:16px;
+    background:rgba(255,252,245,.58);
+    border:1px solid rgba(140,110,80,.18);
+    backdrop-filter:blur(24px) saturate(1.6);
+    -webkit-backdrop-filter:blur(24px) saturate(1.6);
+    box-shadow:
+      0 10px 36px rgba(80,60,40,.14),
+      0 2px 8px rgba(80,60,40,.06),
+      inset 0 1px 0 rgba(255,255,255,.7);
+    animation:riseIn 1s cubic-bezier(.2,.9,.25,1) both .6s;
+  }
+  @keyframes riseIn{from{opacity:0;transform:translate(-50%,20px);}to{opacity:1;transform:translate(-50%,0);}}
+
+  .controls button{
+    appearance:none;-webkit-appearance:none;
+    border:0;background:transparent;
+    color:rgba(60,48,32,.62);
+    font-family:inherit;
+    font-size:15px;font-weight:500;
+    letter-spacing:.14em;
+    padding:10px 18px;
+    border-radius:11px;
+    cursor:pointer;white-space:nowrap;
+    transition:background .28s, color .28s, transform .28s cubic-bezier(.2,.9,.25,1);
+  }
+  .controls button:hover{
+    background:rgba(185,58,46,.08);
+    color:#b93a2e;
+    transform:translateY(-1.5px);
+  }
+  .controls button.active{
+    background:rgba(185,58,46,.13);
+    color:#b93a2e;
+    box-shadow:inset 0 0 0 1px rgba(185,58,46,.22);
+  }
+  .controls button:active{transform:scale(.94);}
+  .sep{
+    width:1px;height:18px;
+    background:rgba(140,110,80,.2);
+    margin:0 4px;
+    flex:none;
+  }
+
+  /* ══════ 引导层 ══════ */
+  .veil{
+    position:fixed;inset:0;z-index:20;
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;
+    transition:opacity 1.3s ease, visibility 1.3s;
+  }
+  .veil.gone{opacity:0;visibility:hidden;}
+  .veil-inner{text-align:center;animation:breathe 4s ease-in-out infinite;}
+  .veil-inner p{
+    font-size:14px;letter-spacing:.42em;
+    color:rgba(60,48,32,.5);
+    text-shadow:0 1px 0 rgba(255,255,255,.6);
+  }
+  .ink-drop{
+    width:10px;height:10px;border-radius:50%;
+    background:#1c1a16;
+    margin:0 auto 26px;
+    box-shadow:0 0 0 0 rgba(28,26,22,.45);
+    animation:inkRing 2.8s cubic-bezier(.2,.7,.3,1) infinite;
+  }
+  @keyframes inkRing{
+    0%{box-shadow:0 0 0 0 rgba(28,26,22,.4);transform:scale(1);}
+    70%{box-shadow:0 0 0 40px rgba(28,26,22,0);transform:scale(1.06);}
+    100%{box-shadow:0 0 0 0 rgba(28,26,22,0);transform:scale(1);}
+  }
+  @keyframes breathe{0%,100%{opacity:.7;}50%{opacity:1;}}
+
+  /* ══════ 移动端适配 ══════ */
+  @media (max-width:720px){
+    .hud{
+      padding:max(20px, env(safe-area-inset-top, 20px)) 22px 0;
+    }
+    .title-block{
+      flex-direction:row;align-items:center;gap:12px;
+    }
+    .title-block h1{
+      writing-mode:horizontal-tb;
+      font-size:19px;letter-spacing:.32em;
+    }
+    .seal{
+      width:36px;height:36px;font-size:17px;border-radius:2px;
+    }
+    .hint{display:none;}
+
+    .controls{
+      bottom:max(16px, env(safe-area-inset-bottom, 16px));
+      padding:5px;gap:1px;
+      max-width:calc(100vw - 24px);
+      overflow-x:auto;
+      scrollbar-width:none;
+      -webkit-overflow-scrolling:touch;
+      border-radius:14px;
+    }
+    .controls::-webkit-scrollbar{display:none;}
+    .controls button{
+      font-size:13.5px;padding:10px 13px;letter-spacing:.06em;
+      border-radius:9px;
+    }
+    .sep{height:16px;margin:0 2px;}
+  }
+
+  /* 竖屏超小设备 */
+  @media (max-width:380px){
+    .title-block h1{font-size:16px;}
+    .seal{width:30px;height:30px;font-size:14px;}
+    .controls button{font-size:12px;padding:9px 11px;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div class="paper"></div>
+<div class="vignette"></div>
+
+<header class="hud">
+  <div class="title-block">
+    <h1>墨韵</h1>
+    <div class="seal">墨</div>
+  </div>
+  <div class="hint">
+    <div><b>拖动</b> 搅墨</div>
+    <div><b>点击</b> 注力</div>
+    <div><b>空格</b> 冲击</div>
+  </div>
+</header>
+
+<nav class="controls" id="controls">
+  <button data-mode="attract" class="active" title="吸引">引</button>
+  <button data-mode="repel" title="排斥">斥</button>
+  <span class="sep"></span>
+  <button data-act="burst" title="爆发">绽</button>
+  <button data-act="vortex" title="漩涡">旋</button>
+  <button data-act="reset" title="重置">涤</button>
+</nav>
+
+<div class="veil" id="veil">
+  <div class="veil-inner">
+    <div class="ink-drop"></div>
+    <p>轻触 · 与墨共舞</p>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ════════════════════════════════════════════
+   环境检测
+   ════════════════════════════════════════════ */
+const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+               || (window.innerWidth < 720 && 'ontouchstart' in window);
+
+const DPR_CAP    = isMobile ? 1.6 : 2;
+const PARTICLES  = isMobile ? 105 : 185;
+const BLUR_PX    = isMobile ? 5 : 8;
+const CONTRAST   = isMobile ? 13 : 16;
+
+/* ════════════════════════════════════════════
+   画布
+   ════════════════════════════════════════════ */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+let W = 0, H = 0;
+
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+  W = window.innerWidth;
+  H = window.innerHeight;
+
+  canvas.width  = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  /* 根据设备设定滤镜（只设置一次） */
+  canvas.style.filter = `blur(${BLUR_PX}px) contrast(${CONTRAST})`;
+}
+
+/* ════════════════════════════════════════════
+   工具
+   ════════════════════════════════════════════ */
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const rand  = (a, b) => a + Math.random() * (b - a);
+
+/* ════════════════════════════════════════════
+   粒子
+   ════════════════════════════════════════════ */
+const particles = [];
+
+const pointer = {
+  x: -9999, y: -9999,
+  active: false,
+  isTouch: false,
+  mode: 'attract'
+};
+
+class InkParticle {
+  constructor(spread){
+    this.reset(spread);
+    this.size = rand(5.5, 16);
+    this.phase = Math.random() * Math.PI * 2;
+  }
+
+  reset(spread){
+    if (spread){
+      this.x = Math.random() * W;
+      this.y = Math.random() * H;
+    } else {
+      this.x = W * 0.5 + rand(-100, 100);
+      this.y = H * 0.5 + rand(-100, 100);
+    }
+    const a = Math.random() * Math.PI * 2;
+    const sp = rand(0.3, 2.2);
+    this.vx = Math.cos(a) * sp;
+    this.vy = Math.sin(a) * sp;
+  }
+
+  update(dt, time){
+    const R = 92, R2 = R * R;
+    const SR = 32, SR2 = SR * SR;
+
+    let cx = 0, cy = 0, ax = 0, ay = 0, n = 0;
+
+    /* ── 邻居交互 ── */
+    for (let i = 0; i < particles.length; i++){
+      const o = particles[i];
+      if (o === this) continue;
+
+      const dx = o.x - this.x;
+      const dy = o.y - this.y;
+      const d2 = dx * dx + dy * dy;
+
+      if (d2 < R2 && d2 > 0.0001){
+        cx += o.x; cy += o.y;
+        ax += o.vx; ay += o.vy;
+        n++;
+
+        if (d2 < SR2){
+          const d = Math.sqrt(d2);
+          const f = (SR - d) / SR * 0.85;
+          this.vx -= (dx / d) * f;
+          this.vy -= (dy / d) * f;
+        }
+      }
+    }
+
+    if (n > 0){
+      cx /= n; cy /= n; ax /= n; ay /= n;
+      this.vx += (cx - this.x) * 0.0015;
+      this.vy += (cy - this.y) * 0.0015;
+      this.vx += (ax - this.vx) * 0.013;
+      this.vy += (ay - this.vy) * 0.013;
+    }
+
+    /* ── 指针力场 ── */
+    if (pointer.active){
+      const dx = pointer.x - this.x;
+      const dy = pointer.y - this.y;
+      const d2 = dx * dx + dy * dy;
+      const IR = 210, IR2 = IR * IR;
+
+      if (d2 < IR2 && d2 > 1){
+        const d = Math.sqrt(d2);
+        const f = (IR - d) / IR * 1.05;
+        const dir = pointer.mode === 'attract' ? 1 : -1;
+        this.vx += (dx / d) * f * dir;
+        this.vy += (dy / d) * f * dir;
+      }
+    }
+
+    /* ── 自然流动 ── */
+    this.vx += Math.sin(this.y * 0.0055 + time * 0.45 + this.phase) * 0.055;
+    this.vy += Math.cos(this.x * 0.0055 + time * 0.4 + this.phase) * 0.055;
+
+    /* ── 阻尼 ── */
+    const damp = Math.pow(0.973, dt * 60);
+    this.vx *= damp;
+    this.vy *= damp;
+
+    /* ── 限速 ── */
+    const sp2 = this.vx * this.vx + this.vy * this.vy;
+    const MAX = 7.2;
+    if (sp2 > MAX * MAX){
+      const s = Math.sqrt(sp2);
+      this.vx = (this.vx / s) * MAX;
+      this.vy = (this.vy / s) * MAX;
+    }
+
+    /* ── 位置 ── */
+    this.x += this.vx * dt * 60;
+    this.y += this.vy * dt * 60;
+
+    /* ── 边界 ── */
+    const P = 12;
+    if (this.x < -P){ this.x = -P; this.vx = Math.abs(this.vx) * 0.45; }
+    if (this.x > W + P){ this.x = W + P; this.vx = -Math.abs(this.vx) * 0.45; }
+    if (this.y < -P){ this.y = -P; this.vy = Math.abs(this.vy) * 0.45; }
+    if (this.y > H + P){ this.y = H + P; this.vy = -Math.abs(this.vy) * 0.45; }
+  }
+
+  draw(){
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fill();
+  }
+}
+
+/* 初始化粒子 */
+function initParticles(spread){
+  particles.length = 0;
+  for (let i = 0; i < PARTICLES; i++){
+    particles.push(new InkParticle(spread));
+  }
+}
+
+/* ════════════════════════════════════════════
+   主循环
+   ════════════════════════════════════════════ */
+let lastT = 0;
+let elapsed = 0;
+
+function loop(now){
+  const dt = Math.min(0.048, (now - lastT) / 1000 || 0.016);
+  lastT = now;
+  elapsed += dt;
+
+  /* 清屏 */
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#ece5d6';
+  ctx.fillRect(0, 0, W, H);
+
+  /* 更新 */
+  for (let i = 0; i < particles.length; i++){
+    particles[i].update(dt, elapsed);
+  }
+
+  /* 绘制 */
+  for (let i = 0; i < particles.length; i++){
+    particles[i].draw();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* ════════════════════════════════════════════
+   交互
+   ════════════════════════════════════════════ */
+const veil = document.getElementById('veil');
+let veilGone = false;
+
+function dismissVeil(){
+  if (veilGone) return;
+  veilGone = true;
+  veil.classList.add('gone');
+}
+
+/* 指针按下 → 注入能量 */
+canvas.addEventListener('pointerdown', e => {
+  dismissVeil();
+  pointer.x = e.clientX;
+  pointer.y = e.clientY;
+  pointer.active = true;
+  pointer.isTouch = e.pointerType === 'touch';
+
+  const cx = e.clientX, cy = e.clientY;
+  const R = 280;
+
+  for (let i = 0; i < particles.length; i++){
+    const p = particles[i];
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < R && d > 0.001){
+      const f = (R - d) / R * 12;
+      p.vx += (dx / d) * f;
+      p.vy += (dy / d) * f;
+    }
+  }
+}, { passive: true });
+
+/* 移动 */
+canvas.addEventListener('pointermove', e => {
+  pointer.x = e.clientX;
+  pointer.y = e.clientY;
+  pointer.active = true;
+}, { passive: true });
+
+/* 离开（鼠标） */
+canvas.addEventListener('pointerleave', () => {
+  pointer.active = false;
+});
+
+/* 抬起（触屏） */
+canvas.addEventListener('pointerup', e => {
+  if (e.pointerType === 'touch'){
+    pointer.active = false;
+  }
+});
+
+/* ════════════════════════════════════════════
+   控制台
+   ════════════════════════════════════════════ */
+document.getElementById('controls').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  dismissVeil();
+
+  const mode = btn.dataset.mode;
+  const act  = btn.dataset.act;
+
+  /* 力场切换 */
+  if (mode){
+    pointer.mode = mode;
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    return;
+  }
+
+  /* 爆发 */
+  if (act === 'burst'){
+    const cx = W * 0.5, cy = H * 0.5;
+    for (const p of particles){
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const f = 18;
+      p.vx += (dx / d) * f;
+      p.vy += (dy / d) * f;
+    }
+  }
+
+  /* 漩涡 */
+  else if (act === 'vortex'){
+    const cx = W * 0.5, cy = H * 0.5;
+    for (const p of particles){
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      p.vx += (-dy / d) * 7.5;
+      p.vy += ( dx / d) * 7.5;
+      p.vx += (-dx / d) * 1.4;
+      p.vy += (-dy / d) * 1.4;
+    }
+  }
+
+  /* 重置 */
+  else if (act === 'reset'){
+    initParticles(true);
+  }
+});
+
+/* 空格 → 冲击波 */
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space'){
+    e.preventDefault();
+    dismissVeil();
+
+    const cx = pointer.active ? pointer.x : W * 0.5;
+    const cy = pointer.active ? pointer.y : H * 0.5;
+
+    for (const p of particles){
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const f = 21;
+      p.vx += (dx / d) * f;
+      p.vy += (dy / d) * f;
+    }
+  }
+});
+
+/* 阻止右键菜单 */
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ════════════════════════════════════════════
+   启动
+   ════════════════════════════════════════════ */
+resize();
+initParticles(true);
+
+/* 窗口尺寸变化 */
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    resize();
+    for (const p of particles){
+      p.x = clamp(p.x, 0, W);
+      p.y = clamp(p.y, 0, H);
+    }
+  }, 120);
+});
+
+/* 移动端防止双指缩放 */
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

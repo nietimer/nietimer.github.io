@@ -2,11 +2,14 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c11">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>点阵动画编辑器 · Pixel Animation Studio</title>
 <style>
 /* ============ 基础 ============ */
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0a0c11;
   --panel:#101319;
@@ -16,13 +19,16 @@
   --muted:#79839a;
   --accent:#5b8cff;
   --accent-2:#9b6bff;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
 }
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior:none}
 body{
   background:radial-gradient(1200px 700px at 50% -20%, #1a2133 0%, #0a0c11 55%), #0a0c11;
   color:var(--text);
   font:13px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
-  overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased;
+  overflow:hidden;user-select:none;-webkit-user-select:none;
+  -webkit-font-smoothing:antialiased;
 }
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 input,select{font:inherit;color:inherit}
@@ -32,7 +38,7 @@ input,select{font:inherit;color:inherit}
 ::-webkit-scrollbar-thumb:hover{background:#313a4e;background-clip:padding-box}
 
 /* ============ 布局 ============ */
-.app{height:100vh;display:flex;flex-direction:column}
+.app{height:100vh;height:100dvh;display:flex;flex-direction:column;padding-bottom:var(--safe-b)}
 .body{flex:1;display:flex;min-height:0}
 
 /* ============ 顶栏 ============ */
@@ -40,15 +46,17 @@ input,select{font:inherit;color:inherit}
   height:58px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;
   border-bottom:1px solid var(--line);
   background:linear-gradient(180deg,rgba(255,255,255,.025),transparent);
+  padding-top:var(--safe-t);
+  height:calc(58px + var(--safe-t));
 }
-.brand{display:flex;align-items:center;gap:11px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
 .logo{
-  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;
   background:linear-gradient(135deg,var(--accent),var(--accent-2));
   font-size:17px;color:#fff;
   box-shadow:0 6px 20px -6px rgba(91,140,255,.85);
 }
-.title{font-size:13px;font-weight:600;letter-spacing:.3px}
+.title{font-size:13px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
 .sub{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
 .spacer{flex:1}
 .top-actions{display:flex;align-items:center;gap:6px}
@@ -72,6 +80,7 @@ input,select{font:inherit;color:inherit}
 }
 .btn.primary:hover{filter:brightness(1.12)}
 .btn svg{width:15px;height:15px}
+#panelBtn{display:none}
 
 /* 导出菜单 */
 .menu-wrap{position:relative}
@@ -90,10 +99,12 @@ input,select{font:inherit;color:inherit}
 .toolbar{
   width:58px;flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;
   padding:12px 0;border-right:1px solid var(--line);background:var(--panel);
+  scrollbar-width:none;
 }
+.toolbar::-webkit-scrollbar{display:none}
 .tool{
   width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
-  color:var(--muted);transition:.15s;position:relative;
+  color:var(--muted);transition:.15s;position:relative;flex:none;
 }
 .tool svg{width:19px;height:19px}
 .tool:hover{background:var(--panel-2);color:var(--text)}
@@ -102,7 +113,7 @@ input,select{font:inherit;color:inherit}
   color:#a9c1ff;
   box-shadow:inset 0 0 0 1px rgba(91,140,255,.45),0 6px 16px -8px rgba(91,140,255,.9);
 }
-.toolbar .sep{width:22px;height:1px;background:var(--line);margin:5px 0}
+.toolbar .sep{width:22px;height:1px;background:var(--line);margin:5px 0;flex:none}
 
 /* ============ 舞台 ============ */
 .stage{
@@ -124,7 +135,7 @@ input,select{font:inherit;color:inherit}
     0 30px 70px -30px #000,
     0 0 90px -35px rgba(91,140,255,.75);
 }
-#art{display:block;touch-action:none;cursor:crosshair}
+#art{display:block;touch-action:none;cursor:crosshair;-webkit-touch-callout:none}
 
 /* ============ 右侧面板 ============ */
 .panel{
@@ -177,7 +188,6 @@ input[type="color"]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.14)
 .size-row .x{color:var(--muted);font-size:12px}
 .btn.small{height:32px;padding:0 10px;font-size:11.5px}
 
-/* 滑块行 */
 .slider-row{
   display:grid;grid-template-columns:26px 1fr 26px;
   align-items:center;gap:8px;margin-bottom:10px;
@@ -215,7 +225,7 @@ input[type="color"]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.14)
 .dir-btn{
   width:28px;height:28px;border-radius:7px;background:var(--panel-2);
   border:1px solid var(--line);display:grid;place-items:center;
-  font-size:14px;color:#8a93a8;transition:.14s;
+  font-size:14px;color:#8a93a8;transition:.14s;flex:none;
 }
 .dir-btn:hover:not(:disabled){color:#fff;border-color:#33405a}
 .dir-btn.active{
@@ -225,7 +235,6 @@ input[type="color"]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.14)
 }
 .dir-btn:disabled{opacity:.28;cursor:not-allowed}
 
-/* 缓动行 */
 .ease-row{display:flex;align-items:center;gap:6px;margin-top:10px}
 .ease-select{
   flex:1;height:28px;border-radius:7px;
@@ -250,6 +259,7 @@ input[type="color"]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.14)
 .anim-params input{
   height:30px;border-radius:7px;background:var(--panel-2);border:1px solid var(--line);
   padding:0 8px;font-family:ui-monospace,monospace;font-size:12px;outline:none;transition:.15s;
+  width:100%;
 }
 .anim-params input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,140,255,.12)}
 .anim-params input:disabled{opacity:.35;cursor:not-allowed}
@@ -271,10 +281,10 @@ input[type="color"]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.14)
 .play-btn{
   width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
   background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
-  box-shadow:0 5px 16px -7px var(--accent);font-size:11px;transition:.15s;
+  box-shadow:0 5px 16px -7px var(--accent);font-size:11px;transition:.15s;flex:none;
 }
 .play-btn:hover{filter:brightness(1.15)}
-.tl-label{font-size:10px;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+.tl-label{font-size:10px;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;white-space:nowrap}
 .tl-val{
   font-family:ui-monospace,monospace;font-size:11px;color:#a9c1ff;
   min-width:20px;text-align:center;
@@ -284,15 +294,17 @@ input[type="range"]{
   background:#252b38;outline:none;width:88px;cursor:pointer;
 }
 input[type="range"]::-webkit-slider-thumb{
-  -webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
   background:#fff;box-shadow:0 0 0 3px rgba(91,140,255,.35);cursor:pointer;
 }
-.tl-sep{width:1px;height:18px;background:var(--line);margin:0 3px}
+.tl-sep{width:1px;height:18px;background:var(--line);margin:0 3px;flex:none}
 
 .frames{
   flex:1;display:flex;align-items:center;gap:9px;padding:11px 14px;
   overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
 }
+.frames::-webkit-scrollbar{height:6px}
 .frame{
   flex:none;position:relative;width:64px;height:74px;border-radius:9px;
   background:var(--panel-2);border:1px solid var(--line);
@@ -317,6 +329,174 @@ input[type="range"]::-webkit-slider-thumb{
   display:grid;place-items:center;color:#4a5468;font-size:20px;transition:.15s;
 }
 .frame-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(91,140,255,.07)}
+
+/* ============ 移动端抽屉 ============ */
+.drawer-mask{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.5);
+  z-index:99;
+  -webkit-backdrop-filter:blur(3px);
+  backdrop-filter:blur(3px);
+  opacity:0;transition:opacity .25s;
+}
+.drawer-mask.open{display:block;opacity:1}
+
+/* ============================================================
+   响应式：平板 / 手机
+   ============================================================ */
+@media (max-width: 860px) {
+  /* ---- 顶栏紧凑 ---- */
+  .topbar{
+    height:calc(52px + var(--safe-t));
+    padding:0 10px;
+    padding-top:var(--safe-t);
+    gap:8px;
+  }
+  .logo{width:30px;height:30px;font-size:15px;border-radius:9px}
+  .title{font-size:12.5px}
+  .sub{display:none}
+  .top-actions{gap:2px}
+  .divider{height:16px;margin:0 2px}
+  .btn{height:34px;padding:0 10px;font-size:12px}
+  .btn.ghost{min-width:38px;padding:0 6px}
+  .btn svg{width:16px;height:16px}
+  #panelBtn{display:inline-flex}
+  #clearBtn{display:none}
+
+  /* ---- body 纵向 ---- */
+  .body{flex-direction:column}
+
+  /* ---- 工具栏横向滚动 ---- */
+  .toolbar{
+    width:100%;height:52px;
+    flex-direction:row;align-items:center;
+    justify-content:flex-start;
+    gap:4px;
+    padding:0 10px;
+    border-right:none;border-bottom:1px solid var(--line);
+    overflow-x:auto;overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+  }
+  .toolbar .sep{
+    width:1px;height:22px;
+    margin:0 5px;
+  }
+  .tool{width:42px;height:42px;flex:none}
+  .tool svg{width:20px;height:20px}
+
+  /* ---- 舞台 ---- */
+  .stage{padding:14px}
+  .canvas-wrap{
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.08),
+      0 20px 50px -22px #000,
+      0 0 60px -28px rgba(91,140,255,.7);
+  }
+
+  /* ---- 面板变为底部抽屉 ---- */
+  .panel{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    top:auto;
+    width:100%;
+    max-height:64vh;
+    border-left:none;
+    border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0;
+    transform:translateY(105%);
+    transition:transform .32s cubic-bezier(.32,.72,0,1);
+    z-index:100;
+    padding:22px 16px calc(28px + var(--safe-b));
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    box-shadow:0 -24px 60px -20px rgba(0,0,0,.7);
+  }
+  .panel.open{transform:translateY(0)}
+  .panel::before{
+    content:'';
+    position:absolute;
+    top:9px;left:50%;
+    transform:translateX(-50%);
+    width:40px;height:4px;
+    border-radius:3px;
+    background:#2b3344;
+  }
+
+  /* ---- 时间轴压缩 ---- */
+  .timeline{height:auto;flex:none}
+  .tl-bar{
+    height:42px;
+    padding:0 10px;gap:8px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .tl-bar::-webkit-scrollbar{display:none}
+  #fpsRange{width:70px}
+  .frames{
+    padding:8px 10px 12px;
+    gap:7px;
+    max-height:92px;
+  }
+  .frame{
+    width:54px;height:64px;
+    border-radius:8px;
+    gap:3px;
+  }
+  .frame canvas{max-width:38px;max-height:38px}
+  .frame .num{font-size:8.5px}
+  .frame-add{width:40px;height:64px;font-size:18px}
+
+  /* ---- 面板内元素更适配手指 ---- */
+  .palette{grid-template-columns:repeat(8,1fr);gap:6px}
+  .swatch{border-radius:7px}
+  .effect-btn{height:36px;font-size:12px}
+  .dir-btn{width:36px;height:36px;font-size:16px;border-radius:9px}
+  .ease-select{height:36px;font-size:12.5px}
+  .size-row input[type=number]{height:36px;width:60px}
+  .btn.small{height:36px;padding:0 12px}
+  .anim-params input{height:36px}
+  .panel input[type="range"]{
+    height:6px;border-radius:3px;
+  }
+  .panel input[type="range"]::-webkit-slider-thumb{
+    width:18px;height:18px;
+  }
+  .check{padding:10px 2px;font-size:12.5px}
+  .check input{width:17px;height:17px}
+  .slider-row{grid-template-columns:34px 1fr 32px;margin-bottom:14px}
+  .slider-row span{font-size:11.5px}
+  .slider-row b{font-size:11px}
+
+  /* 面板分节更疏朗 */
+  .panel{gap:20px}
+  .panel h3{font-size:10px;margin-bottom:13px}
+}
+
+/* 横屏手机 / 小高度：进一步压缩 */
+@media (max-width: 860px) and (max-height: 480px) {
+  .toolbar{height:46px}
+  .tool{width:38px;height:38px}
+  .tool svg{width:18px;height:18px}
+  .frames{max-height:74px;padding:6px 8px 8px}
+  .frame{width:46px;height:56px}
+  .frame canvas{max-width:32px;max-height:32px}
+  .frame-add{width:34px;height:56px}
+  .panel{max-height:80vh}
+}
+
+/* 小屏手机 */
+@media (max-width: 420px) {
+  .topbar{padding:0 8px}
+  .title{font-size:12px}
+  .btn.ghost{min-width:34px}
+  .toolbar{padding:0 6px;gap:2px}
+  .tool{width:38px;height:38px}
+  .palette{grid-template-columns:repeat(8,1fr);gap:5px}
+  .effects{gap:4px}
+  .effect-btn{height:34px;font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -333,14 +513,21 @@ input[type="range"]::-webkit-slider-thumb{
     </div>
     <div class="spacer"></div>
     <div class="top-actions">
-      <button class="btn ghost" id="undoBtn" title="撤销 (Ctrl+Z)">
+      <button class="btn ghost" id="undoBtn" title="撤销" aria-label="撤销">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.1-9.3L3 7"/></svg>
       </button>
-      <button class="btn ghost" id="redoBtn" title="重做 (Ctrl+Shift+Z)">
+      <button class="btn ghost" id="redoBtn" title="重做" aria-label="重做">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M20.5 13a9 9 0 1 1-2.1-9.3L21 7"/></svg>
       </button>
       <div class="divider"></div>
       <button class="btn ghost" id="clearBtn" title="清空当前帧">清空</button>
+      <button class="btn ghost" id="panelBtn" title="面板设置" aria-label="面板设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor"/>
+          <line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2" fill="currentColor"/>
+          <line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="2" fill="currentColor"/>
+        </svg>
+      </button>
       <div class="divider"></div>
       <div class="menu-wrap">
         <button class="btn primary" id="exportBtn">
@@ -360,27 +547,27 @@ input[type="range"]::-webkit-slider-thumb{
 
     <!-- ===== 工具栏 ===== -->
     <aside class="toolbar" id="toolbar">
-      <button class="tool active" data-tool="pen" title="铅笔 (B)">
+      <button class="tool active" data-tool="pen" title="铅笔" aria-label="铅笔">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
       </button>
-      <button class="tool" data-tool="eraser" title="橡皮 (E)">
+      <button class="tool" data-tool="eraser" title="橡皮" aria-label="橡皮">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1.5 1.5 0 0 1 0-2.1l9.6-9.6a1.5 1.5 0 0 1 2.1 0l5.4 5.4a1.5 1.5 0 0 1 0 2.1L12.6 21Z"/><path d="M22 21H7"/><path d="m5 11 8 8"/></svg>
       </button>
-      <button class="tool" data-tool="bucket" title="油漆桶 (G)">
+      <button class="tool" data-tool="bucket" title="油漆桶" aria-label="油漆桶">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
       </button>
       <div class="sep"></div>
-      <button class="tool" data-tool="line" title="直线 (L)">
+      <button class="tool" data-tool="line" title="直线" aria-label="直线">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 18.5 18.5 5.5"/><circle cx="5.5" cy="18.5" r="1.7" fill="currentColor" stroke="none"/><circle cx="18.5" cy="5.5" r="1.7" fill="currentColor" stroke="none"/></svg>
       </button>
-      <button class="tool" data-tool="rect" title="矩形 (R)">
+      <button class="tool" data-tool="rect" title="矩形" aria-label="矩形">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="1.6"/></svg>
       </button>
-      <button class="tool" data-tool="picker" title="取色器 (I)">
+      <button class="tool" data-tool="picker" title="取色器" aria-label="取色器">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.12 2.12 0 0 1 3 3L18 9l.9.9a2.12 2.12 0 0 1-3 3l-7.8-7.8a2.12 2.12 0 0 1 3-3l.9.9Z"/></svg>
       </button>
       <div class="sep"></div>
-      <button class="tool" id="mirrorBtn" title="水平镜像 (M)">
+      <button class="tool" id="mirrorBtn" title="水平镜像" aria-label="水平镜像">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2.5 2.5"/><path d="M8.5 5.5 3.5 12l5 6.5Z"/><path d="m15.5 5.5 5 6.5-5 6.5Z"/></svg>
       </button>
     </aside>
@@ -392,8 +579,8 @@ input[type="range"]::-webkit-slider-thumb{
       </div>
     </main>
 
-    <!-- ===== 右侧面板 ===== -->
-    <aside class="panel">
+    <!-- ===== 右侧面板（移动端为底部抽屉） ===== -->
+    <aside class="panel" id="panel">
       <section>
         <h3>颜色</h3>
         <div class="color-row">
@@ -490,16 +677,16 @@ input[type="range"]::-webkit-slider-thumb{
   <!-- ===== 时间轴 ===== -->
   <footer class="timeline">
     <div class="tl-bar">
-      <button class="play-btn" id="playBtn" title="播放 / 暂停 (空格)">▶</button>
+      <button class="play-btn" id="playBtn" title="播放 / 暂停" aria-label="播放暂停">▶</button>
       <div class="tl-sep"></div>
       <span class="tl-label">FPS</span>
       <input type="range" id="fpsRange" min="1" max="30" value="12">
       <span class="tl-val" id="fpsVal">12</span>
       <div class="tl-sep"></div>
-      <button class="btn ghost" id="dupFrame" title="复制当前帧 (Alt+D)">
+      <button class="btn ghost" id="dupFrame" title="复制当前帧" aria-label="复制帧">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a2 2 0 0 1 2-2h11"/></svg>
       </button>
-      <button class="btn ghost" id="delFrame" title="删除当前帧">
+      <button class="btn ghost" id="delFrame" title="删除当前帧" aria-label="删除帧">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
       </button>
       <div class="spacer" style="flex:1"></div>
@@ -508,6 +695,9 @@ input[type="range"]::-webkit-slider-thumb{
     <div class="frames" id="frames"></div>
   </footer>
 </div>
+
+<!-- 移动端抽屉遮罩 -->
+<div class="drawer-mask" id="drawerMask"></div>
 
 <script>
 (function(){
@@ -527,28 +717,13 @@ const PALETTE = [
 
 /* ==================== 缓动函数库 ==================== */
 const EASINGS = {
-  linear: {
-    label: '线性',
-    fn: t => t
-  },
-  easeOut: {
-    label: '缓出',
-    fn: t => 1 - Math.pow(1 - t, 3)
-  },
-  easeIn: {
-    label: '缓入',
-    fn: t => t * t * t
-  },
-  easeInOut: {
-    label: '缓入缓出',
-    fn: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-  },
+  linear:    { label: '线性',     fn: t => t },
+  easeOut:   { label: '缓出',     fn: t => 1 - Math.pow(1 - t, 3) },
+  easeIn:    { label: '缓入',     fn: t => t * t * t },
+  easeInOut: { label: '缓入缓出', fn: t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2 },
   overshoot: {
     label: '回弹过冲',
-    fn: t => {
-      const c1 = 1.70158, c3 = c1 + 1;
-      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-    }
+    fn: t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t-1, 3) + c1 * Math.pow(t-1, 2); }
   }
 };
 
@@ -569,7 +744,6 @@ const state = {
   playing: false
 };
 
-/* 预设动画参数 */
 const anim = {
   effect: 'translate',
   direction: 'right',
@@ -592,15 +766,16 @@ const ctx = canvas.getContext('2d');
 const stage = $('#stage');
 const colorInput = $('#colorInput');
 const hexInput = $('#hexInput');
+const panel = $('#panel');
+const drawerMask = $('#drawerMask');
 
-/* ==================== 颜色工具（支持透明度） ==================== */
+/* ==================== 颜色工具 ==================== */
 function hexToRgb(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
   if (!m) return null;
-  const num = parseInt(m[1], 16);
-  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  const n = parseInt(m[1], 16);
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
 }
-/** 给颜色附加 alpha，返回 hex 或 rgba 字符串 */
 function withAlpha(hex, alpha) {
   if (alpha >= 0.999) return hex;
   if (alpha <= 0.004) return null;
@@ -620,8 +795,10 @@ function canvasSize(w, h, cs, gap, pad){
 
 function fitCellSize(){
   const { w, h, gap, padding } = state;
-  const availW = Math.max(80, stage.clientWidth  - 56);
-  const availH = Math.max(80, stage.clientHeight - 56);
+  const isMobile = window.innerWidth <= 860;
+  const reserve = isMobile ? 34 : 56;
+  const availW = Math.max(80, stage.clientWidth  - reserve);
+  const availH = Math.max(80, stage.clientHeight - reserve);
   const maxW = (availW - padding * 2 - (w - 1) * gap) / w;
   const maxH = (availH - padding * 2 - (h - 1) * gap) / h;
   const v = Math.floor(Math.min(maxW, maxH));
@@ -636,7 +813,7 @@ function refit(){
     state.cellSize = clamp(state.cellSize, 3, max);
   }
   const cr = $('#cellRange');
-  cr.max = max;
+  cr.max = Math.max(max, 3);
   cr.value = state.cellSize;
   $('#cellVal').textContent = state.cellSize;
 
@@ -677,13 +854,11 @@ function render(){
     if (alpha !== undefined && alpha !== 1) ctx.globalAlpha = 1;
   }
 
-  /* 洋葱皮 */
   if (state.onion && !state.playing && frames.length > 1) {
     drawOnion(cur - 1, 'rgba(255,92,138,0.34)');
     drawOnion(cur + 1, 'rgba(76,201,255,0.34)');
   }
 
-  /* 底格 */
   if (state.showGrid) {
     for (let y = 0; y < h; y++) {
       const py = padding + y * step;
@@ -693,7 +868,6 @@ function render(){
     }
   }
 
-  /* 当前帧 */
   const f = frames[cur];
   if (f) {
     for (let y = 0; y < h; y++) {
@@ -706,7 +880,6 @@ function render(){
     }
   }
 
-  /* 形状预览 */
   if (previewShape) {
     const { a, b, tool } = previewShape;
     const cells = tool === 'line' ? lineCells(a, b) : rectCells(a, b);
@@ -799,8 +972,6 @@ function floodFill(x, y, color){
 }
 
 /* ==================== 变换原语 ==================== */
-
-/** 平移（保留出界像素） */
 function shiftFrame(src, dx, dy){
   const { w, h } = state;
   const out = blankFrame();
@@ -818,7 +989,6 @@ function shiftFrame(src, dx, dy){
   return out;
 }
 
-/** 揭示：t=0 完全隐藏，t=1 完全显示 */
 function revealFrame(src, dir, t){
   const { w, h } = state;
   const out = blankFrame();
@@ -839,12 +1009,10 @@ function revealFrame(src, dir, t){
   return out;
 }
 
-/** 从中心生长：t=0→1 */
 function growFrame(src, t){
   const { w, h } = state;
   const out = blankFrame();
-  const cx = (w - 1) / 2;
-  const cy = (h - 1) / 2;
+  const cx = (w - 1) / 2, cy = (h - 1) / 2;
   const maxR = Math.hypot(w, h) / 2 + 0.5;
   const r = t * maxR;
   for (let y = 0; y < h; y++) {
@@ -857,18 +1025,15 @@ function growFrame(src, t){
   return out;
 }
 
-/** 应用透明度 */
 function fadeFrame(src, alpha){
   const out = new Array(src.length);
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
-    if (!c) { out[i] = null; continue; }
-    out[i] = withAlpha(c, alpha);
+    out[i] = c ? withAlpha(c, alpha) : null;
   }
   return out;
 }
 
-/** 旋转 90° × turns */
 function rotateFrame(src, turns){
   const { w, h } = state;
   const out = blankFrame();
@@ -878,10 +1043,10 @@ function rotateFrame(src, turns){
       const c = src[y * w + x];
       if (!c) continue;
       let nx, ny;
-      if (t === 0)      { nx = x;           ny = y; }
-      else if (t === 1) { nx = w - 1 - y;   ny = x; }
-      else if (t === 2) { nx = w - 1 - x;   ny = h - 1 - y; }
-      else              { nx = y;           ny = h - 1 - x; }
+      if (t === 0)      { nx = x;         ny = y; }
+      else if (t === 1) { nx = w - 1 - y; ny = x; }
+      else if (t === 2) { nx = w - 1 - x; ny = h - 1 - y; }
+      else              { nx = y;         ny = h - 1 - x; }
       if (nx >= 0 && ny >= 0 && nx < w && ny < h) out[ny * w + nx] = c;
     }
   }
@@ -889,7 +1054,6 @@ function rotateFrame(src, turns){
 }
 
 /* ==================== 预设动画效果 ==================== */
-
 function effectTranslate(base, dir, steps, dist, easeName){
   const ease = EASINGS[easeName].fn;
   const frames = [];
@@ -901,34 +1065,24 @@ function effectTranslate(base, dir, steps, dist, easeName){
   }
   return frames;
 }
-
 function effectReveal(base, dir, steps, easeName){
   const ease = EASINGS[easeName].fn;
   const frames = [];
-  for (let i = 0; i <= steps; i++) {
-    frames.push(revealFrame(base, dir, ease(i / steps)));
-  }
+  for (let i = 0; i <= steps; i++) frames.push(revealFrame(base, dir, ease(i / steps)));
   return frames;
 }
-
 function effectErase(base, dir, steps, easeName){
   const ease = EASINGS[easeName].fn;
   const frames = [];
-  for (let i = 0; i <= steps; i++) {
-    frames.push(revealFrame(base, dir, 1 - ease(i / steps)));
-  }
+  for (let i = 0; i <= steps; i++) frames.push(revealFrame(base, dir, 1 - ease(i / steps)));
   return frames;
 }
-
 function effectGrow(base, steps, easeName){
   const ease = EASINGS[easeName].fn;
   const frames = [];
-  for (let i = 0; i <= steps; i++) {
-    frames.push(growFrame(base, ease(i / steps)));
-  }
+  for (let i = 0; i <= steps; i++) frames.push(growFrame(base, ease(i / steps)));
   return frames;
 }
-
 function effectBlink(base, steps){
   const frames = [];
   const cycles = 3;
@@ -939,28 +1093,21 @@ function effectBlink(base, steps){
   }
   return frames;
 }
-
 function effectRotate(base){
   const frames = [];
-  for (let i = 0; i < 4; i++) {
-    frames.push(rotateFrame(base, i));
-  }
+  for (let i = 0; i < 4; i++) frames.push(rotateFrame(base, i));
   return frames;
 }
-
 function effectBounce(base, steps, dist){
-  // 回弹缓动，从上方落下并弹跳
-  const ease = EASINGS.overshoot.fn; // 复用 overshoot 的逼近感
+  const ease = EASINGS.overshoot.fn;
   const frames = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    // 起于 -dist，终于 0，中途因 overshoot 反弹
     const offset = Math.round(-dist * (1 - ease(t)));
     frames.push(shiftFrame(base, 0, offset));
   }
   return frames;
 }
-
 function effectWave(base, steps, dist){
   const frames = [];
   for (let i = 0; i <= steps; i++) {
@@ -970,7 +1117,6 @@ function effectWave(base, steps, dist){
   }
   return frames;
 }
-
 function effectPulse(base, steps){
   const frames = [];
   for (let i = 0; i <= steps; i++) {
@@ -986,8 +1132,7 @@ function generateAnimation(){
   const base = state.frames[state.cur];
   if (!base) return;
 
-  const hasContent = base.some(c => c);
-  if (!hasContent) {
+  if (!base.some(c => c)) {
     flashHint('当前帧是空白的，请先画点东西再生成动画。', true);
     return;
   }
@@ -997,7 +1142,6 @@ function generateAnimation(){
   const dist  = clamp(anim.distance | 0, 1, 48);
 
   let newFrames = [];
-
   switch (effect) {
     case 'translate': newFrames = effectTranslate(base, dir, steps, dist, easing); break;
     case 'reveal':    newFrames = effectReveal(base, dir, steps, easing); break;
@@ -1009,7 +1153,6 @@ function generateAnimation(){
     case 'wave':      newFrames = effectWave(base, steps, dist); break;
     case 'pulse':     newFrames = effectPulse(base, steps); break;
   }
-
   if (!newFrames.length) return;
 
   pushHistory();
@@ -1201,7 +1344,9 @@ function renderTimeline(){
   const el = $('#frames');
   el.innerHTML = '';
 
-  const scale = Math.max(1, Math.floor(44 / Math.max(state.w, state.h)));
+  const isMobile = window.innerWidth <= 860;
+  const boxSize = isMobile ? 38 : 44;
+  const scale = Math.max(1, Math.floor(boxSize / Math.max(state.w, state.h)));
 
   state.frames.forEach((f, i) => {
     const d = document.createElement('div');
@@ -1234,7 +1379,7 @@ function renderTimeline(){
   const add = document.createElement('button');
   add.className = 'frame-add';
   add.textContent = '+';
-  add.title = '新建帧 (Alt+N)';
+  add.title = '新建帧';
   add.addEventListener('click', addFrame);
   el.appendChild(add);
 
@@ -1246,7 +1391,7 @@ function updateActiveFrame(scroll){
   items.forEach((it, i) => {
     const on = i === state.cur;
     it.classList.toggle('active', on);
-    if (on && scroll) it.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (on && scroll) it.scrollIntoView({ block:'nearest', inline:'nearest', behavior:'smooth' });
   });
 }
 
@@ -1362,6 +1507,19 @@ function exportJSON(){
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
+/* ==================== 面板抽屉（移动端） ==================== */
+function openPanel(){
+  panel.classList.add('open');
+  drawerMask.classList.add('open');
+}
+function closePanel(){
+  panel.classList.remove('open');
+  drawerMask.classList.remove('open');
+}
+function togglePanel(){
+  panel.classList.contains('open') ? closePanel() : openPanel();
+}
+
 /* ==================== 预设动画 UI ==================== */
 function updateAnimUI(){
   const e = anim.effect;
@@ -1375,19 +1533,15 @@ function updateAnimUI(){
   const needsSteps = e !== 'rotate';
   const needsDist = ['translate','bounce','wave'].includes(e);
 
-  /* 方向 */
-  const dirRow = $('#dirRow');
-  dirRow.classList.toggle('hidden', !needsDir);
+  $('#dirRow').classList.toggle('hidden', !needsDir);
   $$('.dir-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.dir === anim.direction);
     b.disabled = !needsDir;
   });
 
-  /* 缓动 */
   $('#easeRow').classList.toggle('hidden', !needsEase);
   $('#easeSelect').value = anim.easing;
 
-  /* 帧数 / 距离 */
   $('#stepsWrap').classList.toggle('hidden', !needsSteps);
   $('#distWrap').classList.toggle('hidden', !needsDist);
 }
@@ -1408,23 +1562,17 @@ function bindAnimEvents(){
     });
   });
 
-  $('#easeSelect').addEventListener('change', e => {
-    anim.easing = e.target.value;
-  });
+  $('#easeSelect').addEventListener('change', e => { anim.easing = e.target.value; });
 
   $('#animSteps').addEventListener('input', e => {
     anim.steps = clamp(parseInt(e.target.value, 10) || 8, 2, 32);
   });
-  $('#animSteps').addEventListener('blur', e => {
-    e.target.value = anim.steps;
-  });
+  $('#animSteps').addEventListener('blur', e => { e.target.value = anim.steps; });
 
   $('#animDist').addEventListener('input', e => {
     anim.distance = clamp(parseInt(e.target.value, 10) || 8, 1, 48);
   });
-  $('#animDist').addEventListener('blur', e => {
-    e.target.value = anim.distance;
-  });
+  $('#animDist').addEventListener('blur', e => { e.target.value = anim.distance; });
 
   $('#animGenBtn').addEventListener('click', generateAnimation);
 
@@ -1461,6 +1609,10 @@ function bindEvents(){
   $('#undoBtn').addEventListener('click', undo);
   $('#redoBtn').addEventListener('click', redo);
   $('#clearBtn').addEventListener('click', clearFrame);
+
+  /* 面板抽屉 */
+  $('#panelBtn').addEventListener('click', togglePanel);
+  drawerMask.addEventListener('click', closePanel);
 
   /* 颜色 */
   colorInput.addEventListener('input', e => setColor(e.target.value));
@@ -1506,23 +1658,20 @@ function bindEvents(){
   $('#gapRange').addEventListener('input', e => {
     state.gap = parseInt(e.target.value, 10);
     $('#gapVal').textContent = state.gap;
-    refit();
-    render();
+    refit(); render();
   });
 
   /* 内边距 */
   $('#padRange').addEventListener('input', e => {
     state.padding = parseInt(e.target.value, 10);
     $('#padVal').textContent = state.padding;
-    refit();
-    render();
+    refit(); render();
   });
 
   /* 适应按钮 */
   $('#fitBtn').addEventListener('click', () => {
     autoScale = true;
-    refit();
-    render();
+    refit(); render();
   });
 
   /* 选项 */
@@ -1564,6 +1713,8 @@ function bindEvents(){
     }
     const k = e.key.toLowerCase();
     const mod = e.ctrlKey || e.metaKey;
+
+    if (k === 'escape') { closePanel(); return; }
 
     if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && k === 'y') { e.preventDefault(); redo(); return; }
@@ -1607,6 +1758,27 @@ function bindEvents(){
     });
   });
   ro.observe(stage);
+
+  /* 视口变化时重新适配（旋转屏幕） */
+  let vpTimer = null;
+  window.addEventListener('resize', () => {
+    if (vpTimer) clearTimeout(vpTimer);
+    vpTimer = setTimeout(() => {
+      // 从移动端切到桌面端时，若面板是打开状态，自动关闭
+      if (window.innerWidth > 860 && panel.classList.contains('open')) {
+        closePanel();
+      }
+      autoScale = true;
+      refit();
+      render();
+      renderTimeline();
+    }, 180);
+  });
+
+  /* 阻止移动端长按选择 */
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
 }
 
 /* ==================== 初始化 ==================== */
