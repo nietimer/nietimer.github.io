@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f4efe4">
+<title>NeuroForge · 神经网络手册</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --paper:#f4efe4;
+  --paper-2:#ece6d6;
+  --paper-3:#e3dcc9;
+  --ink:#1e1b17;
+  --ink-2:#4a443b;
+  --ink-3:#8a8172;
+  --ink-4:#b8b0a0;
+  --rule:#d8d0bf;
+  --rule-2:#c4baa4;
+  --rust:#b8442a;
+  --rust-2:#d66849;
+  --steel:#3d6a82;
+  --steel-2:#5d8ba3;
+  --forest:#4d7a3a;
+  --gold:#b8891f;
+  --mono:"SF Mono",Monaco,Consolas,"Liberation Mono",monospace;
+  --serif:"Iowan Old Style",Georgia,"Palatino Linotype",Palatino,"Songti SC","STSong",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+html,body{height:100%}
+body{
+  font-family:var(--sans);
+  background:var(--paper);
+  color:var(--ink);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  -webkit-text-size-adjust:100%;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(circle at 17% 23%,rgba(30,27,23,.012) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 73% 61%,rgba(30,27,23,.012) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 41% 89%,rgba(30,27,23,.010) 0 1px,transparent 1.5px);
+  background-size:120px 120px,190px 190px,160px 160px;
+  mix-blend-mode:multiply;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 55% at 50% -10%,rgba(255,255,255,.6),transparent 70%);
+}
+.app{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:22px 20px 56px}
+
+.masthead{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:20px;flex-wrap:wrap;
+  padding-bottom:14px;
+  border-bottom:2px solid var(--ink);
+  margin-bottom:6px;
+}
+.title-block{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.title-block h1{
+  font-family:var(--serif);
+  font-size:30px;font-weight:600;letter-spacing:.5px;color:var(--ink);
+  line-height:1;
+}
+.title-block .sub{
+  font-family:var(--serif);font-size:13px;font-style:italic;
+  color:var(--ink-2);padding-bottom:3px;
+}
+.meta{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline;padding-bottom:4px}
+.meta-item{text-align:right}
+.meta-item .k{
+  display:block;font-family:var(--mono);font-size:9px;
+  letter-spacing:1.8px;color:var(--ink-3);text-transform:uppercase;
+  margin-bottom:3px;
+}
+.meta-item .v{
+  display:block;font-family:var(--mono);font-size:17px;font-weight:600;
+  color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.3px;
+}
+.meta-item .v.accent{color:var(--rust)}
+.meta-item .v.green{color:var(--forest)}
+
+.rule-double{display:flex;gap:3px;margin-bottom:26px}
+.rule-double span{flex:1;height:1px;background:var(--ink)}
+.rule-double span:first-child{flex:0 0 62px;background:var(--rule-2)}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+@media(max-width:1000px){.grid{grid-template-columns:1fr;gap:24px}}
+
+.panel{position:relative;background:transparent;padding:0}
+.panel-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;margin-bottom:14px;flex-wrap:wrap;
+  padding-bottom:8px;border-bottom:1px solid var(--rule);
+}
+.panel-head h2{
+  font-family:var(--serif);font-size:16px;font-weight:600;letter-spacing:.3px;
+  color:var(--ink);display:flex;align-items:baseline;gap:10px;
+}
+.panel-head h2 .num{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  color:var(--rust);letter-spacing:1px;
+  border:1px solid var(--rust);padding:1px 6px;border-radius:2px;line-height:1.2;
+}
+.panel-head h2 .num.steel{color:var(--steel);border-color:var(--steel)}
+
+.canvas-wrap{
+  position:relative;
+  background:#faf6ec;
+  border:1px solid var(--ink);
+  box-shadow:3px 3px 0 rgba(30,27,23,.06),6px 6px 0 rgba(30,27,23,.03);
+  overflow:hidden;
+}
+.canvas-wrap::before{
+  content:'';position:absolute;top:6px;left:6px;right:6px;bottom:6px;
+  border:1px solid rgba(30,27,23,.06);pointer-events:none;z-index:2;
+}
+canvas{display:block;width:100%}
+#netCanvas{height:376px;cursor:default}
+.data-wrap{margin-top:14px}
+#dataCanvas{aspect-ratio:1/1;height:auto;touch-action:manipulation;cursor:crosshair}
+
+@media(max-width:640px){#netCanvas{height:290px}}
+@media(max-width:420px){#netCanvas{height:250px}}
+
+.neuron-inspector{
+  position:absolute;left:0;right:0;bottom:0;z-index:3;
+  padding:8px 14px;background:var(--ink);color:var(--paper);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.3px;
+  border-top:1px solid var(--ink);
+  opacity:0;transform:translateY(4px);transition:.2s ease;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.neuron-inspector.show{opacity:1;transform:translateY(0)}
+.neuron-inspector b{color:var(--rust-2);font-weight:600}
+.neuron-inspector i{color:#e8dfc8;font-style:normal;font-weight:600}
+
+.io-info{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  flex-wrap:wrap;margin:12px 0;
+  font-family:var(--mono);font-size:10.5px;color:var(--ink-3);letter-spacing:.5px;
+}
+.tag{
+  padding:3px 10px;border:1px solid var(--rule-2);
+  background:var(--paper-2);color:var(--ink-2);
+}
+.tag.in{color:var(--steel);border-color:var(--steel)}
+.tag.out{color:var(--rust);border-color:var(--rust)}
+.arrow{color:var(--ink-4);font-family:var(--mono)}
+#hiddenInfo{color:var(--ink-2);font-style:italic;font-family:var(--serif);font-size:12px}
+
+.layer-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.layer-item{
+  display:grid;grid-template-columns:34px 1fr 100px 30px;gap:10px;align-items:center;
+  padding:8px 10px;border:1px solid var(--rule);background:var(--paper-2);
+  transition:border-color .15s,background .15s;
+}
+.layer-item:hover{border-color:var(--ink-3);background:var(--paper-3)}
+.layer-index{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--ink-2);letter-spacing:.5px}
+.stepper{display:flex;align-items:center;gap:8px;justify-content:center}
+.stepper button{
+  width:24px;height:24px;border:1px solid var(--ink-3);
+  background:transparent;color:var(--ink);
+  font-size:14px;line-height:1;cursor:pointer;
+  display:grid;place-items:center;transition:.12s;font-family:var(--mono);
+}
+.stepper button:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.stepper button:active{transform:scale(.92)}
+.stepper .num{
+  min-width:26px;text-align:center;
+  font-family:var(--mono);font-size:15px;font-weight:600;
+  color:var(--ink);font-variant-numeric:tabular-nums;
+}
+select{
+  width:100%;padding:5px 8px;border:1px solid var(--rule-2);
+  background:var(--paper);color:var(--ink);
+  font-family:var(--mono);font-size:11px;letter-spacing:.3px;
+  outline:none;cursor:pointer;appearance:none;text-align:center;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+  background-position:calc(100% - 12px) 50%,calc(100% - 8px) 50%;
+  background-size:4px 4px,4px 4px;background-repeat:no-repeat;
+  transition:.15s;
+}
+select:hover{border-color:var(--ink-3);background-color:var(--paper-2)}
+.del{
+  width:26px;height:26px;border:1px solid var(--rule-2);
+  background:transparent;color:var(--ink-3);
+  cursor:pointer;font-size:12px;
+  display:grid;place-items:center;transition:.12s;
+}
+.del:hover{background:var(--rust);color:var(--paper);border-color:var(--rust)}
+.del:active{transform:scale(.9)}
+
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.primary-btn{
+  flex:1;min-width:130px;padding:10px 14px;
+  border:1px solid var(--ink);background:var(--ink);color:var(--paper);
+  font-family:var(--serif);font-size:13px;font-weight:600;letter-spacing:.5px;
+  cursor:pointer;transition:.15s;
+}
+.primary-btn:hover{background:var(--rust);border-color:var(--rust)}
+.primary-btn:active{transform:translate(1px,1px)}
+.ghost-btn{
+  padding:10px 14px;border:1px solid var(--rule-2);
+  background:transparent;color:var(--ink-2);
+  font-family:var(--sans);font-size:12.5px;
+  cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.ghost-btn:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+.ghost-btn:active{transform:translate(1px,1px)}
+.ghost-btn.big{flex:0 0 52px;font-size:16px;padding:10px 0;font-family:var(--mono);color:var(--ink)}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{
+  padding:6px 13px;border:1px solid var(--rule-2);
+  background:transparent;color:var(--ink-2);
+  font-family:var(--sans);font-size:12px;font-weight:500;
+  cursor:pointer;transition:.15s;
+}
+.chip:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+.chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip.blank{border-style:dashed;color:var(--ink-3)}
+.chip.blank.active{background:var(--steel);color:var(--paper);border-color:var(--steel);border-style:solid}
+
+.data-tools{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.tool{
+  flex:1;min-width:66px;padding:7px 8px;
+  border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);
+  font-family:var(--sans);font-size:11.5px;font-weight:500;
+  cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.tool:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+.tool.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tool.danger{color:var(--rust);border-color:var(--rust);flex:0 0 auto}
+.tool.danger:hover{background:var(--rust);color:var(--paper)}
+.tool.danger:disabled{opacity:.35;cursor:not-allowed;background:transparent;color:var(--rust)}
+
+.probe-bar{
+  margin-top:12px;padding:10px 14px;
+  border:1px solid var(--rule-2);background:var(--paper-2);
+  font-family:var(--mono);font-size:11.5px;
+  color:var(--ink-2);text-align:center;letter-spacing:.2px;
+  transition:.2s;
+}
+.probe-bar b{font-weight:600}
+.probe-bar b.rust{color:var(--rust)}
+.probe-bar b.steel{color:var(--steel)}
+.probe-bar.warn{background:#f7e6df;border-color:var(--rust);color:var(--rust)}
+
+.loss-wrap{
+  margin-top:14px;border:1px solid var(--ink);background:#faf6ec;position:relative;
+}
+.loss-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:7px 12px;border-bottom:1px solid var(--rule);
+  font-family:var(--mono);font-size:9.5px;
+  letter-spacing:1.6px;color:var(--ink-3);text-transform:uppercase;
+}
+.loss-head span:last-child{
+  color:var(--rust);font-weight:600;font-size:12px;
+  letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums;
+}
+#lossCanvas{height:84px}
+
+.params{display:grid;grid-template-columns:1fr 1fr;gap:16px 22px;margin-top:18px}
+@media(max-width:560px){.params{grid-template-columns:1fr}}
+.param label{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-family:var(--mono);font-size:10.5px;
+  color:var(--ink-3);letter-spacing:.8px;text-transform:uppercase;
+  margin-bottom:7px;
+}
+.param label b{
+  color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;
+  letter-spacing:0;font-size:12px;text-transform:none;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:2px;background:var(--ink-4);
+  outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  background:var(--ink);border:2px solid var(--paper);
+  box-shadow:0 0 0 1px var(--ink);
+  border-radius:50%;cursor:pointer;transition:background .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{background:var(--rust)}
+input[type=range]::-moz-range-thumb{
+  width:12px;height:12px;background:var(--ink);
+  border:2px solid var(--paper);
+  box-shadow:0 0 0 1px var(--ink);
+  border-radius:50%;cursor:pointer;
+}
+/* 训练间隔滑块使用钢蓝色轨道，与其他参数区分 */
+.param.interval input[type=range]{
+  background:linear-gradient(90deg,var(--ink-4),var(--steel));
+}
+.param.interval label b{color:var(--steel)}
+
+.train-row{display:flex;gap:10px;margin-top:20px}
+.btn-train{
+  flex:1;padding:15px;
+  border:1px solid var(--rust);background:var(--rust);color:#faf6ec;
+  font-family:var(--serif);font-size:15px;font-weight:600;letter-spacing:1px;
+  cursor:pointer;transition:.15s;
+}
+.btn-train:hover{background:#a03a22;border-color:#a03a22}
+.btn-train:active{transform:translate(1px,1px)}
+.btn-train.paused{background:var(--forest);border-color:var(--forest);color:#faf6ec}
+.btn-train.paused:hover{background:#3f6530;border-color:#3f6530}
+
+.hint{
+  margin-top:14px;font-family:var(--serif);font-size:11.5px;
+  font-style:italic;color:var(--ink-3);line-height:1.7;text-align:center;
+}
+
+@media(max-width:640px){
+  .app{padding:16px 14px 40px}
+  .title-block h1{font-size:24px}
+  .meta{gap:14px}
+  .meta-item .v{font-size:15px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <div class="title-block">
+      <h1>NeuroForge</h1>
+      <span class="sub">— 可视化神经网络手册</span>
+    </div>
+    <div class="meta">
+      <div class="meta-item">
+        <span class="k">Epoch / 轮次</span>
+        <span class="v" id="statEpoch">0</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Loss / 损失</span>
+        <span class="v accent" id="statLoss">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="k">Acc / 准确率</span>
+        <span class="v green" id="statAcc">—</span>
+      </div>
+    </div>
+  </header>
+  <div class="rule-double"><span></span><span></span></div>
+
+  <main class="grid">
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="num">01</span>搭建网络结构</h2>
+        <button class="ghost-btn" id="resetWeights">重置权重</button>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="netCanvas"></canvas>
+        <div class="neuron-inspector" id="neuronInspector"></div>
+      </div>
+
+      <div class="io-info">
+        <span class="tag in">输入 · 2</span>
+        <span class="arrow">→</span>
+        <span id="hiddenInfo">隐藏层</span>
+        <span class="arrow">→</span>
+        <span class="tag out">输出 · 1 · σ</span>
+      </div>
+
+      <div class="layer-list" id="layerList"></div>
+
+      <div class="row">
+        <button class="primary-btn" id="addLayer">＋ 添加隐藏层</button>
+        <button class="ghost-btn" id="randomNet">随机结构</button>
+      </div>
+
+      <div class="hint">悬停 / 点击神经元可高亮它的全部连接</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="num steel">02</span>数据 · 训练 · 预测</h2>
+        <button class="ghost-btn" id="regen">↻ 重新生成</button>
+      </div>
+
+      <div class="chips" id="chips">
+        <button class="chip active" data-ds="circle">同心圆</button>
+        <button class="chip" data-ds="xor">XOR</button>
+        <button class="chip" data-ds="spiral">双螺旋</button>
+        <button class="chip" data-ds="moons">双月</button>
+        <button class="chip" data-ds="blobs">高斯团</button>
+        <button class="chip blank" data-ds="blank">空白</button>
+      </div>
+
+      <div class="data-tools" id="dataTools">
+        <button class="tool active" data-mode="inspect">查看</button>
+        <button class="tool" data-mode="addPos">＋ 类别 1</button>
+        <button class="tool" data-mode="addNeg">＋ 类别 0</button>
+        <button class="tool" data-mode="erase">删除点</button>
+        <button class="tool danger" id="clearCustom" disabled>清空</button>
+      </div>
+
+      <div class="canvas-wrap data-wrap">
+        <canvas id="dataCanvas"></canvas>
+      </div>
+
+      <div class="probe-bar" id="probeBar">点击画布任意位置，实时查看该点的预测结果</div>
+
+      <div class="loss-wrap">
+        <div class="loss-head"><span>Loss Curve / 损失曲线</span><span id="lossVal">—</span></div>
+        <canvas id="lossCanvas"></canvas>
+      </div>
+
+      <div class="params">
+        <div class="param">
+          <label>学习率 <b id="lrVal">0.080</b></label>
+          <input type="range" id="lr" min="0.005" max="0.5" step="0.005" value="0.08">
+        </div>
+        <div class="param">
+          <label>动量 <b id="momVal">0.90</b></label>
+          <input type="range" id="mom" min="0" max="0.99" step="0.01" value="0.9">
+        </div>
+        <div class="param">
+          <label>批大小 <b id="bsVal">16</b></label>
+          <input type="range" id="bs" min="1" max="64" step="1" value="16">
+        </div>
+        <div class="param">
+          <label>数据噪声 <b id="noiseVal">0.15</b></label>
+          <input type="range" id="noise" min="0" max="1" step="0.01" value="0.15">
+        </div>
+        <div class="param interval">
+          <label>训练间隔 <b id="intervalVal">连续</b></label>
+          <input type="range" id="interval" min="0" max="300" step="10" value="0">
+        </div>
+      </div>
+
+      <div class="train-row">
+        <button class="btn-train" id="trainBtn">▶ 开始训练</button>
+        <button class="ghost-btn big" id="stepBtn" title="单步训练一个轮次">⏭</button>
+      </div>
+
+      <div class="hint">修改网络结构会重置权重 · 空格键快速开始 / 暂停</div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* =========================================================
+   0. 基础工具
+   ========================================================= */
+const TAU = Math.PI * 2;
+const randn = () => {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+};
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const $ = id => document.getElementById(id);
+
+const C = {
+  paper:'#faf6ec', paper2:'#ece6d6', paper3:'#e3dcc9',
+  ink:'#1e1b17', ink2:'#4a443b', ink3:'#8a8172', ink4:'#b8b0a0',
+  rule:'#d8d0bf', rule2:'#c4baa4',
+  rust:'#b8442a', rust2:'#d66849',
+  steel:'#3d6a82', steel2:'#5d8ba3',
+  forest:'#4d7a3a', gold:'#b8891f',
+};
+
+function fitCanvas(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const rect = cv.getBoundingClientRect();
+  const w = Math.max(1, rect.width);
+  const h = Math.max(1, rect.height);
+  const W = Math.round(w * dpr), H = Math.round(h * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h, dpr };
+}
+
+/* =========================================================
+   1. 激活函数
+   ========================================================= */
+const ACT = {
+  relu:    { name: 'ReLU',    f: v => v > 0 ? v : 0,          d: v => v > 0 ? 1 : 0 },
+  leaky:   { name: 'Leaky',   f: v => v > 0 ? v : v * 0.1,    d: v => v > 0 ? 1 : 0.1 },
+  tanh:    { name: 'Tanh',    f: Math.tanh,                   d: v => 1 - Math.tanh(v) ** 2 },
+  sigmoid: { name: 'Sigmoid', f: v => 1 / (1 + Math.exp(-v)), d: v => { const s = 1 / (1 + Math.exp(-v)); return s * (1 - s); } },
+  sin:     { name: 'Sin',     f: Math.sin,                    d: Math.cos },
+};
+
+/* =========================================================
+   2. 全局状态
+   ========================================================= */
+const state = {
+  layers: [ { n: 8, act: 'relu' }, { n: 6, act: 'tanh' } ],
+  baseData: [],
+  customPoints: [],
+  data: [],
+  shuffled: [],
+  dataset: 'circle',
+  noise: 0.15,
+  samples: 220,
+  lr: 0.08,
+  momentum: 0.9,
+  batch: 16,
+  trainInterval: 0,       // ← 每轮训练之间的间隔（ms），0 表示连续
+  epoch: 0,
+  running: false,
+  W: [], b: [], vW: [], vb: [],
+  lossHistory: [],
+  probe: null,
+  acc: null,
+  mode: 'inspect',
+  hoverNeuron: null,
+  pinnedNeuron: null,
+  netLayout: null,
+  warnTimer: null,
+};
+
+const getSizes = () => [2, ...state.layers.map(l => l.n), 1];
+const getActNames = () => [...state.layers.map(l => l.act), 'sigmoid'];
+
+/* =========================================================
+   3. 网络初始化
+   ========================================================= */
+function initNet() {
+  const sizes = getSizes();
+  state.W = []; state.b = []; state.vW = []; state.vb = [];
+  for (let l = 0; l < sizes.length - 1; l++) {
+    const fanIn = sizes[l], fanOut = sizes[l + 1];
+    const scale = Math.sqrt(2 / (fanIn + fanOut));
+    const W = [], b = [], vW = [], vb = [];
+    for (let j = 0; j < fanOut; j++) {
+      const row = [], vrow = [];
+      for (let k = 0; k < fanIn; k++) { row.push(randn() * scale); vrow.push(0); }
+      W.push(row); vW.push(vrow);
+      b.push(0); vb.push(0);
+    }
+    state.W.push(W); state.b.push(b); state.vW.push(vW); state.vb.push(vb);
+  }
+  state.epoch = 0;
+  state.lossHistory = [];
+  state.acc = null;
+  updateStats();
+  drawLoss();
+}
+
+/* =========================================================
+   4. 前向 / 反向
+   ========================================================= */
+function forward(x) {
+  const acts = [x], zs = [];
+  let a = x;
+  const names = getActNames();
+  for (let l = 0; l < state.W.length; l++) {
+    const Wl = state.W[l], bl = state.b[l];
+    const z = new Array(Wl.length);
+    for (let j = 0; j < Wl.length; j++) {
+      const row = Wl[j];
+      let s = bl[j];
+      for (let k = 0; k < row.length; k++) s += row[k] * a[k];
+      z[j] = s;
+    }
+    zs.push(z);
+    const A = ACT[names[l]] || ACT.sigmoid;
+    const out = new Array(z.length);
+    for (let j = 0; j < z.length; j++) out[j] = A.f(z[j]);
+    a = out;
+    acts.push(a);
+  }
+  return { acts, zs };
+}
+
+function predictProb(x, y) {
+  if (!state.W.length) return 0.5;
+  const { acts } = forward([x, y]);
+  const last = acts[acts.length - 1];
+  return last ? last[0] : 0.5;
+}
+
+function trainBatch(batchIdx) {
+  const L = state.W.length;
+  if (!L) return 0;
+  const names = getActNames();
+  const dW = state.W.map(l => l.map(row => new Float64Array(row.length)));
+  const db = state.b.map(r => new Float64Array(r.length));
+  let loss = 0;
+  const eps = 1e-7;
+
+  for (let bi = 0; bi < batchIdx.length; bi++) {
+    const sample = state.data[batchIdx[bi]];
+    if (!sample) continue;
+    const { acts, zs } = forward(sample.x);
+    const out = acts[L][0];
+    const y = sample.y;
+    loss += -(y * Math.log(out + eps) + (1 - y) * Math.log(1 - out + eps));
+
+    let delta = new Float64Array(1);
+    delta[0] = out - y;
+
+    for (let l = L - 1; l >= 0; l--) {
+      const aPrev = acts[l];
+      const Wl = state.W[l];
+      const dWl = dW[l], dbl = db[l];
+
+      for (let j = 0; j < Wl.length; j++) {
+        const dj = delta[j];
+        if (dj === 0) continue;
+        dbl[j] += dj;
+        const row = dWl[j];
+        for (let k = 0; k < aPrev.length; k++) row[k] += dj * aPrev[k];
+      }
+
+      if (l > 0) {
+        const nd = new Float64Array(aPrev.length);
+        const Aprev = ACT[names[l - 1]] || ACT.sigmoid;
+        const zPrev = zs[l - 1];
+        for (let k = 0; k < aPrev.length; k++) {
+          let s = 0;
+          for (let j = 0; j < Wl.length; j++) s += Wl[j][k] * delta[j];
+          nd[k] = s * Aprev.d(zPrev[k]);
+        }
+        delta = nd;
+      }
+    }
+  }
+
+  const n = batchIdx.length || 1;
+  const lr = state.lr, mo = state.momentum;
+  for (let l = 0; l < L; l++) {
+    const Wl = state.W[l], vWl = state.vW[l], bl = state.b[l], vbl = state.vb[l];
+    const dWl = dW[l], dbl = db[l];
+    for (let j = 0; j < Wl.length; j++) {
+      const row = Wl[j], vrow = vWl[j], drow = dWl[j];
+      for (let k = 0; k < row.length; k++) {
+        vrow[k] = mo * vrow[k] - lr * drow[k] / n;
+        row[k] += vrow[k];
+      }
+      vbl[j] = mo * vbl[j] - lr * dbl[j] / n;
+      bl[j] += vbl[j];
+    }
+  }
+  return loss / n;
+}
+
+function runEpoch() {
+  const idx = state.shuffled;
+  if (!idx.length) return 0;
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    const t = idx[i]; idx[i] = idx[j]; idx[j] = t;
+  }
+  const bs = state.batch;
+  let lossSum = 0, cnt = 0;
+  for (let s = 0; s < idx.length; s += bs) {
+    lossSum += trainBatch(idx.slice(s, s + bs));
+    cnt++;
+  }
+  state.epoch++;
+  return cnt ? lossSum / cnt : 0;
+}
+
+function computeAcc() {
+  if (!state.data.length) return 0;
+  let ok = 0;
+  for (const d of state.data) {
+    const p = predictProb(d.x[0], d.x[1]);
+    if ((p > 0.5 ? 1 : 0) === d.y) ok++;
+  }
+  return ok / state.data.length;
+}
+
+/* =========================================================
+   5. 数据集
+   ========================================================= */
+function generateBaseData() {
+  const n = state.samples;
+  const N = state.noise;
+  const pts = [];
+  const jit = () => randn() * N * 0.2;
+  const add = (x, y, l) => pts.push({ x: [x + jit(), y + jit()], y: l });
+  const per = Math.floor(n / 2);
+
+  switch (state.dataset) {
+    case 'blank':
+      state.baseData = [];
+      return;
+    case 'circle': {
+      for (let i = 0; i < per; i++) {
+        const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 0.42;
+        add(Math.cos(a) * r, Math.sin(a) * r, 0);
+      }
+      for (let i = 0; i < per; i++) {
+        const a = Math.random() * TAU, r = 0.66 + Math.random() * 0.32;
+        add(Math.cos(a) * r, Math.sin(a) * r, 1);
+      }
+      break;
+    }
+    case 'xor': {
+      const C_ = [[-0.6, -0.6, 0], [0.6, 0.6, 0], [-0.6, 0.6, 1], [0.6, -0.6, 1]];
+      for (let i = 0; i < n; i++) {
+        const c = C_[i % 4];
+        const s = 0.09 + N * 0.2;
+        add(c[0] + randn() * s, c[1] + randn() * s, c[2]);
+      }
+      break;
+    }
+    case 'spiral': {
+      for (let c = 0; c < 2; c++) {
+        for (let i = 0; i < per; i++) {
+          const t = i / per;
+          const r = 0.12 + t * 0.82;
+          const ang = t * 3.5 + c * Math.PI;
+          add(Math.cos(ang) * r, Math.sin(ang) * r, c);
+        }
+      }
+      break;
+    }
+    case 'moons': {
+      for (let i = 0; i < per; i++) {
+        const t = Math.random() * Math.PI;
+        add(Math.cos(t) * 0.74 - 0.26, Math.sin(t) * 0.74 - 0.2, 0);
+      }
+      for (let i = 0; i < per; i++) {
+        const t = Math.random() * Math.PI;
+        add(-Math.cos(t) * 0.74 + 0.26, -Math.sin(t) * 0.74 + 0.2, 1);
+      }
+      break;
+    }
+    case 'blobs': {
+      const s = 0.2 + N * 0.18;
+      for (let i = 0; i < per; i++) add(-0.48 + randn() * s, -0.36 + randn() * s, 0);
+      for (let i = 0; i < per; i++) add(0.48 + randn() * s, 0.36 + randn() * s, 1);
+      break;
+    }
+  }
+  state.baseData = pts;
+}
+
+function rebuildData() {
+  state.data = [...state.baseData, ...state.customPoints];
+  state.shuffled = state.data.map((_, i) => i);
+  state.probe = null;
+  updateClearCustomBtn();
+  updateProbeBar();
+}
+
+/* =========================================================
+   6. 网络结构绘制
+   ========================================================= */
+const netCanvas = $('netCanvas');
+
+let gridCache = null, gridKey = '';
+function drawGrid(ctx, w, h, dpr) {
+  const key = `${w}|${h}|${dpr}`;
+  if (gridKey !== key || !gridCache) {
+    gridKey = key;
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    const c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.strokeStyle = 'rgba(30,27,23,.035)';
+    c.lineWidth = 1;
+    const gs = 28;
+    for (let x = gs; x < w; x += gs) {
+      c.beginPath(); c.moveTo(x + .5, 0); c.lineTo(x + .5, h); c.stroke();
+    }
+    for (let y = gs; y < h; y += gs) {
+      c.beginPath(); c.moveTo(0, y + .5); c.lineTo(w, y + .5); c.stroke();
+    }
+    gridCache = cv;
+  }
+  ctx.drawImage(gridCache, 0, 0, w, h);
+}
+
+function drawNet() {
+  const { ctx, w, h, dpr } = fitCanvas(netCanvas);
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0, 0, w, h);
+  drawGrid(ctx, w, h, dpr);
+
+  const sizes = getSizes();
+  const nL = sizes.length;
+  if (nL < 2) return;
+
+  const padX = clamp(w * 0.12, 52, 130);
+  const colX = i => nL === 1 ? w / 2 : padX + (w - 2 * padX) * i / (nL - 1);
+
+  const maxN = Math.max(...sizes);
+  const topPad = 34, bottomPad = 20;
+  const availH = Math.max(40, h - topPad - bottomPad - 16);
+  const spacing = Math.min(46, availH / Math.max(1, maxN - 1));
+  const R = clamp(Math.min(spacing * 0.34, 13), 4.5, 13);
+  const centerY = topPad + availH / 2;
+
+  const cols = sizes.map((n, li) => {
+    const total = (n - 1) * spacing;
+    const y0 = centerY - total / 2;
+    return Array.from({ length: n }, (_, i) => ({ x: colX(li), y: y0 + i * spacing }));
+  });
+
+  state.netLayout = { cols, R };
+
+  const hl = state.pinnedNeuron || state.hoverNeuron;
+  const hlKey = hl ? `${hl.layer}-${hl.index}` : null;
+
+  ctx.lineCap = 'round';
+  for (let l = 0; l < state.W.length; l++) {
+    const A = cols[l], B = cols[l + 1];
+    const Wl = state.W[l];
+    if (!A || !B || !Wl) continue;
+    const dx = B[0].x - A[0].x;
+
+    for (let j = 0; j < B.length && j < Wl.length; j++) {
+      const row = Wl[j];
+      for (let k = 0; k < A.length && k < row.length; k++) {
+        const wv = row[k];
+        const mag = Math.min(1, Math.abs(wv) / 1.5);
+        if (mag < 0.02) continue;
+
+        let alpha = 0.10 + mag * 0.62;
+        let lineW = 0.35 + mag * 2.1;
+
+        if (hlKey) {
+          const touches = (l === hl.layer && k === hl.index) || (l + 1 === hl.layer && j === hl.index);
+          if (touches) {
+            alpha = 0.55 + mag * 0.45;
+            lineW = 0.9 + mag * 3.2;
+          } else {
+            alpha *= 0.10;
+            lineW *= 0.7;
+          }
+        }
+
+        ctx.strokeStyle = wv > 0
+          ? `rgba(184,68,42,${alpha})`
+          : `rgba(61,106,130,${alpha})`;
+        ctx.lineWidth = lineW;
+        const x1 = A[k].x, y1 = A[k].y, x2 = B[j].x, y2 = B[j].y;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(x1 + dx * 0.45, y1, x2 - dx * 0.45, y2, x2, y2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  for (let li = 0; li < nL; li++) {
+    const isIn = li === 0, isOut = li === nL - 1;
+    for (let i = 0; i < cols[li].length; i++) {
+      const p = cols[li][i];
+      const key = `${li}-${i}`;
+      const isHl = hlKey === key;
+      const dim = hlKey && !isHl;
+      const r = isHl ? R * 1.3 : R;
+
+      let fill, stroke;
+      if (isIn) { fill = C.steel; stroke = C.steel; }
+      else if (isOut) { fill = C.rust; stroke = C.rust; }
+      else { fill = C.paper; stroke = C.ink; }
+
+      if (dim) ctx.globalAlpha = 0.28;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, TAU);
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, TAU);
+      ctx.lineWidth = isHl ? 2 : 1.2;
+      ctx.strokeStyle = isHl ? C.rust : stroke;
+      if (isHl) {
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r + 3.5, 0, TAU);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = C.rust;
+        ctx.stroke();
+      } else {
+        ctx.stroke();
+      }
+
+      if (r > 6 && !isIn && !isOut) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(1.2, r * 0.18), 0, TAU);
+        ctx.fillStyle = C.ink;
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  ctx.font = '600 9.5px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const labels = ['IN', ...state.layers.map((_, i) => 'H' + (i + 1)), 'OUT'];
+  for (let li = 0; li < nL; li++) {
+    ctx.fillStyle = li === 0 ? C.steel : li === nL - 1 ? C.rust : C.ink3;
+    ctx.fillText(labels[li] || '', cols[li][0].x, 14);
+    ctx.strokeStyle = li === 0 ? C.steel : (li === nL - 1 ? C.rust : C.ink4);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cols[li][0].x - 8, 22);
+    ctx.lineTo(cols[li][0].x + 8, 22);
+    ctx.stroke();
+  }
+}
+
+function hitTestNeuron(mx, my) {
+  const layout = state.netLayout;
+  if (!layout) return null;
+  const { cols, R } = layout;
+  const thresh = R + 6;
+  const t2 = thresh * thresh;
+  let best = null, bestD = t2;
+  for (let li = 0; li < cols.length; li++) {
+    for (let i = 0; i < cols[li].length; i++) {
+      const p = cols[li][i];
+      const dx = mx - p.x, dy = my - p.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestD) { bestD = d; best = { layer: li, index: i }; }
+    }
+  }
+  return best;
+}
+
+const inspector = $('neuronInspector');
+let lastInspectorHTML = '';
+
+function updateInspector() {
+  const n = state.pinnedNeuron || state.hoverNeuron;
+  if (!n) {
+    if (lastInspectorHTML !== '') {
+      inspector.classList.remove('show');
+      lastInspectorHTML = '';
+    }
+    return;
+  }
+  const sizes = getSizes();
+  if (n.layer >= sizes.length || n.index >= sizes[n.layer]) {
+    if (lastInspectorHTML !== '') {
+      inspector.classList.remove('show');
+      lastInspectorHTML = '';
+    }
+    return;
+  }
+
+  let name;
+  if (n.layer === 0) name = `输入节点 x${n.index + 1}`;
+  else if (n.layer === sizes.length - 1) name = '输出节点 ŷ';
+  else name = `隐藏层 ${n.layer} · 神经元 ${n.index + 1}`;
+
+  let extra;
+  if (state.probe && state.W.length) {
+    const { acts } = forward([state.probe.x, state.probe.y]);
+    const layerActs = acts[n.layer];
+    let a = null;
+    if (layerActs && n.index < layerActs.length) a = layerActs[n.index];
+    extra = a != null ? `激活值 <i>${a.toFixed(3)}</i>` : '激活值 —';
+  } else {
+    extra = '<span style="opacity:.6">点击数据画布设探针</span>';
+  }
+
+  const html = `<b>${name}</b> · ${extra}`;
+  if (html !== lastInspectorHTML) {
+    inspector.innerHTML = html;
+    inspector.classList.add('show');
+    lastInspectorHTML = html;
+  }
+}
+
+netCanvas.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  const rect = netCanvas.getBoundingClientRect();
+  const hit = hitTestNeuron(e.clientX - rect.left, e.clientY - rect.top);
+  const oldKey = state.hoverNeuron ? `${state.hoverNeuron.layer}-${state.hoverNeuron.index}` : null;
+  const newKey = hit ? `${hit.layer}-${hit.index}` : null;
+  if (oldKey !== newKey) {
+    state.hoverNeuron = hit;
+    netCanvas.style.cursor = hit ? 'pointer' : 'default';
+    drawNet();
+    updateInspector();
+  }
+});
+
+netCanvas.addEventListener('pointerleave', () => {
+  if (state.hoverNeuron) {
+    state.hoverNeuron = null;
+    drawNet();
+    updateInspector();
+  }
+});
+
+netCanvas.addEventListener('pointerdown', e => {
+  const rect = netCanvas.getBoundingClientRect();
+  const hit = hitTestNeuron(e.clientX - rect.left, e.clientY - rect.top);
+  if (hit) {
+    const key = `${hit.layer}-${hit.index}`;
+    const pKey = state.pinnedNeuron ? `${state.pinnedNeuron.layer}-${state.pinnedNeuron.index}` : null;
+    state.pinnedNeuron = (key === pKey) ? null : hit;
+  } else {
+    state.pinnedNeuron = null;
+  }
+  drawNet();
+  updateInspector();
+});
+
+/* =========================================================
+   7. 数据画布
+   ========================================================= */
+const dataCanvas = $('dataCanvas');
+let offCanvas = null;
+
+function drawData() {
+  const { ctx, w, h } = fitCanvas(dataCanvas);
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0, 0, w, h);
+
+  const WORLD = 2.6;
+  const toPx = (x, y) => [ (x / WORLD + 0.5) * w, (0.5 - y / WORLD) * h ];
+
+  if (state.W.length && state.data.length) {
+    const N = w > 500 ? 112 : 80;
+    if (!offCanvas) offCanvas = document.createElement('canvas');
+    if (offCanvas.width !== N) { offCanvas.width = N; offCanvas.height = N; }
+    const octx = offCanvas.getContext('2d');
+    const img = octx.createImageData(N, N);
+    const d = img.data;
+
+    for (let i = 0; i < N; i++) {
+      const wy = WORLD / 2 - (i + 0.5) / N * WORLD;
+      for (let j = 0; j < N; j++) {
+        const wx = -WORLD / 2 + (j + 0.5) / N * WORLD;
+        const p = predictProb(wx, wy);
+        const o = (i * N + j) * 4;
+
+        const conf = Math.abs(p - 0.5) * 2;
+        const alpha = 0.05 + Math.pow(conf, 0.72) * 0.92;
+
+        if (p > 0.5) {
+          d[o]     = 184;
+          d[o + 1] = 68;
+          d[o + 2] = 42;
+        } else {
+          d[o]     = 48;
+          d[o + 1] = 100;
+          d[o + 2] = 138;
+        }
+        d[o + 3] = Math.round(alpha * 255);
+      }
+    }
+    octx.putImageData(img, 0, 0);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(offCanvas, 0, 0, w, h);
+    ctx.restore();
+  }
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(30,27,23,.05)';
+  for (let i = 1; i < 6; i++) {
+    ctx.beginPath(); ctx.moveTo(w * i / 6 + .5, 0); ctx.lineTo(w * i / 6 + .5, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, h * i / 6 + .5); ctx.lineTo(w, h * i / 6 + .5); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(30,27,23,.13)';
+  ctx.beginPath(); ctx.moveTo(w / 2 + .5, 0); ctx.lineTo(w / 2 + .5, h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, h / 2 + .5); ctx.lineTo(w, h / 2 + .5); ctx.stroke();
+
+  if (!state.data.length) {
+    ctx.font = 'italic 13px "Iowan Old Style", Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(30,27,23,.45)';
+    ctx.fillText('空白画布', w / 2, h / 2 - 14);
+    ctx.font = '500 10.5px ui-monospace, Menlo, monospace';
+    ctx.fillStyle = 'rgba(30,27,23,.35)';
+    ctx.fillText('选择添加模式后点击创建数据点', w / 2, h / 2 + 10);
+    return;
+  }
+
+  const rad = clamp(w / 82, 3, 5.4);
+  for (const d of state.data) {
+    const [px, py] = toPx(d.x[0], d.x[1]);
+
+    if (d.custom) {
+      ctx.beginPath();
+      ctx.arc(px, py, rad + 4, 0, TAU);
+      ctx.strokeStyle = d.y === 1 ? 'rgba(184,68,42,.6)' : 'rgba(48,100,138,.6)';
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.arc(px, py, rad, 0, TAU);
+    ctx.fillStyle = d.y === 1 ? C.rust : C.steel;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(px, py, rad, 0, TAU);
+    ctx.strokeStyle = 'rgba(250,246,236,.95)';
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+
+    if (rad > 4) {
+      ctx.beginPath();
+      ctx.arc(px, py, rad - 1.6, 0, TAU);
+      ctx.strokeStyle = 'rgba(250,246,236,.5)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+  }
+
+  if (state.probe) {
+    state.probe.p = predictProb(state.probe.x, state.probe.y);
+    const [px, py] = toPx(state.probe.x, state.probe.y);
+
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px - rad - 12, py); ctx.lineTo(px - rad - 3, py);
+    ctx.moveTo(px + rad + 3, py); ctx.lineTo(px + rad + 12, py);
+    ctx.moveTo(px, py - rad - 12); ctx.lineTo(px, py - rad - 3);
+    ctx.moveTo(px, py + rad + 3); ctx.lineTo(px, py + rad + 12);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(px, py, rad + 6, 0, TAU);
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(px, py, 2.4, 0, TAU);
+    ctx.fillStyle = C.ink;
+    ctx.fill();
+
+    updateProbeBar();
+  }
+
+  if (state.mode !== 'inspect') {
+    const txt = state.mode === 'addPos' ? '＋ 点击添加「类别 1」数据点'
+              : state.mode === 'addNeg' ? '＋ 点击添加「类别 0」数据点'
+              : '🗑 点击删除最近的自定义点';
+    ctx.font = '500 11px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(30,27,23,.55)';
+    ctx.fillText(txt, w / 2, 10);
+  }
+}
+
+/* =========================================================
+   8. 损失曲线
+   ========================================================= */
+const lossCanvas = $('lossCanvas');
+
+function drawLoss() {
+  const { ctx, w, h } = fitCanvas(lossCanvas);
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(30,27,23,.07)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(h * i / 4) + .5);
+    ctx.lineTo(w, Math.round(h * i / 4) + .5);
+    ctx.stroke();
+  }
+
+  const H = state.lossHistory;
+  if (H.length < 2) return;
+
+  let maxV = -Infinity, minV = Infinity;
+  for (const v of H) { if (v > maxV) maxV = v; if (v < minV) minV = v; }
+  maxV = Math.max(maxV, minV + 0.02);
+  const rng = maxV - minV;
+
+  const X = i => (i / (H.length - 1)) * w;
+  const Y = v => h - ((v - minV) / rng) * (h * 0.78) - h * 0.11;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(184,68,42,.20)');
+  grad.addColorStop(1, 'rgba(184,68,42,0)');
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  for (let i = 0; i < H.length; i++) ctx.lineTo(X(i), Y(H[i]));
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  for (let i = 0; i < H.length; i++) {
+    if (i) ctx.lineTo(X(i), Y(H[i]));
+    else ctx.moveTo(X(i), Y(H[i]));
+  }
+  ctx.strokeStyle = C.rust;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+/* =========================================================
+   9. UI 更新
+   ========================================================= */
+const statEpoch = $('statEpoch'), statLoss = $('statLoss'), statAcc = $('statAcc');
+const lossVal = $('lossVal'), probeBar = $('probeBar');
+let lastProbeText = '';
+
+function updateStats() {
+  statEpoch.textContent = state.epoch;
+  const last = state.lossHistory.length ? state.lossHistory[state.lossHistory.length - 1] : null;
+  const txt = last != null ? last.toFixed(4) : '—';
+  statLoss.textContent = txt;
+  lossVal.textContent = txt;
+  if (state.acc != null) statAcc.textContent = (state.acc * 100).toFixed(1) + '%';
+  else statAcc.textContent = '—';
+}
+
+function updateProbeBar() {
+  let html, warn = false;
+  if (!state.data.length) {
+    html = '空白画布 · 请使用「类别 0 / 类别 1」添加数据点';
+    warn = true;
+  } else if (!state.probe) {
+    html = '点击画布任意位置，实时查看该点的预测结果';
+  } else {
+    const p = state.probe.p;
+    const cls = p > 0.5 ? 1 : 0;
+    const conf = (Math.max(p, 1 - p) * 100).toFixed(1);
+    html = `点位 (${state.probe.x.toFixed(2)}, ${state.probe.y.toFixed(2)}) → ` +
+           `<b class="${cls ? 'rust' : 'steel'}">类别 ${cls}</b> · 置信度 ${conf}%`;
+  }
+  if (html !== lastProbeText) {
+    probeBar.innerHTML = html;
+    probeBar.classList.toggle('warn', warn);
+    lastProbeText = html;
+  }
+}
+
+function flashProbe(text) {
+  probeBar.innerHTML = text;
+  probeBar.classList.add('warn');
+  lastProbeText = text;
+  clearTimeout(state.warnTimer);
+  state.warnTimer = setTimeout(() => {
+    lastProbeText = '';
+    updateProbeBar();
+  }, 2200);
+}
+
+function updateClearCustomBtn() {
+  $('clearCustom').disabled = state.customPoints.length === 0;
+}
+
+/* =========================================================
+   10. 层列表
+   ========================================================= */
+const layerList = $('layerList'), hiddenInfo = $('hiddenInfo');
+
+function renderLayers() {
+  layerList.innerHTML = state.layers.map((l, i) => `
+    <div class="layer-item" data-i="${i}">
+      <div class="layer-index">L${i + 1}</div>
+      <div class="stepper">
+        <button data-act="minus" aria-label="减少神经元">−</button>
+        <span class="num">${l.n}</span>
+        <button data-act="plus" aria-label="增加神经元">+</button>
+      </div>
+      <select data-act="act">
+        ${Object.entries(ACT).map(([k, v]) =>
+          `<option value="${k}" ${k === l.act ? 'selected' : ''}>${v.name}</option>`).join('')}
+      </select>
+      <button class="del" data-act="del" aria-label="删除该层">✕</button>
+    </div>
+  `).join('');
+
+  hiddenInfo.textContent = state.layers.length
+    ? `${state.layers.length} 个隐层 · ${state.layers.reduce((s, l) => s + l.n, 0)} 神经元`
+    : '无隐藏层（线性）';
+}
+
+layerList.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const item = btn.closest('.layer-item');
+  if (!item) return;
+  const i = +item.dataset.i;
+  const act = btn.dataset.act;
+
+  if (act === 'plus')  state.layers[i].n = Math.min(16, state.layers[i].n + 1);
+  if (act === 'minus') state.layers[i].n = Math.max(1, state.layers[i].n - 1);
+  if (act === 'del')   state.layers.splice(i, 1);
+  rebuild(true);
+});
+
+layerList.addEventListener('change', e => {
+  if (e.target.dataset.act === 'act') {
+    const item = e.target.closest('.layer-item');
+    state.layers[+item.dataset.i].act = e.target.value;
+    drawNet();
+  }
+});
+
+/* =========================================================
+   11. 重建
+   ========================================================= */
+function validatePinned() {
+  const n = state.pinnedNeuron;
+  if (!n) return;
+  const sizes = getSizes();
+  if (n.layer < 0 || n.layer >= sizes.length || n.index < 0 || n.index >= sizes[n.layer]) {
+    state.pinnedNeuron = null;
+  }
+}
+
+function rebuild(resetWeights) {
+  if (resetWeights) {
+    initNet();
+    state.pinnedNeuron = null;
+    state.hoverNeuron = null;
+    updateInspector();
+  } else {
+    validatePinned();
+  }
+  renderLayers();
+  drawNet();
+  drawData();
+  drawLoss();
+  updateStats();
+}
+
+/* =========================================================
+   12. 训练循环（含可调间隔）
+   ========================================================= */
+const trainBtn = $('trainBtn');
+let rafId = null;
+let timerId = null;
+let frameCount = 0;
+let lastNetDraw = 0;
+let lastDataDraw = 0;
+
+function tick() {
+  if (!state.running) return;
+  if (!state.data.length) { setRunning(false); return; }
+
+  if (state.trainInterval > 0) {
+    /* 间隔模式：每步只训练 1 个 epoch，然后等待指定毫秒 */
+    const loss = runEpoch();
+    state.lossHistory.push(loss);
+    if (state.lossHistory.length > 420) state.lossHistory.shift();
+  } else {
+    /* 连续模式：每帧跑满 10ms 预算，尽可能快 */
+    const t0 = performance.now();
+    let cnt = 0;
+    while (performance.now() - t0 < 10) {
+      const loss = runEpoch();
+      state.lossHistory.push(loss);
+      if (state.lossHistory.length > 420) state.lossHistory.shift();
+      cnt++;
+      if (cnt > 300) break;
+    }
+  }
+
+  frameCount++;
+  updateStats();
+  drawLoss();
+
+  const now = performance.now();
+  if (now - lastNetDraw > 110) { drawNet(); lastNetDraw = now; }
+  if (now - lastDataDraw > 140) {
+    drawData();
+    lastDataDraw = now;
+    updateInspector();
+  }
+  if (frameCount % 16 === 0) {
+    state.acc = computeAcc();
+    statAcc.textContent = (state.acc * 100).toFixed(1) + '%';
+  }
+
+  if (state.trainInterval > 0) {
+    /* 延迟后再进入下一帧；暂停时会被 clearTimeout 打断 */
+    timerId = setTimeout(() => {
+      timerId = null;
+      if (state.running) rafId = requestAnimationFrame(tick);
+    }, state.trainInterval);
+  } else {
+    rafId = requestAnimationFrame(tick);
+  }
+}
+
+function setRunning(on) {
+  state.running = on;
+  if (on) {
+    trainBtn.textContent = '❙❙ 暂停训练';
+    trainBtn.classList.add('paused');
+    if (!rafId && !timerId) rafId = requestAnimationFrame(tick);
+  } else {
+    trainBtn.textContent = '▶ 开始训练';
+    trainBtn.classList.remove('paused');
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (timerId) { clearTimeout(timerId); timerId = null; }
+    if (state.data.length) {
+      state.acc = computeAcc();
+      statAcc.textContent = (state.acc * 100).toFixed(1) + '%';
+    }
+    drawData();
+    drawNet();
+  }
+}
+
+trainBtn.addEventListener('click', () => {
+  if (!state.data.length) {
+    flashProbe('⚠ 画布中没有数据点，请先选择数据集或手动添加数据');
+    return;
+  }
+  setRunning(!state.running);
+});
+
+$('stepBtn').addEventListener('click', () => {
+  if (!state.data.length) {
+    flashProbe('⚠ 画布中没有数据点，请先选择数据集或手动添加数据');
+    return;
+  }
+  if (state.running) setRunning(false);
+  const loss = runEpoch();
+  state.lossHistory.push(loss);
+  if (state.lossHistory.length > 420) state.lossHistory.shift();
+  state.acc = computeAcc();
+  statAcc.textContent = (state.acc * 100).toFixed(1) + '%';
+  updateStats();
+  drawLoss();
+  drawData();
+  drawNet();
+});
+
+/* =========================================================
+   13. 网络结构控件
+   ========================================================= */
+$('addLayer').addEventListener('click', () => {
+  if (state.layers.length >= 6) {
+    flashProbe('⚠ 隐藏层数量已达上限（6 层）');
+    return;
+  }
+  state.layers.push({ n: 6, act: 'relu' });
+  rebuild(true);
+});
+
+$('randomNet').addEventListener('click', () => {
+  const depth = 1 + Math.floor(Math.random() * 3);
+  const keys = Object.keys(ACT);
+  state.layers = Array.from({ length: depth }, () => ({
+    n: 2 + Math.floor(Math.random() * 11),
+    act: keys[Math.floor(Math.random() * (keys.length - 1))],
+  }));
+  rebuild(true);
+});
+
+$('resetWeights').addEventListener('click', () => {
+  setRunning(false);
+  initNet();
+  state.pinnedNeuron = null;
+  state.hoverNeuron = null;
+  updateInspector();
+  drawNet();
+  drawData();
+  drawLoss();
+});
+
+/* =========================================================
+   14. 数据控件
+   ========================================================= */
+$('regen').addEventListener('click', () => {
+  setRunning(false);
+  if (state.dataset === 'blank') {
+    flashProbe('⬜ 空白模式无内置数据，请使用「类别 0 / 类别 1」手动添加');
+    return;
+  }
+  generateBaseData();
+  rebuildData();
+  drawData();
+  updateInspector();
+});
+
+$('chips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  if (chip.classList.contains('active')) return;
+
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  state.dataset = chip.dataset.ds;
+  setRunning(false);
+  generateBaseData();
+  state.customPoints = [];
+  rebuildData();
+  initNet();
+  state.pinnedNeuron = null;
+  state.hoverNeuron = null;
+  updateInspector();
+  drawData();
+  drawNet();
+  drawLoss();
+
+  if (state.dataset === 'blank') {
+    document.querySelectorAll('.tool[data-mode]').forEach(b => b.classList.remove('active'));
+    const addBtn = document.querySelector('.tool[data-mode="addPos"]');
+    if (addBtn) addBtn.classList.add('active');
+    state.mode = 'addPos';
+    dataCanvas.style.cursor = 'copy';
+  } else {
+    document.querySelectorAll('.tool[data-mode]').forEach(b => b.classList.remove('active'));
+    const inspectBtn = document.querySelector('.tool[data-mode="inspect"]');
+    if (inspectBtn) inspectBtn.classList.add('active');
+    state.mode = 'inspect';
+    dataCanvas.style.cursor = 'crosshair';
+  }
+});
+
+$('dataTools').addEventListener('click', e => {
+  const btn = e.target.closest('.tool[data-mode]');
+  if (!btn) return;
+  document.querySelectorAll('.tool[data-mode]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.mode = btn.dataset.mode;
+  dataCanvas.style.cursor = state.mode === 'inspect' ? 'crosshair' : 'copy';
+  drawData();
+});
+
+$('clearCustom').addEventListener('click', () => {
+  if (!state.customPoints.length) return;
+  state.customPoints = [];
+  rebuildData();
+  drawData();
+  updateInspector();
+});
+
+/* ---- 滑块 ---- */
+function bindSlider(id, valId, key, fmt) {
+  const el = $(id), out = $(valId);
+  const sync = () => {
+    const v = parseFloat(el.value);
+    state[key] = v;
+    out.textContent = fmt(v);
+  };
+  el.addEventListener('input', sync);
+  sync();
+}
+bindSlider('lr',    'lrVal',    'lr',       v => v.toFixed(3));
+bindSlider('mom',   'momVal',   'momentum', v => v.toFixed(2));
+bindSlider('bs',    'bsVal',    'batch',    v => v | 0);
+bindSlider('noise', 'noiseVal', 'noise',    v => v.toFixed(2));
+
+/* 训练间隔滑块：0 显示为"连续"，其余显示毫秒数 */
+(function bindInterval() {
+  const el = $('interval'), out = $('intervalVal');
+  const sync = () => {
+    const v = parseInt(el.value, 10);
+    state.trainInterval = v;
+    out.textContent = v === 0 ? '连续' : v + ' ms';
+    /* 若正在间隔模式运行中，改动后立刻打断当前的等待，用新间隔重新调度 */
+    if (state.running && timerId) {
+      clearTimeout(timerId);
+      timerId = null;
+      rafId = requestAnimationFrame(tick);
+    }
+  };
+  el.addEventListener('input', sync);
+  sync();
+})();
+
+$('noise').addEventListener('change', () => {
+  if (state.dataset === 'blank') return;
+  generateBaseData();
+  rebuildData();
+  drawData();
+});
+
+/* =========================================================
+   15. 数据画布交互
+   ========================================================= */
+function eventToWorld(e) {
+  const rect = dataCanvas.getBoundingClientRect();
+  const px = (e.clientX - rect.left) / rect.width;
+  const py = (e.clientY - rect.top) / rect.height;
+  if (px < 0 || px > 1 || py < 0 || py > 1) return null;
+  return { x: (px - 0.5) * 2.6, y: (0.5 - py) * 2.6 };
+}
+
+dataCanvas.addEventListener('pointerdown', e => {
+  const world = eventToWorld(e);
+  if (!world) return;
+
+  if (state.mode === 'inspect') {
+    state.probe = { x: world.x, y: world.y, p: predictProb(world.x, world.y) };
+    drawData();
+    updateInspector();
+    return;
+  }
+
+  if (state.mode === 'addPos' || state.mode === 'addNeg') {
+    const label = state.mode === 'addPos' ? 1 : 0;
+    let tooClose = false;
+    for (const p of state.customPoints) {
+      const dx = p.x[0] - world.x, dy = p.x[1] - world.y;
+      if (dx * dx + dy * dy < 0.0009) { tooClose = true; break; }
+    }
+    if (!tooClose) {
+      state.customPoints.push({ x: [world.x, world.y], y: label, custom: true });
+      rebuildData();
+      state.probe = { x: world.x, y: world.y, p: predictProb(world.x, world.y) };
+      drawData();
+      updateInspector();
+    }
+    return;
+  }
+
+  if (state.mode === 'erase') {
+    let bestIdx = -1, bestD = Infinity;
+    const thresh = 0.26;
+    for (let i = 0; i < state.customPoints.length; i++) {
+      const p = state.customPoints[i];
+      const dx = p.x[0] - world.x, dy = p.x[1] - world.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && bestD < thresh * thresh) {
+      state.customPoints.splice(bestIdx, 1);
+      rebuildData();
+      drawData();
+      updateInspector();
+    } else {
+      flashProbe('🗑 附近没有可删除的自定义点');
+    }
+  }
+});
+
+let dataMoveScheduled = false;
+function scheduleDataDraw() {
+  if (dataMoveScheduled) return;
+  dataMoveScheduled = true;
+  requestAnimationFrame(() => {
+    dataMoveScheduled = false;
+    drawData();
+  });
+}
+
+dataCanvas.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || state.mode !== 'inspect') return;
+  const world = eventToWorld(e);
+  if (!world) return;
+  state.probe = { x: world.x, y: world.y, p: predictProb(world.x, world.y) };
+  scheduleDataDraw();
+});
+
+/* =========================================================
+   16. 快捷键 & 尺寸
+   ========================================================= */
+window.addEventListener('keydown', e => {
+  if (e.code !== 'Space') return;
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'TEXTAREA') return;
+  if (e.target.isContentEditable) return;
+
+  e.preventDefault();
+  if (!state.data.length) {
+    flashProbe('⚠ 画布中没有数据点，请先选择数据集或手动添加数据');
+    return;
+  }
+  setRunning(!state.running);
+});
+
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    gridKey = '';
+    drawNet();
+    drawData();
+    drawLoss();
+  }, 140);
+});
+
+/* =========================================================
+   17. 启动
+   ========================================================= */
+function boot() {
+  generateBaseData();
+  rebuildData();
+  initNet();
+  renderLayers();
+  drawNet();
+  drawData();
+  drawLoss();
+  updateStats();
+  updateProbeBar();
+  updateInspector();
+  updateClearCustomBtn();
+}
+
+if (document.readyState === 'complete') boot();
+else window.addEventListener('load', boot);
+</script>
+</body>
+</html>
