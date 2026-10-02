@@ -226,7 +226,7 @@ select:hover{border-color:var(--ink-3);background-color:var(--paper-2)}
 .chip.blank{border-style:dashed;color:var(--ink-3)}
 .chip.blank.active{background:var(--steel);color:var(--paper);border-color:var(--steel);border-style:solid}
 
-.data-tools{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.data-tools{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
 .tool{
   flex:1;min-width:66px;padding:7px 8px;
   border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);
@@ -239,6 +239,29 @@ select:hover{border-color:var(--ink-3);background-color:var(--paper-2)}
 .tool.danger:hover{background:var(--rust);color:var(--paper)}
 .tool.danger:disabled{opacity:.35;cursor:not-allowed;background:transparent;color:var(--rust)}
 
+.data-io{
+  display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;
+  padding-top:8px;
+  border-top:1px dashed var(--rule);
+}
+.io-btn{
+  flex:1;min-width:60px;
+  padding:6px 10px;
+  border:1px solid var(--rule-2);
+  background:transparent;color:var(--ink-2);
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.3px;cursor:pointer;transition:.15s;
+  white-space:nowrap;
+}
+.io-btn:hover:not(:disabled){border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+.io-btn:active:not(:disabled){transform:translate(1px,1px)}
+.io-btn:disabled{opacity:.35;cursor:not-allowed}
+.io-btn.export{color:var(--rust);border-color:var(--rust)}
+.io-btn.export:hover:not(:disabled){background:var(--rust);color:var(--paper)}
+.io-btn.import{color:var(--steel);border-color:var(--steel)}
+.io-btn.import:hover:not(:disabled){background:var(--steel);color:var(--paper)}
+.io-btn.compact{flex:0 0 auto;min-width:0;padding:6px 12px}
+
 .probe-bar{
   margin-top:12px;padding:10px 14px;
   border:1px solid var(--rule-2);background:var(--paper-2);
@@ -250,6 +273,7 @@ select:hover{border-color:var(--ink-3);background-color:var(--paper-2)}
 .probe-bar b.rust{color:var(--rust)}
 .probe-bar b.steel{color:var(--steel)}
 .probe-bar.warn{background:#f7e6df;border-color:var(--rust);color:var(--rust)}
+.probe-bar.success{background:#e6f2e2;border-color:var(--forest);color:var(--forest)}
 
 .loss-wrap{
   margin-top:14px;border:1px solid var(--ink);background:#faf6ec;position:relative;
@@ -296,7 +320,6 @@ input[type=range]::-moz-range-thumb{
   box-shadow:0 0 0 1px var(--ink);
   border-radius:50%;cursor:pointer;
 }
-/* 训练间隔滑块使用钢蓝色轨道，与其他参数区分 */
 .param.interval input[type=range]{
   background:linear-gradient(90deg,var(--ink-4),var(--steel));
 }
@@ -319,11 +342,94 @@ input[type=range]::-moz-range-thumb{
   font-style:italic;color:var(--ink-3);line-height:1.7;text-align:center;
 }
 
+/* ============ 模态框 ============ */
+.io-modal{
+  position:fixed;inset:0;z-index:100;
+  display:none;
+  align-items:center;justify-content:center;
+  padding:20px;
+}
+.io-modal.show{display:flex}
+.io-modal-backdrop{
+  position:absolute;inset:0;
+  background:rgba(30,27,23,.55);
+  -webkit-backdrop-filter:blur(4px);
+  backdrop-filter:blur(4px);
+}
+.io-modal-body{
+  position:relative;
+  width:100%;max-width:540px;max-height:86vh;
+  display:flex;flex-direction:column;
+  background:var(--paper);
+  border:1px solid var(--ink);
+  box-shadow:6px 6px 0 rgba(30,27,23,.15);
+  padding:20px;
+}
+.io-modal-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:4px;padding-bottom:10px;
+  border-bottom:1px solid var(--rule);
+}
+.io-modal-head h3{
+  font-family:var(--serif);font-size:16px;font-weight:600;
+  letter-spacing:.3px;
+}
+.io-modal-close{
+  width:28px;height:28px;
+  border:1px solid var(--rule-2);
+  background:transparent;color:var(--ink-3);
+  cursor:pointer;font-size:13px;
+  display:grid;place-items:center;transition:.12s;
+  font-family:var(--mono);
+}
+.io-modal-close:hover{background:var(--rust);color:var(--paper);border-color:var(--rust)}
+.io-modal-desc{
+  font-family:var(--serif);font-size:12px;font-style:italic;
+  color:var(--ink-3);margin:12px 0 10px;line-height:1.6;
+}
+.io-modal-text{
+  flex:1;min-height:200px;max-height:50vh;
+  width:100%;
+  padding:12px;
+  border:1px solid var(--rule-2);
+  background:var(--paper-2);
+  color:var(--ink);
+  font-family:var(--mono);font-size:11px;
+  line-height:1.55;
+  resize:vertical;outline:none;
+  -webkit-overflow-scrolling:touch;
+}
+.io-modal-text:focus{border-color:var(--ink-3);background:var(--paper)}
+.io-modal-actions{
+  display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
+  margin-top:14px;
+}
+.io-modal-actions button{
+  padding:9px 18px;
+  border:1px solid var(--rule-2);
+  background:transparent;color:var(--ink-2);
+  font-family:var(--serif);font-size:13px;font-weight:600;
+  cursor:pointer;transition:.15s;
+}
+.io-modal-actions button:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+.io-modal-actions button:active{transform:translate(1px,1px)}
+.io-modal-actions button.primary{
+  background:var(--ink);color:var(--paper);border-color:var(--ink);
+}
+.io-modal-actions button.primary:hover{background:var(--rust);border-color:var(--rust)}
+.io-modal-actions button.steel{
+  background:var(--steel);color:var(--paper);border-color:var(--steel);
+}
+.io-modal-actions button.steel:hover{background:#2f5468;border-color:#2f5468}
+
 @media(max-width:640px){
   .app{padding:16px 14px 40px}
   .title-block h1{font-size:24px}
   .meta{gap:14px}
   .meta-item .v{font-size:15px}
+  .io-modal{padding:12px}
+  .io-modal-body{padding:16px;max-height:90vh}
+  .io-modal-text{font-size:10.5px;min-height:160px}
 }
 </style>
 </head>
@@ -406,6 +512,13 @@ input[type=range]::-moz-range-thumb{
         <button class="tool danger" id="clearCustom" disabled>清空</button>
       </div>
 
+      <div class="data-io" id="dataIO">
+        <button class="io-btn export" id="exportFile" disabled title="将自定义点导出为 JSON 文件">↓ 导出文件</button>
+        <button class="io-btn import" id="importFile" title="从 JSON 文件导入自定义点">↑ 导入文件</button>
+        <button class="io-btn compact" id="copyPoints" disabled title="将自定义点复制到剪贴板">复制</button>
+        <button class="io-btn compact" id="pastePoints" title="从剪贴板粘贴自定义点">粘贴</button>
+      </div>
+
       <div class="canvas-wrap data-wrap">
         <canvas id="dataCanvas"></canvas>
       </div>
@@ -449,6 +562,20 @@ input[type=range]::-moz-range-thumb{
     </section>
 
   </main>
+</div>
+
+<!-- ============ 手动复制/粘贴模态框 ============ -->
+<div class="io-modal" id="ioModal" role="dialog" aria-modal="true">
+  <div class="io-modal-backdrop" id="ioModalBackdrop"></div>
+  <div class="io-modal-body">
+    <div class="io-modal-head">
+      <h3 id="ioModalTitle">数据</h3>
+      <button class="io-modal-close" id="ioModalClose" aria-label="关闭">✕</button>
+    </div>
+    <p class="io-modal-desc" id="ioModalDesc"></p>
+    <textarea class="io-modal-text" id="ioModalText" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    <div class="io-modal-actions" id="ioModalActions"></div>
+  </div>
 </div>
 
 <script>
@@ -512,7 +639,7 @@ const state = {
   lr: 0.08,
   momentum: 0.9,
   batch: 16,
-  trainInterval: 0,       // ← 每轮训练之间的间隔（ms），0 表示连续
+  trainInterval: 0,
   epoch: 0,
   running: false,
   W: [], b: [], vW: [], vb: [],
@@ -750,7 +877,7 @@ function rebuildData() {
   state.data = [...state.baseData, ...state.customPoints];
   state.shuffled = state.data.map((_, i) => i);
   state.probe = null;
-  updateClearCustomBtn();
+  updateDataButtons();
   updateProbeBar();
 }
 
@@ -1253,28 +1380,90 @@ function updateProbeBar() {
   }
   if (html !== lastProbeText) {
     probeBar.innerHTML = html;
-    probeBar.classList.toggle('warn', warn);
+    probeBar.classList.remove('warn', 'success');
+    if (warn) probeBar.classList.add('warn');
     lastProbeText = html;
   }
 }
 
-function flashProbe(text) {
+function flashProbe(text, type = 'warn') {
   probeBar.innerHTML = text;
-  probeBar.classList.add('warn');
+  probeBar.classList.remove('warn', 'success');
+  probeBar.classList.add(type === 'success' ? 'success' : 'warn');
   lastProbeText = text;
   clearTimeout(state.warnTimer);
   state.warnTimer = setTimeout(() => {
     lastProbeText = '';
+    probeBar.classList.remove('success');
     updateProbeBar();
-  }, 2200);
+  }, 2600);
 }
 
-function updateClearCustomBtn() {
-  $('clearCustom').disabled = state.customPoints.length === 0;
+function updateDataButtons() {
+  const hasPoints = state.customPoints.length > 0;
+  $('clearCustom').disabled = !hasPoints;
+  $('exportFile').disabled = !hasPoints;
+  $('copyPoints').disabled = !hasPoints;
 }
 
 /* =========================================================
-   10. 层列表
+   10. 模态框
+   ========================================================= */
+const ioModal = $('ioModal');
+const ioModalTitle = $('ioModalTitle');
+const ioModalDesc = $('ioModalDesc');
+const ioModalText = $('ioModalText');
+const ioModalActions = $('ioModalActions');
+
+function openModal(opts) {
+  ioModalTitle.textContent = opts.title || '';
+  ioModalDesc.textContent = opts.desc || '';
+  ioModalDesc.style.display = opts.desc ? '' : 'none';
+  ioModalText.value = opts.value || '';
+  ioModalText.readOnly = !!opts.readOnly;
+  ioModalText.placeholder = opts.placeholder || '';
+  ioModalActions.innerHTML = '';
+
+  (opts.actions || []).forEach(a => {
+    const btn = document.createElement('button');
+    btn.textContent = a.label;
+    if (a.variant === 'primary') btn.classList.add('primary');
+    else if (a.variant === 'steel') btn.classList.add('steel');
+    btn.addEventListener('click', a.onClick);
+    ioModalActions.appendChild(btn);
+  });
+
+  ioModal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  /* 用 rAF 确保元素已渲染可聚焦 */
+  requestAnimationFrame(() => {
+    if (opts.selectAll) {
+      ioModalText.focus();
+      ioModalText.select();
+      try { ioModalText.setSelectionRange(0, ioModalText.value.length); } catch (e) {}
+    } else if (opts.focus) {
+      ioModalText.focus();
+    }
+  });
+}
+
+function closeModal() {
+  ioModal.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+$('ioModalClose').addEventListener('click', closeModal);
+$('ioModalBackdrop').addEventListener('click', closeModal);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && ioModal.classList.contains('show')) {
+    closeModal();
+  }
+});
+
+/* =========================================================
+   11. 层列表
    ========================================================= */
 const layerList = $('layerList'), hiddenInfo = $('hiddenInfo');
 
@@ -1323,7 +1512,7 @@ layerList.addEventListener('change', e => {
 });
 
 /* =========================================================
-   11. 重建
+   12. 重建
    ========================================================= */
 function validatePinned() {
   const n = state.pinnedNeuron;
@@ -1351,7 +1540,7 @@ function rebuild(resetWeights) {
 }
 
 /* =========================================================
-   12. 训练循环（含可调间隔）
+   13. 训练循环
    ========================================================= */
 const trainBtn = $('trainBtn');
 let rafId = null;
@@ -1365,12 +1554,10 @@ function tick() {
   if (!state.data.length) { setRunning(false); return; }
 
   if (state.trainInterval > 0) {
-    /* 间隔模式：每步只训练 1 个 epoch，然后等待指定毫秒 */
     const loss = runEpoch();
     state.lossHistory.push(loss);
     if (state.lossHistory.length > 420) state.lossHistory.shift();
   } else {
-    /* 连续模式：每帧跑满 10ms 预算，尽可能快 */
     const t0 = performance.now();
     let cnt = 0;
     while (performance.now() - t0 < 10) {
@@ -1399,7 +1586,6 @@ function tick() {
   }
 
   if (state.trainInterval > 0) {
-    /* 延迟后再进入下一帧；暂停时会被 clearTimeout 打断 */
     timerId = setTimeout(() => {
       timerId = null;
       if (state.running) rafId = requestAnimationFrame(tick);
@@ -1455,7 +1641,7 @@ $('stepBtn').addEventListener('click', () => {
 });
 
 /* =========================================================
-   13. 网络结构控件
+   14. 网络结构控件
    ========================================================= */
 $('addLayer').addEventListener('click', () => {
   if (state.layers.length >= 6) {
@@ -1488,7 +1674,7 @@ $('resetWeights').addEventListener('click', () => {
 });
 
 /* =========================================================
-   14. 数据控件
+   15. 数据控件
    ========================================================= */
 $('regen').addEventListener('click', () => {
   setRunning(false);
@@ -1553,6 +1739,7 @@ $('clearCustom').addEventListener('click', () => {
   rebuildData();
   drawData();
   updateInspector();
+  flashProbe('已清空全部自定义点', 'success');
 });
 
 /* ---- 滑块 ---- */
@@ -1571,14 +1758,12 @@ bindSlider('mom',   'momVal',   'momentum', v => v.toFixed(2));
 bindSlider('bs',    'bsVal',    'batch',    v => v | 0);
 bindSlider('noise', 'noiseVal', 'noise',    v => v.toFixed(2));
 
-/* 训练间隔滑块：0 显示为"连续"，其余显示毫秒数 */
 (function bindInterval() {
   const el = $('interval'), out = $('intervalVal');
   const sync = () => {
     const v = parseInt(el.value, 10);
     state.trainInterval = v;
     out.textContent = v === 0 ? '连续' : v + ' ms';
-    /* 若正在间隔模式运行中，改动后立刻打断当前的等待，用新间隔重新调度 */
     if (state.running && timerId) {
       clearTimeout(timerId);
       timerId = null;
@@ -1597,7 +1782,7 @@ $('noise').addEventListener('change', () => {
 });
 
 /* =========================================================
-   15. 数据画布交互
+   16. 数据画布交互
    ========================================================= */
 function eventToWorld(e) {
   const rect = dataCanvas.getBoundingClientRect();
@@ -1674,9 +1859,225 @@ dataCanvas.addEventListener('pointermove', e => {
 });
 
 /* =========================================================
-   16. 快捷键 & 尺寸
+   17. 自定义点导出 / 导入
+   ========================================================= */
+function buildExportData() {
+  return {
+    app: 'NeuroForge',
+    type: 'custom-points',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    dataset: state.dataset,
+    count: state.customPoints.length,
+    points: state.customPoints.map(p => ({
+      x: +p.x[0].toFixed(6),
+      y: +p.x[1].toFixed(6),
+      label: p.y
+    }))
+  };
+}
+
+function exportFile() {
+  if (!state.customPoints.length) return;
+  const data = buildExportData();
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.href = url;
+  a.download = `neuroforge-points-${state.dataset}-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1200);
+  flashProbe(`✓ 已导出 ${state.customPoints.length} 个自定义点`, 'success');
+}
+
+function importFromText(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    flashProbe('⚠ JSON 解析失败，文件格式不正确');
+    return;
+  }
+  if (!data || typeof data !== 'object' || !Array.isArray(data.points)) {
+    flashProbe('⚠ 格式不正确：缺少 points 字段');
+    return;
+  }
+
+  const newPoints = [];
+  for (const p of data.points) {
+    if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') continue;
+    if (!isFinite(p.x) || !isFinite(p.y)) continue;
+    if (p.x < -1.3 || p.x > 1.3 || p.y < -1.3 || p.y > 1.3) continue;
+    const label = (p.label === 1) ? 1 : 0;
+    newPoints.push({ x: [p.x, p.y], y: label, custom: true });
+  }
+
+  if (!newPoints.length) {
+    flashProbe('⚠ 文件中没有有效的点（需在坐标范围内）');
+    return;
+  }
+
+  state.customPoints = newPoints;
+  rebuildData();
+  drawData();
+  updateInspector();
+  flashProbe(`✓ 已导入 ${newPoints.length} 个自定义点`, 'success');
+}
+
+function importFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.style.display = 'none';
+  input.onchange = e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => importFromText(String(ev.target.result || ''));
+    reader.onerror = () => flashProbe('⚠ 读取文件失败');
+    reader.readAsText(file);
+  };
+  document.body.appendChild(input);
+  input.click();
+  setTimeout(() => {
+    if (input.parentNode) input.parentNode.removeChild(input);
+  }, 1200);
+}
+
+/* ---- 复制 ---- */
+function legacyCopy(json) {
+  /* 方案 A：临时 textarea + execCommand（用 left:-9999px 而不是 opacity:0，
+     保证元素仍然被视为可见，execCommand 才有效） */
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '-9999px';
+    ta.style.width = '2em';
+    ta.style.height = '2em';
+    ta.style.padding = '0';
+    ta.style.border = 'none';
+    ta.style.outline = 'none';
+    ta.style.boxShadow = 'none';
+    ta.style.background = 'transparent';
+    ta.style.fontSize = '16px';   /* 防止 iOS 自动缩放 */
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { ta.setSelectionRange(0, ta.value.length); } catch (e) {}
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) {
+      flashProbe(`✓ 已复制 ${state.customPoints.length} 个点到剪贴板`, 'success');
+      return true;
+    }
+  } catch (err) { /* 落下去 */ }
+  return false;
+}
+
+function copyPoints() {
+  if (!state.customPoints.length) return;
+  const json = JSON.stringify(buildExportData());
+
+  /* 优先使用现代 Clipboard API —— 必须在用户手势内同步发起 */
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(json).then(() => {
+      flashProbe(`✓ 已复制 ${state.customPoints.length} 个点到剪贴板`, 'success');
+    }).catch(() => {
+      /* Clipboard API 被拒绝，尝试降级方案 A */
+      if (legacyCopy(json)) return;
+      /* 都失败 → 弹出模态框让用户手动复制 */
+      openModal({
+        title: '手动复制',
+        desc: '浏览器拒绝了自动剪贴板访问，请手动选择下方文本并复制（Ctrl / Cmd + C），然后保存到文本文件或用「粘贴」按钮导入。',
+        value: json,
+        readOnly: true,
+        selectAll: true,
+        actions: [
+          { label: '关闭', onClick: closeModal }
+        ]
+      });
+    });
+    return;
+  }
+
+  /* 没有 Clipboard API —— 直接走降级 */
+  if (legacyCopy(json)) return;
+
+  openModal({
+    title: '手动复制',
+    desc: '当前浏览器不支持自动复制。请手动选择下方文本并复制（Ctrl / Cmd + C），保存到文本文件即可。',
+    value: json,
+    readOnly: true,
+    selectAll: true,
+    actions: [
+      { label: '关闭', onClick: closeModal }
+    ]
+  });
+}
+
+/* ---- 粘贴 ---- */
+function pastePoints() {
+  /* 优先使用现代 Clipboard API 的 readText */
+  if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+    navigator.clipboard.readText().then(text => {
+      if (text && text.trim()) {
+        importFromText(text);
+      } else {
+        /* 剪贴板为空 → 打开模态框让用户手动粘贴 */
+        openPasteModal();
+      }
+    }).catch(() => {
+      /* 被拒绝（常见于 file:// 或未授权）→ 打开模态框 */
+      openPasteModal();
+    });
+    return;
+  }
+
+  /* 没有 Clipboard API → 直接打开模态框 */
+  openPasteModal();
+}
+
+function openPasteModal() {
+  openModal({
+    title: '粘贴导入',
+    desc: '将之前复制的 JSON 文本粘贴到下方（Ctrl / Cmd + V），然后点击「导入」。',
+    value: '',
+    placeholder: '{"app":"NeuroForge","type":"custom-points","points":[{"x":0.12,"y":-0.35,"label":1}, ...]}',
+    focus: true,
+    actions: [
+      { label: '取消', onClick: closeModal },
+      { label: '导入', variant: 'primary', onClick: () => {
+        const text = ioModalText.value;
+        if (!text || !text.trim()) {
+          flashProbe('⚠ 请先粘贴 JSON 内容');
+          return;
+        }
+        closeModal();
+        importFromText(text);
+      }}
+    ]
+  });
+}
+
+$('exportFile').addEventListener('click', exportFile);
+$('importFile').addEventListener('click', importFile);
+$('copyPoints').addEventListener('click', copyPoints);
+$('pastePoints').addEventListener('click', pastePoints);
+
+/* =========================================================
+   18. 快捷键 & 尺寸
    ========================================================= */
 window.addEventListener('keydown', e => {
+  /* 模态框打开时，不处理快捷键（由模态框自己的 Escape 监听负责） */
+  if (ioModal.classList.contains('show')) return;
+
   if (e.code !== 'Space') return;
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'TEXTAREA') return;
@@ -1702,7 +2103,7 @@ window.addEventListener('resize', () => {
 });
 
 /* =========================================================
-   17. 启动
+   19. 启动
    ========================================================= */
 function boot() {
   generateBaseData();
@@ -1715,7 +2116,7 @@ function boot() {
   updateStats();
   updateProbeBar();
   updateInspector();
-  updateClearCustomBtn();
+  updateDataButtons();
 }
 
 if (document.readyState === 'complete') boot();

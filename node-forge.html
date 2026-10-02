@@ -1,0 +1,2960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>NodeForge</title>
+<style>
+  :root{
+    --bg:#09090a;
+    --panel:#131316;
+    --panel-2:#16161a;
+    --panel-3:#1c1c20;
+    --border:#26262b;
+    --border-hi:#35353c;
+    --text:#d4d4d8;
+    --text-mid:#9898a3;
+    --text-dim:#6e6e78;
+    --accent:#4a7fc9;
+    --accent-hi:#5a8fd9;
+    --r:6px;
+    --r-sm:4px;
+    --r-xs:3px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+  html,body{
+    height:100%;
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    overscroll-behavior:none;
+  }
+
+  .app{display:flex;flex-direction:column;height:100dvh;height:100vh;}
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{
+    height:48px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 14px;
+    background:#0e0e10;
+    border-bottom:1px solid var(--border);
+    z-index:60;
+    position:relative;
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:0}
+  .logo{
+    width:22px;height:22px;flex-shrink:0;
+    border-radius:4px;
+    background:#1c1c20;
+    border:1px solid var(--border-hi);
+    position:relative;
+  }
+  .logo::before,
+  .logo::after{
+    content:'';
+    position:absolute;
+    width:5px;height:5px;
+    border-radius:1px;
+    background:#5b92dd;
+  }
+  .logo::before{ top:4px; left:4px; }
+  .logo::after{ bottom:4px; right:4px; background:#65b88a; }
+  .brand h1{
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.01em;
+    color:#e4e4e7;
+    white-space:nowrap;
+  }
+  .brand .sub{
+    font-size:10.5px;
+    color:var(--text-dim);
+    margin-left:8px;
+    padding-left:8px;
+    border-left:1px solid var(--border);
+    white-space:nowrap;
+  }
+  .actions{display:flex;gap:6px;flex-shrink:0}
+
+  .btn{
+    height:28px;
+    padding:0 11px;
+    border-radius:5px;
+    border:1px solid var(--border);
+    background:#18181c;
+    color:var(--text);
+    font-size:12px;
+    font-weight:500;
+    cursor:pointer;
+    transition:background .12s, border-color .12s;
+    font-family:inherit;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .btn:hover{
+    background:#1f1f24;
+    border-color:var(--border-hi);
+  }
+  .btn:active{
+    background:#252529;
+  }
+  .btn.primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+  }
+  .btn.primary:hover{
+    background:var(--accent-hi);
+    border-color:var(--accent-hi);
+  }
+
+  main{flex:1;display:flex;overflow:hidden;position:relative;min-height:0}
+
+  /* ---------- 编辑器 ---------- */
+  #editor{
+    flex:1;
+    position:relative;
+    overflow:hidden;
+    min-width:0;
+    touch-action:none;
+    background-color:#0b0b0d;
+    background-image:
+      linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+    background-size:22px 22px;
+    background-position:0 0;
+    cursor:grab;
+  }
+  #editor.panning{cursor:grabbing}
+
+  #world{
+    position:absolute;
+    left:0;top:0;
+    width:0;height:0;
+    transform-origin:0 0;
+    will-change:transform;
+  }
+  #nodes{position:absolute;left:0;top:0;width:0;height:0}
+
+  /* SVG 连线层 */
+  #wires{
+    position:absolute;
+    left:-20000px;
+    top:-20000px;
+    width:40000px;
+    height:40000px;
+    overflow:visible;
+    pointer-events:none;
+    display:block;
+  }
+  #wires path{fill:none;stroke-linecap:round}
+  #wires .wire-glow{stroke-width:6;opacity:.10}
+  #wires .wire-core{stroke-width:1.8;opacity:.85}
+  #wires .wire-temp{stroke-width:1.8;stroke-dasharray:5 4;opacity:.8}
+  #wires .wire-hit{
+    stroke:transparent;
+    stroke-width:14;
+    pointer-events:stroke;
+    cursor:pointer;
+    transition:stroke .1s;
+  }
+  #wires .wire-hit:hover{
+    stroke:rgba(220,80,80,.22);
+  }
+
+  /* ---------- 节点 ---------- */
+  .node{
+    position:absolute;
+    left:0;top:0;
+    width:204px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--r);
+    box-shadow:0 1px 3px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.22);
+    user-select:none;
+    will-change:transform;
+    transition:border-color .12s, box-shadow .12s;
+  }
+  .node::before{
+    content:'';
+    position:absolute;
+    left:0;top:0;bottom:0;
+    width:2px;
+    background:var(--c);
+    border-radius:var(--r) 0 0 var(--r);
+    opacity:.9;
+  }
+  .node.dragging{
+    border-color:var(--border-hi);
+    box-shadow:0 4px 12px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+  }
+
+  .node-head{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    padding:7px 8px 7px 12px;
+    background:var(--panel-2);
+    border-bottom:1px solid var(--border);
+    border-radius:var(--r) var(--r) 0 0;
+    cursor:grab;
+    touch-action:none;
+  }
+  .node-head:active{cursor:grabbing}
+  .node-head .ico{
+    font-size:11px;
+    line-height:1;
+    color:var(--c);
+    width:14px;
+    text-align:center;
+    flex-shrink:0;
+    opacity:.9;
+  }
+  .node-head .name{
+    flex:1;
+    font-size:11.5px;
+    font-weight:500;
+    letter-spacing:.01em;
+    color:#d8d8de;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .node-head .close{
+    width:18px;
+    height:18px;
+    border-radius:3px;
+    border:none;
+    background:transparent;
+    color:var(--text-dim);
+    font-size:11px;
+    cursor:pointer;
+    flex-shrink:0;
+    line-height:1;
+    transition:background .12s, color .12s;
+    font-family:inherit;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+  }
+  .node-head .close:hover{
+    background:rgba(200,60,60,.18);
+    color:#e88888;
+  }
+
+  .node-body{padding:4px 0 8px}
+
+  .port-row{
+    position:relative;
+    display:flex;
+    align-items:center;
+    min-height:24px;
+    padding:0 12px;
+    font-size:10.5px;
+    color:var(--text-dim);
+    letter-spacing:.01em;
+  }
+  .port-row.out{justify-content:flex-end}
+  .plabel{white-space:nowrap}
+
+  .port{
+    position:absolute;
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:#0d0d0f;
+    border:1.5px solid var(--c);
+    cursor:crosshair;
+    transition:transform .12s, background .12s;
+    touch-action:none;
+    z-index:3;
+  }
+  .port.in{left:-5px}
+  .port.out{right:-5px}
+  .port::after{
+    content:'';
+    position:absolute;
+    inset:-9px;
+    border-radius:50%;
+  }
+  .port:hover{
+    transform:scale(1.35);
+    background:var(--c);
+  }
+  .port.invalid{opacity:.2;filter:grayscale(1)}
+
+  .param{padding:4px 12px 3px}
+  .param-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:10.5px;
+    color:var(--text-dim);
+    letter-spacing:.01em;
+    margin-bottom:4px;
+    gap:8px;
+  }
+  .param-head > span:first-child{
+    flex:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .param-head .val-input{
+    width:52px;
+    background:#0d0d0f;
+    border:1px solid var(--border);
+    border-radius:var(--r-xs);
+    color:var(--text-mid);
+    font-size:10.5px;
+    font-weight:500;
+    font-variant-numeric:tabular-nums;
+    padding:2px 5px;
+    text-align:right;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .12s, color .12s;
+    flex-shrink:0;
+  }
+  .param-head .val-input:hover{
+    border-color:var(--border-hi);
+    color:var(--text);
+  }
+  .param-head .val-input:focus{
+    border-color:var(--c);
+    color:#fff;
+  }
+  .param-head .val-input::-webkit-outer-spin-button,
+  .param-head .val-input::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+  .param-head .val-input[type=number]{
+    -moz-appearance:textfield;
+  }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:14px;
+    background:transparent;
+    cursor:pointer;
+    display:block;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:3px;
+    border-radius:2px;
+    background:#2a2a30;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    background:#c8c8ce;
+    margin-top:-4px;
+    transition:background .12s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover{
+    background:#fff;
+  }
+  input[type=range]::-moz-range-track{
+    height:3px;
+    border-radius:2px;
+    background:#2a2a30;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    border:none;
+    background:#c8c8ce;
+  }
+
+  input[type=color]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:22px;
+    border:none;
+    border-radius:var(--r-xs);
+    background:transparent;
+    cursor:pointer;
+    padding:0;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+  input[type=color]::-webkit-color-swatch{
+    border:1px solid var(--border-hi);
+    border-radius:var(--r-xs);
+  }
+  input[type=color]::-moz-color-swatch{
+    border:1px solid var(--border-hi);
+    border-radius:var(--r-xs);
+  }
+
+  /* 开关 */
+  .toggle-switch{
+    position:relative;
+    width:28px;
+    height:15px;
+    border-radius:8px;
+    background:#2a2a30;
+    cursor:pointer;
+    transition:background .15s;
+    flex-shrink:0;
+  }
+  .toggle-switch::after{
+    content:'';
+    position:absolute;
+    top:1.5px;
+    left:1.5px;
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    background:#c8c8ce;
+    transition:transform .18s cubic-bezier(.34,1.2,.64,1), background .15s;
+  }
+  .toggle-switch.on{
+    background:var(--c);
+  }
+  .toggle-switch.on::after{
+    transform:translateX(13px);
+    background:#fff;
+  }
+
+  /* ---------- 文件上传 ---------- */
+  .file-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:4px;
+  }
+  .file-btn{
+    height:24px;
+    padding:0 9px;
+    border-radius:var(--r-xs);
+    border:1px solid var(--border-hi);
+    background:#1c1c20;
+    color:#c8c8ce;
+    font-size:10.5px;
+    font-weight:500;
+    font-family:inherit;
+    cursor:pointer;
+    transition:background .12s, border-color .12s, color .12s;
+    flex-shrink:0;
+    white-space:nowrap;
+  }
+  .file-btn:hover{
+    background:#252529;
+    border-color:#4a4a52;
+    color:#fff;
+  }
+  .file-btn:active{
+    background:#2e2e34;
+  }
+  .file-btn:disabled{
+    opacity:.55;
+    cursor:wait;
+  }
+  .file-name{
+    flex:1;
+    min-width:0;
+    font-size:10px;
+    color:var(--text-dim);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    letter-spacing:.01em;
+  }
+  .file-name.ok{ color:#65b88a; }
+  .file-name.err{ color:#d87878; }
+
+  /* ---------- 画布节点 ---------- */
+  .node-canvas{
+    position:relative;
+    margin:6px 10px 6px;
+    border-radius:var(--r-sm);
+    background:#060608;
+    overflow:hidden;
+    border:1px solid var(--border);
+  }
+  .node-canvas canvas{
+    display:block;
+    width:100% !important;
+    height:100% !important;
+    touch-action:none;
+  }
+  .node-canvas .stats-badge{
+    position:absolute;
+    bottom:6px;
+    left:7px;
+    font-size:9.5px;
+    letter-spacing:.01em;
+    color:rgba(255,255,255,.5);
+    background:rgba(0,0,0,.5);
+    padding:2px 6px;
+    border-radius:var(--r-xs);
+    pointer-events:none;
+    font-variant-numeric:tabular-nums;
+    z-index:2;
+  }
+  .node-canvas .corner-tip{
+    position:absolute;
+    top:6px;
+    left:7px;
+    font-size:9px;
+    letter-spacing:.02em;
+    color:rgba(255,255,255,.4);
+    background:rgba(0,0,0,.4);
+    padding:2px 5px;
+    border-radius:var(--r-xs);
+    pointer-events:none;
+    z-index:2;
+    opacity:0;
+    transition:opacity .2s;
+  }
+  .node-canvas:hover .corner-tip{ opacity:1; }
+
+  .node-canvas .empty-msg{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:5px;
+    color:#3a3a44;
+    font-size:10.5px;
+    letter-spacing:.02em;
+    pointer-events:none;
+    z-index:1;
+  }
+  .node-canvas .empty-msg .big{
+    font-size:18px;
+    opacity:.5;
+  }
+
+  .node-canvas .canvas-btns{
+    position:absolute;
+    top:6px;
+    right:6px;
+    display:flex;
+    gap:4px;
+    z-index:4;
+    opacity:.55;
+    transition:opacity .15s;
+  }
+  .node-canvas:hover .canvas-btns{ opacity:1; }
+  .node-canvas .canvas-btns button{
+    width:22px;
+    height:22px;
+    border-radius:var(--r-xs);
+    border:1px solid rgba(255,255,255,.09);
+    background:rgba(15,15,18,.82);
+    color:rgba(255,255,255,.7);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:background .12s, border-color .12s, color .12s;
+    padding:0;
+    font-family:inherit;
+  }
+  .node-canvas .canvas-btns button:hover{
+    background:rgba(74,127,201,.85);
+    border-color:rgba(90,143,217,.8);
+    color:#fff;
+  }
+  .node-canvas .canvas-btns button:active{
+    background:rgba(74,127,201,1);
+  }
+  .node-canvas .canvas-btns button svg{
+    width:12px;
+    height:12px;
+    display:block;
+  }
+
+  .node-canvas .resize-handle{
+    position:absolute;
+    right:0;
+    bottom:0;
+    width:20px;
+    height:20px;
+    cursor:nwse-resize;
+    z-index:4;
+    display:flex;
+    align-items:flex-end;
+    justify-content:flex-end;
+    padding:3px;
+    color:rgba(255,255,255,.28);
+    touch-action:none;
+    transition:color .12s;
+  }
+  .node-canvas .resize-handle::before{
+    content:'';
+    width:8px;
+    height:8px;
+    border-right:1.5px solid currentColor;
+    border-bottom:1.5px solid currentColor;
+    border-radius:0 0 2px 0;
+  }
+  .node-canvas .resize-handle:hover{
+    color:rgba(200,200,210,.9);
+  }
+
+  /* ---------- 全屏 ---------- */
+  .canvas-fullscreen{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    background:#0a0a0b;
+    display:flex;
+    flex-direction:column;
+    opacity:0;
+    transition:opacity .15s ease;
+    pointer-events:none;
+  }
+  .canvas-fullscreen.show{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .canvas-fullscreen .fs-head{
+    height:44px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:0 16px;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+    background:#0e0e10;
+  }
+  .canvas-fullscreen .fs-title{
+    font-size:12.5px;
+    font-weight:500;
+    letter-spacing:.01em;
+    color:#d8d8de;
+  }
+  .canvas-fullscreen .fs-stats{
+    font-size:11px;
+    color:var(--text-dim);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.01em;
+  }
+  .canvas-fullscreen .fs-actions{
+    margin-left:auto;
+    display:flex;
+    gap:6px;
+  }
+  .canvas-fullscreen .fs-btn{
+    height:30px;
+    padding:0 11px;
+    border-radius:5px;
+    border:1px solid var(--border);
+    background:#18181c;
+    color:var(--text);
+    font-size:11.5px;
+    font-weight:500;
+    letter-spacing:.01em;
+    cursor:pointer;
+    transition:background .12s, border-color .12s;
+    font-family:inherit;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .canvas-fullscreen .fs-btn:hover{
+    background:#202025;
+    border-color:var(--border-hi);
+  }
+  .canvas-fullscreen .fs-btn:active{
+    background:#26262b;
+  }
+  .canvas-fullscreen .fs-btn.close:hover{
+    background:rgba(200,60,60,.18);
+    border-color:rgba(200,60,60,.4);
+    color:#e88888;
+  }
+  .canvas-fullscreen .fs-body{
+    flex:1;
+    position:relative;
+    min-height:0;
+    overflow:hidden;
+  }
+  .canvas-fullscreen .fs-body canvas{
+    display:block;
+    width:100% !important;
+    height:100% !important;
+    touch-action:none;
+  }
+
+  /* ---------- 提示 ---------- */
+  .hint{
+    position:absolute;
+    left:50%;
+    top:12px;
+    transform:translateX(-50%);
+    padding:5px 11px;
+    border-radius:var(--r-sm);
+    background:#131316;
+    border:1px solid var(--border);
+    font-size:10.5px;
+    color:var(--text-dim);
+    letter-spacing:.01em;
+    pointer-events:none;
+    white-space:nowrap;
+    transition:opacity .5s;
+    z-index:20;
+  }
+  .hint.hide{opacity:0}
+
+  /* ---------- 缩放控件 ---------- */
+  .zoomctl{
+    position:absolute;
+    right:14px;
+    bottom:14px;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    z-index:30;
+    border:1px solid var(--border);
+    border-radius:var(--r);
+    background:#131316;
+    overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  .zoomctl button{
+    width:32px;
+    height:32px;
+    border:none;
+    background:transparent;
+    color:var(--text-mid);
+    cursor:pointer;
+    transition:background .1s, color .1s;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+    font-family:inherit;
+  }
+  .zoomctl button:not(:last-child){
+    border-bottom:1px solid var(--border);
+  }
+  .zoomctl button:hover{
+    background:#1f1f24;
+    color:#e4e4e7;
+  }
+  .zoomctl button:active{
+    background:#26262b;
+  }
+  .zoomctl button svg{display:block}
+
+  /* ---------- 添加按钮 ---------- */
+  .fab{
+    position:absolute;
+    left:14px;
+    bottom:14px;
+    width:40px;
+    height:40px;
+    border-radius:var(--r);
+    border:1px solid var(--border);
+    background:#18181c;
+    color:var(--text);
+    font-size:18px;
+    font-weight:400;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:background .12s, border-color .12s;
+    z-index:40;
+    font-family:inherit;
+    padding:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  .fab:hover{
+    background:#202025;
+    border-color:var(--border-hi);
+  }
+  .fab:active{
+    background:#26262b;
+  }
+  .fab.open{
+    background:#26262b;
+    border-color:var(--border-hi);
+  }
+
+  /* ---------- 调色板 ---------- */
+  .palette{
+    position:absolute;
+    left:14px;
+    bottom:62px;
+    width:244px;
+    max-height:min(62vh,460px);
+    background:#131316;
+    border:1px solid var(--border);
+    border-radius:var(--r);
+    box-shadow:0 8px 28px rgba(0,0,0,.6);
+    padding:10px;
+    overflow-y:auto;
+    z-index:50;
+    transform-origin:bottom left;
+    transition:opacity .12s, transform .15s;
+    -webkit-overflow-scrolling:touch;
+  }
+  .palette.hidden{
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(6px) scale(.98);
+  }
+  .palette::-webkit-scrollbar{width:5px}
+  .palette::-webkit-scrollbar-thumb{
+    background:#2a2a30;
+    border-radius:3px;
+  }
+  .palette::-webkit-scrollbar-thumb:hover{
+    background:#35353c;
+  }
+
+  .pal-group{margin-bottom:12px}
+  .pal-group:last-child{margin-bottom:0}
+  .pal-title{
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    margin-bottom:6px;
+    padding:0 2px 6px 2px;
+    border-bottom:1px solid var(--border);
+  }
+  .pal-grid{display:flex;flex-direction:column;gap:1px;margin-top:4px}
+  .pal-item{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:6px 8px;
+    border-radius:var(--r-xs);
+    border:none;
+    background:transparent;
+    color:var(--text-mid);
+    font-size:11.5px;
+    font-weight:400;
+    cursor:pointer;
+    transition:background .1s, color .1s;
+    text-align:left;
+    font-family:inherit;
+    width:100%;
+    letter-spacing:.01em;
+  }
+  .pal-item:hover{
+    background:#1c1c20;
+    color:#e4e4e7;
+  }
+  .pal-item:active{
+    background:#232328;
+  }
+  .pal-item .pi{
+    width:16px;
+    height:16px;
+    border-radius:3px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:10px;
+    line-height:1;
+    color:var(--pc);
+    background:color-mix(in srgb, var(--pc) 14%, transparent);
+  }
+
+  /* ---------- 移动端 ---------- */
+  @media (max-width: 860px){
+    .brand .sub{display:none}
+    .btn{
+      padding:0 10px;
+      font-size:11.5px;
+      height:26px;
+    }
+    .hint{
+      font-size:9.5px;
+      padding:4px 10px;
+      top:8px;
+      max-width:92vw;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .zoomctl{right:10px;bottom:10px}
+    .zoomctl button{width:30px;height:30px}
+    .fab{
+      left:10px;
+      bottom:10px;
+      width:38px;
+      height:38px;
+      font-size:17px;
+    }
+    .palette{
+      left:10px;
+      right:10px;
+      width:auto;
+      bottom:56px;
+      max-height:50vh;
+    }
+    .node{width:190px}
+    .canvas-fullscreen .fs-head{
+      height:auto;
+      padding:10px 12px;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .canvas-fullscreen .fs-title{font-size:12px}
+    .canvas-fullscreen .fs-stats{font-size:10px}
+    .canvas-fullscreen .fs-btn{
+      height:28px;
+      padding:0 10px;
+      font-size:11px;
+    }
+  }
+  @media (max-width: 420px){
+    .node{width:180px}
+  }
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1>NodeForge</h1>
+      <span class="sub">程序化 3D 编辑器</span>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnReset">重置</button>
+      <button class="btn primary" id="btnAdd">添加节点</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="editor">
+      <div id="world">
+        <svg id="wires" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="nodes"></div>
+      </div>
+
+      <div class="hint" id="hint">拖拽平移 · 滚轮缩放 · 双击节点头部复制 · 点击连线删除</div>
+
+      <button class="fab" id="fabAdd" aria-label="添加节点">＋</button>
+
+      <div class="palette hidden" id="palette">
+        <div class="pal-group" data-cat="geo">
+          <div class="pal-title">几何体与模型</div>
+          <div class="pal-grid"></div>
+        </div>
+        <div class="pal-group" data-cat="modifier">
+          <div class="pal-title">修改器</div>
+          <div class="pal-grid"></div>
+        </div>
+        <div class="pal-group" data-cat="env">
+          <div class="pal-title">环境</div>
+          <div class="pal-grid"></div>
+        </div>
+        <div class="pal-group" data-cat="material">
+          <div class="pal-title">材质</div>
+          <div class="pal-grid"></div>
+        </div>
+        <div class="pal-group" data-cat="output">
+          <div class="pal-title">输出</div>
+          <div class="pal-grid"></div>
+        </div>
+      </div>
+
+      <div class="zoomctl">
+        <button id="zoomIn" aria-label="放大" title="放大">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <button id="zoomOut" aria-label="缩小" title="缩小">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M5 12h14"/>
+          </svg>
+        </button>
+        <button id="zoomFit" aria-label="适应视图" title="适应视图">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8V4h4"/>
+            <path d="M20 8V4h-4"/>
+            <path d="M4 16v4h4"/>
+            <path d="M20 16v4h-4"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+/* =========================================================
+   基础工具
+   ========================================================= */
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rad = d => d * Math.PI / 180;
+const $ = id => document.getElementById(id);
+
+const editorEl   = $('editor');
+const worldEl    = $('world');
+const nodesLayer = $('nodes');
+const wiresEl    = $('wires');
+const palette    = $('palette');
+const fabAdd     = $('fabAdd');
+const hintEl     = $('hint');
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const CANVAS_MIN_W = 150, CANVAS_MIN_H = 110;
+const CANVAS_MAX_W = 1000, CANVAS_MAX_H = 760;
+const CANVAS_DEF_W = 280, CANVAS_DEF_H = 200;
+
+/* 分类配色（克制的低饱和方案） */
+const CATS = {
+  geo:      { color:'#65b88a', label:'几何体' },
+  modifier: { color:'#d9a04f', label:'修改器' },
+  env:      { color:'#9a8ae0', label:'环境' },
+  material: { color:'#d4709c', label:'材质' },
+  output:   { color:'#5b92dd', label:'画布' },
+};
+
+const DEFAULT_MAT = new THREE.MeshStandardMaterial({
+  color: 0x8b95a8, metalness: 0.15, roughness: 0.55
+});
+DEFAULT_MAT.userData.keep = true;
+
+/* 模型缓存 */
+const modelCache = new Map();
+
+/* =========================================================
+   节点定义表
+   ========================================================= */
+const DEFS = {
+  /* ---------- 几何体 ---------- */
+  box: {
+    label: '立方体', cat: 'geo', icon: '■',
+    inputs: [],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'w', label:'宽度', type:'range', min:0.2, max:4, step:0.05, value:1.2 },
+      { key:'h', label:'高度', type:'range', min:0.2, max:4, step:0.05, value:1.2 },
+      { key:'d', label:'深度', type:'range', min:0.2, max:4, step:0.05, value:1.2 },
+    ],
+    eval: p => new THREE.BoxGeometry(p.w, p.h, p.d, 2, 2, 2),
+  },
+
+  sphere: {
+    label: '球体', cat: 'geo', icon: '●',
+    inputs: [],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'r', label:'半径', type:'range', min:0.2, max:2.5, step:0.05, value:1 },
+      { key:'detail', label:'精度', type:'range', min:1, max:6, step:1, value:4 },
+    ],
+    eval: p => new THREE.SphereGeometry(p.r, Math.round(p.detail)*8, Math.round(p.detail)*6),
+  },
+
+  cylinder: {
+    label: '圆柱体', cat: 'geo', icon: '▮',
+    inputs: [],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'rt', label:'顶半径', type:'range', min:0, max:2, step:0.05, value:0.75 },
+      { key:'rb', label:'底半径', type:'range', min:0, max:2, step:0.05, value:0.75 },
+      { key:'h',  label:'高度',   type:'range', min:0.2, max:4, step:0.05, value:1.6 },
+      { key:'seg',label:'边数',   type:'range', min:3, max:64, step:1, value:40 },
+    ],
+    eval: p => new THREE.CylinderGeometry(p.rt, p.rb, p.h, Math.round(p.seg), 1),
+  },
+
+  cone: {
+    label: '圆锥体', cat: 'geo', icon: '▲',
+    inputs: [],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'r', label:'半径', type:'range', min:0.1, max:2, step:0.05, value:0.9 },
+      { key:'h', label:'高度', type:'range', min:0.2, max:4, step:0.05, value:1.8 },
+      { key:'seg', label:'边数', type:'range', min:3, max:64, step:1, value:36 },
+    ],
+    eval: p => new THREE.ConeGeometry(p.r, p.h, Math.round(p.seg), 1),
+  },
+
+  torus: {
+    label: '圆环', cat: 'geo', icon: '○',
+    inputs: [],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'r', label:'半径', type:'range', min:0.2, max:2, step:0.05, value:1 },
+      { key:'t', label:'管径', type:'range', min:0.03, max:0.8, step:0.01, value:0.32 },
+      { key:'rs', label:'主分段', type:'range', min:3, max:64, step:1, value:32 },
+      { key:'ts', label:'管分段', type:'range', min:3, max:32, step:1, value:16 },
+    ],
+    eval: p => new THREE.TorusGeometry(p.r, p.t, Math.round(p.ts), Math.round(p.rs)),
+  },
+
+  torusKnot: {
+    label: '环面结', cat: 'geo', icon: '❊',
+    inputs: [],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'r', label:'半径', type:'range', min:0.2, max:2, step:0.05, value:0.95 },
+      { key:'t', label:'管径', type:'range', min:0.03, max:0.6, step:0.01, value:0.28 },
+      { key:'p', label:'P 系数', type:'range', min:1, max:8, step:1, value:2 },
+      { key:'q', label:'Q 系数', type:'range', min:1, max:8, step:1, value:3 },
+    ],
+    eval: p => new THREE.TorusKnotGeometry(p.r, p.t, 160, 20, Math.round(p.p), Math.round(p.q)),
+  },
+
+  /* ---------- 上传模型 ---------- */
+  model: {
+    label: '上传模型', cat: 'geo', icon: '◆',
+    inputs: [],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key: 'file', label: '模型文件', type: 'file' },
+    ],
+    eval(p, inputs, node) {
+      const entry = modelCache.get(node.id);
+      if (!entry || !entry.object) return null;
+      try {
+        return entry.object.clone(true);
+      } catch (e) {
+        console.warn('模型克隆失败:', e);
+        return null;
+      }
+    },
+  },
+
+  /* ---------- 修改器 ---------- */
+  transform: {
+    label: '变换', cat: 'modifier', icon: '⌗',
+    inputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'px', label:'位移 X', type:'range', min:-5, max:5, step:0.05, value:0 },
+      { key:'py', label:'位移 Y', type:'range', min:-5, max:5, step:0.05, value:0 },
+      { key:'pz', label:'位移 Z', type:'range', min:-5, max:5, step:0.05, value:0 },
+      { key:'rx', label:'旋转 X', type:'range', min:-180, max:180, step:1, value:0 },
+      { key:'ry', label:'旋转 Y', type:'range', min:-180, max:180, step:1, value:0 },
+      { key:'rz', label:'旋转 Z', type:'range', min:-180, max:180, step:1, value:0 },
+      { key:'s',  label:'缩放',   type:'range', min:0.1, max:3, step:0.05, value:1 },
+    ],
+    eval(p, inputs) {
+      if (!inputs.geo) return null;
+      const g = new THREE.Group();
+      const c = inputs.geo.clone();
+      c.position.set(p.px, p.py, p.pz);
+      c.rotation.set(rad(p.rx), rad(p.ry), rad(p.rz));
+      c.scale.setScalar(p.s);
+      g.add(c);
+      return g;
+    },
+  },
+
+  array: {
+    label: '阵列', cat: 'modifier', icon: '⋮⋮',
+    inputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    outputs: [{ name:'geo', label:'几何体', type:'geo' }],
+    params: [
+      { key:'count', label:'数量',     type:'range', min:1, max:16, step:1, value:5 },
+      { key:'dx',    label:'步进 X',   type:'range', min:-3, max:3, step:0.05, value:0.75 },
+      { key:'dy',    label:'步进 Y',   type:'range', min:-3, max:3, step:0.05, value:0 },
+      { key:'dz',    label:'步进 Z',   type:'range', min:-3, max:3, step:0.05, value:0 },
+      { key:'spin',  label:'旋转增量', type:'range', min:-90, max:90, step:1, value:0 },
+    ],
+    eval(p, inputs) {
+      if (!inputs.geo) return null;
+      const g = new THREE.Group();
+      const n = Math.round(p.count);
+      for (let i = 0; i < n; i++) {
+        const c = inputs.geo.clone();
+        c.position.x += i * p.dx;
+        c.position.y += i * p.dy;
+        c.position.z += i * p.dz;
+        if (p.spin) c.rotation.y += rad(p.spin * i);
+        g.add(c);
+      }
+      return g;
+    },
+  },
+
+  /* ---------- 灯光 ---------- */
+  light: {
+    label: '灯光', cat: 'env', icon: '☼',
+    inputs: [],
+    outputs: [{ name:'light', label:'灯光', type:'light' }],
+    params: [
+      { key:'ambientI', label:'环境光强度', type:'range', min:0, max:3, step:0.05, value:0.9 },
+      { key:'ambientC', label:'环境光色',   type:'color', value:'#8fb4ff' },
+      { key:'keyI',     label:'主光强度',   type:'range', min:0, max:5, step:0.05, value:2.6 },
+      { key:'keyC',     label:'主光色',     type:'color', value:'#ffffff' },
+      { key:'keyAngle', label:'主光角度',   type:'range', min:0, max:360, step:1, value:50 },
+      { key:'rimI',     label:'轮廓光强度', type:'range', min:0, max:5, step:0.05, value:2.2 },
+      { key:'rimC',     label:'轮廓光色',   type:'color', value:'#5b8cff' },
+      { key:'fillI',    label:'点光强度',   type:'range', min:0, max:80, step:0.5, value:32 },
+      { key:'fillC',    label:'点光色',     type:'color', value:'#00e0c6' },
+      { key:'warmI',    label:'暖光强度',   type:'range', min:0, max:80, step:0.5, value:22 },
+      { key:'warmC',    label:'暖光色',     type:'color', value:'#ff6b9d' },
+    ],
+    eval(p) {
+      return {
+        ambient: { intensity: p.ambientI, color: p.ambientC },
+        key:     { intensity: p.keyI,     color: p.keyC,     angle: p.keyAngle },
+        rim:     { intensity: p.rimI,     color: p.rimC },
+        fill:    { intensity: p.fillI,    color: p.fillC },
+        warm:    { intensity: p.warmI,    color: p.warmC },
+      };
+    },
+  },
+
+  /* ---------- 场景 ---------- */
+  scene: {
+    label: '场景', cat: 'env', icon: '◇',
+    inputs: [],
+    outputs: [{ name:'scene', label:'场景', type:'scene' }],
+    params: [
+      { key:'bg',        label:'背景色',   type:'color',  value:'#0a0e14' },
+      { key:'fog',       label:'雾效',     type:'toggle', value:true },
+      { key:'fogNear',   label:'雾效近端', type:'range', min:0, max:30, step:0.5, value:9 },
+      { key:'fogFar',    label:'雾效远端', type:'range', min:5, max:60, step:0.5, value:24 },
+      { key:'grid',      label:'网格',     type:'toggle', value:true },
+      { key:'autoRotate',label:'自动旋转', type:'toggle', value:true },
+      { key:'rotSpeed',  label:'旋转速度', type:'range', min:0, max:5, step:0.1, value:0.9 },
+    ],
+    eval(p) {
+      return {
+        bg: p.bg,
+        fog: !!p.fog,
+        fogNear: p.fogNear,
+        fogFar: p.fogFar,
+        grid: !!p.grid,
+        autoRotate: !!p.autoRotate,
+        rotSpeed: p.rotSpeed,
+      };
+    },
+  },
+
+  /* ---------- 材质 ---------- */
+  material: {
+    label: '材质', cat: 'material', icon: '◐',
+    inputs: [],
+    outputs: [{ name:'mat', label:'材质', type:'mat' }],
+    params: [
+      { key:'color', label:'基础色',   type:'color', value:'#5b8cff' },
+      { key:'metal', label:'金属度',   type:'range', min:0, max:1, step:0.01, value:0.82 },
+      { key:'rough', label:'粗糙度',   type:'range', min:0, max:1, step:0.01, value:0.24 },
+      { key:'emis',  label:'自发光色', type:'color', value:'#001a3d' },
+      { key:'glow',  label:'发光强度', type:'range', min:0, max:3, step:0.05, value:0.9 },
+    ],
+    eval(p) {
+      return new THREE.MeshStandardMaterial({
+        color: new THREE.Color(p.color),
+        metalness: p.metal,
+        roughness: p.rough,
+        emissive: new THREE.Color(p.emis),
+        emissiveIntensity: p.glow,
+        envMapIntensity: 1,
+      });
+    },
+  },
+
+  /* ---------- 画布 ---------- */
+  canvas: {
+    label: '画布', cat: 'output', icon: '▢',
+    inputs: [
+      { name:'geo',   label:'几何体', type:'geo' },
+      { name:'mat',   label:'材质',   type:'mat' },
+      { name:'light', label:'灯光',   type:'light' },
+      { name:'scene', label:'场景',   type:'scene' },
+    ],
+    outputs: [],
+    params: [],
+    eval() { return null; },
+  },
+};
+
+const DEFAULT_LIGHT_CFG = (() => {
+  const o = {}; DEFS.light.params.forEach(p => o[p.key] = p.value);
+  return DEFS.light.eval(o);
+})();
+const DEFAULT_SCENE_CFG = (() => {
+  const o = {}; DEFS.scene.params.forEach(p => o[p.key] = p.value);
+  return DEFS.scene.eval(o);
+})();
+
+/* =========================================================
+   图状态
+   ========================================================= */
+let nodes = [];
+let edges = [];
+let uid = 0;
+const nodeEls = new Map();
+const canvasNodeData = new Map();
+
+let panX = 40, panY = 30, scale = 1;
+
+let fullscreenNodeId = null;
+let fsOverlay = null;
+
+let pendingResUpdate = false;
+let lastCanvasScale = -1;
+
+/* =========================================================
+   模型加载
+   ========================================================= */
+async function loadModelFromFile(nodeId, file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const url = URL.createObjectURL(file);
+
+  let object = null;
+  let error = null;
+
+  try {
+    if (ext === 'glb' || ext === 'gltf') {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(url);
+      object = gltf.scene;
+    } else if (ext === 'obj') {
+      const loader = new OBJLoader();
+      object = await loader.loadAsync(url);
+    } else if (ext === 'stl') {
+      const loader = new STLLoader();
+      const geo = await loader.loadAsync(url);
+      try { geo.computeVertexNormals(); } catch(e){}
+      object = new THREE.Mesh(geo, DEFAULT_MAT);
+    } else {
+      error = '不支持的格式';
+    }
+  } catch (e) {
+    console.error('模型加载失败:', e);
+    error = '加载失败';
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+
+  if (object) {
+    const junk = [];
+    object.traverse(o => {
+      if (o.isLight || o.isCamera) junk.push(o);
+    });
+    junk.forEach(o => o.parent && o.parent.remove(o));
+
+    object.traverse(o => {
+      if (o.isMesh) {
+        const matOk = o.material && (
+          Array.isArray(o.material)
+            ? o.material.length > 0 && o.material.every(m => m && m.isMaterial)
+            : o.material.isMaterial
+        );
+        if (!matOk) o.material = DEFAULT_MAT;
+      }
+    });
+  }
+
+  const entry = {
+    object,
+    error,
+    fileName: file.name,
+    status: error ? 'error' : 'ready',
+  };
+  modelCache.set(nodeId, entry);
+  return entry;
+}
+
+/* =========================================================
+   求值引擎
+   ========================================================= */
+function evaluate(nodeId, cache, stack) {
+  if (cache.has(nodeId)) return cache.get(nodeId);
+  if (stack.has(nodeId)) return null;
+  stack.add(nodeId);
+
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) { stack.delete(nodeId); return null; }
+
+  const def = DEFS[node.type];
+  const inputs = {};
+  for (const inp of def.inputs) {
+    const edge = edges.find(e => e.to.node === nodeId && e.to.port === inp.name);
+    if (edge) inputs[inp.name] = evaluate(edge.from.node, cache, stack);
+    else inputs[inp.name] = null;
+  }
+
+  let out = null;
+  try {
+    const raw = def.eval(node.params, inputs, node);
+    if (raw && raw.isBufferGeometry) out = new THREE.Mesh(raw, DEFAULT_MAT);
+    else out = raw;
+  } catch (err) {
+    console.warn('节点求值失败:', node.type, err);
+    out = null;
+  }
+
+  stack.delete(nodeId);
+  cache.set(nodeId, out);
+  return out;
+}
+
+/* =========================================================
+   配置应用
+   ========================================================= */
+function applyLightConfig(data, cfg) {
+  const L = data.lights;
+  if (!L || !cfg) return;
+  L.ambient.intensity = cfg.ambient.intensity;
+  L.ambient.color.set(cfg.ambient.color);
+  L.key.intensity = cfg.key.intensity;
+  L.key.color.set(cfg.key.color);
+  const a = rad(cfg.key.angle);
+  const dist = 9;
+  L.key.position.set(Math.sin(a) * dist, 8, Math.cos(a) * dist);
+  L.rim.intensity = cfg.rim.intensity;
+  L.rim.color.set(cfg.rim.color);
+  L.fill.intensity = cfg.fill.intensity;
+  L.fill.color.set(cfg.fill.color);
+  L.warm.intensity = cfg.warm.intensity;
+  L.warm.color.set(cfg.warm.color);
+}
+
+function applySceneConfig(data, cfg) {
+  if (!cfg) return;
+  const bgColor = new THREE.Color(cfg.bg);
+  data.scene.background = bgColor;
+  data.renderer.setClearColor(bgColor, 1);
+  if (cfg.fog) {
+    if (!data.scene.fog || !(data.scene.fog instanceof THREE.Fog)) {
+      data.scene.fog = new THREE.Fog(bgColor.clone(), cfg.fogNear, cfg.fogFar);
+    } else {
+      data.scene.fog.color.copy(bgColor);
+      data.scene.fog.near = cfg.fogNear;
+      data.scene.fog.far = cfg.fogFar;
+    }
+  } else {
+    data.scene.fog = null;
+  }
+  if (data.grid) data.grid.visible = cfg.grid;
+  data.controls.autoRotate = cfg.autoRotate;
+  data.controls.autoRotateSpeed = cfg.rotSpeed;
+}
+
+/* =========================================================
+   画布节点
+   ========================================================= */
+function updateCanvasResolution(data) {
+  if (fullscreenNodeId === data.nodeId) return;
+  const w = data.containerEl.clientWidth;
+  const h = data.containerEl.clientHeight;
+  if (w <= 0 || h <= 0) return;
+  const pr = Math.min(window.devicePixelRatio * Math.max(scale, 0.7), 2.5);
+  data.renderer.setPixelRatio(pr);
+  data.renderer.setSize(w, h, false);
+  data.camera.aspect = w / h;
+  data.camera.updateProjectionMatrix();
+}
+
+function scheduleCanvasResolutionUpdate() {
+  if (Math.abs(scale - lastCanvasScale) < 0.002) return;
+  if (pendingResUpdate) return;
+  pendingResUpdate = true;
+  requestAnimationFrame(() => {
+    pendingResUpdate = false;
+    lastCanvasScale = scale;
+    for (const data of canvasNodeData.values()) {
+      updateCanvasResolution(data);
+    }
+  });
+}
+
+function initCanvasViewport(containerEl, nodeId) {
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true, alpha: false, powerPreference: 'high-performance'
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.setClearColor(0x0a0e14, 1);
+  containerEl.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0e14);
+  scene.fog = new THREE.Fog(0x0a0e14, 9, 24);
+
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 120);
+  camera.position.set(3.2, 2.6, 4.4);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.09;
+  controls.minDistance = 0.8;
+  controls.maxDistance = 24;
+  controls.enablePan = true;
+  controls.target.set(0, 0, 0);
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.9;
+
+  const ambient = new THREE.HemisphereLight(0x8fb4ff, 0x0a0c12, 0.9);
+  scene.add(ambient);
+
+  const key = new THREE.DirectionalLight(0xffffff, 2.6);
+  key.position.set(5, 8, 4);
+  scene.add(key);
+
+  const rim = new THREE.DirectionalLight(0x5b8cff, 2.2);
+  rim.position.set(-6, -2, -5);
+  scene.add(rim);
+
+  const fill = new THREE.PointLight(0x00e0c6, 32, 22, 2);
+  fill.position.set(-3, 2, 4);
+  scene.add(fill);
+
+  const warm = new THREE.PointLight(0xff6b9d, 22, 18, 2);
+  warm.position.set(4, -2, -3);
+  scene.add(warm);
+
+  const grid = new THREE.GridHelper(10, 20, 0x1c2536, 0x121821);
+  grid.position.y = -1.6;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.45;
+  scene.add(grid);
+
+  const dg = new THREE.BufferGeometry();
+  const N = 90;
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 6 + Math.random() * 8;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(2 * Math.random() - 1);
+    pos[i*3]   = r * Math.sin(ph) * Math.cos(th);
+    pos[i*3+1] = r * Math.cos(ph) * 0.6;
+    pos[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  dg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const stars = new THREE.Points(dg, new THREE.PointsMaterial({
+    color: 0x3b4a66, size: 0.05, transparent: true, opacity: 0.7, depthWrite: false
+  }));
+  scene.add(stars);
+
+  const badge = document.createElement('div');
+  badge.className = 'stats-badge';
+  badge.textContent = '无输入';
+  containerEl.appendChild(badge);
+
+  const tip = document.createElement('div');
+  tip.className = 'corner-tip';
+  tip.textContent = '拖动旋转 · 双击重置';
+  containerEl.appendChild(tip);
+
+  const emptyMsg = document.createElement('div');
+  emptyMsg.className = 'empty-msg';
+  emptyMsg.innerHTML = '<div class="big">▢</div><div>连接几何体</div>';
+  containerEl.appendChild(emptyMsg);
+
+  const data = {
+    nodeId,
+    renderer, scene, camera, controls, containerEl,
+    badge, emptyMsg, tip,
+    lights: { ambient, key, rim, fill, warm },
+    grid,
+    content: null, ro: null, stars,
+    _fsResize: null, _fsOrigin: null,
+  };
+
+  const resize = () => updateCanvasResolution(data);
+  const ro = new ResizeObserver(resize);
+  ro.observe(containerEl);
+  data.ro = ro;
+  resize();
+
+  return data;
+}
+
+function updateCanvasBadge(data, text) {
+  data.badge.textContent = text;
+  if (fsOverlay && fullscreenNodeId === data.nodeId) {
+    const s = fsOverlay.querySelector('.fs-stats');
+    if (s) s.textContent = text;
+  }
+}
+
+function disposeObj(obj) {
+  if (!obj) return;
+  obj.traverse(o => {
+    if (o.geometry) { try { o.geometry.dispose(); } catch(e){} }
+    if (o.material) {
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+        if (m && !m.userData.keep) { try { m.dispose(); } catch(e){} }
+      });
+    }
+  });
+}
+
+function fitCameraToContent(data) {
+  if (!data.content) return;
+  const box = new THREE.Box3().setFromObject(data.content);
+  if (box.isEmpty()) return;
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const r = Math.max(sphere.radius, 0.6);
+  const fov = data.camera.fov * Math.PI / 180;
+  const dist = r / Math.sin(fov / 2) * 0.85;
+  const dir = new THREE.Vector3(0.55, 0.45, 1).normalize();
+  data.camera.position.copy(dir.multiplyScalar(dist * 1.05));
+  data.camera.lookAt(0, 0, 0);
+  data.controls.target.set(0, 0, 0);
+  data.controls.update();
+}
+
+function rebuildCanvasNode(node, data) {
+  const def = DEFS.canvas;
+  const cache = new Map();
+  const inputs = {};
+  for (const inp of def.inputs) {
+    const edge = edges.find(e => e.to.node === node.id && e.to.port === inp.name);
+    if (edge) inputs[inp.name] = evaluate(edge.from.node, cache, new Set());
+    else inputs[inp.name] = null;
+  }
+
+  applyLightConfig(data, inputs.light || DEFAULT_LIGHT_CFG);
+  applySceneConfig(data, inputs.scene || DEFAULT_SCENE_CFG);
+
+  const obj = inputs.geo;
+
+  const hadContent = !!data.content;
+  if (data.content) {
+    data.scene.remove(data.content);
+    disposeObj(data.content);
+    data.content = null;
+  }
+
+  if (!obj) {
+    updateCanvasBadge(data, '无输入');
+    data.emptyMsg.style.display = 'flex';
+    return;
+  }
+  data.emptyMsg.style.display = 'none';
+
+  if (inputs.mat) {
+    obj.traverse(o => { if (o.isMesh) o.material = inputs.mat; });
+  }
+
+  obj.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(obj);
+  if (!box.isEmpty()) {
+    const center = box.getCenter(new THREE.Vector3());
+    obj.position.sub(center);
+    obj.updateMatrixWorld(true);
+  }
+
+  let meshes = 0, tris = 0;
+  obj.traverse(o => {
+    if (o.isMesh && o.geometry) {
+      meshes++;
+      const g = o.geometry;
+      tris += g.index ? g.index.count / 3 : ((g.attributes.position?.count || 0) / 3);
+    }
+  });
+  updateCanvasBadge(data, `${meshes} 个对象 · ${Math.round(tris).toLocaleString()} 面`);
+
+  data.content = obj;
+  data.scene.add(obj);
+
+  if (!hadContent) fitCameraToContent(data);
+}
+
+/* =========================================================
+   全屏
+   ========================================================= */
+function enterFullscreen(nodeId) {
+  const node = nodes.find(n => n.id === nodeId);
+  const data = canvasNodeData.get(nodeId);
+  if (!node || !data || fsOverlay) return;
+
+  fullscreenNodeId = nodeId;
+
+  fsOverlay = document.createElement('div');
+  fsOverlay.className = 'canvas-fullscreen';
+  fsOverlay.innerHTML = `
+    <div class="fs-head">
+      <span class="fs-title">画布预览</span>
+      <span class="fs-stats"></span>
+      <div class="fs-actions">
+        <button class="fs-btn reset">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/>
+            <path d="M3.5 4.5v5h5"/>
+          </svg>
+          重置视角
+        </button>
+        <button class="fs-btn close">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+          退出
+        </button>
+      </div>
+    </div>
+    <div class="fs-body"></div>
+  `;
+  document.body.appendChild(fsOverlay);
+
+  const body = fsOverlay.querySelector('.fs-body');
+  const fsStats = fsOverlay.querySelector('.fs-stats');
+  fsStats.textContent = data.badge.textContent;
+
+  data._fsOrigin = {
+    parent: data.containerEl,
+    nextSibling: data.renderer.domElement.nextSibling,
+  };
+
+  body.appendChild(data.renderer.domElement);
+
+  fsOverlay.querySelector('.fs-btn.close').addEventListener('click', exitFullscreen);
+  fsOverlay.querySelector('.fs-btn.reset').addEventListener('click', () => {
+    fitCameraToContent(data);
+  });
+
+  const fit = () => {
+    const w = body.clientWidth, h = body.clientHeight;
+    if (w > 0 && h > 0) {
+      data.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      data.renderer.setSize(w, h, false);
+      data.camera.aspect = w / h;
+      data.camera.updateProjectionMatrix();
+    }
+  };
+  requestAnimationFrame(fit);
+
+  data._fsResize = () => requestAnimationFrame(fit);
+  window.addEventListener('resize', data._fsResize);
+
+  requestAnimationFrame(() => fsOverlay && fsOverlay.classList.add('show'));
+}
+
+function exitFullscreen() {
+  if (!fsOverlay) return;
+
+  const data = fullscreenNodeId ? canvasNodeData.get(fullscreenNodeId) : null;
+
+  if (data) {
+    const origin = data._fsOrigin;
+    if (origin && origin.parent) {
+      try {
+        origin.parent.insertBefore(data.renderer.domElement, origin.nextSibling || null);
+      } catch(e) {
+        origin.parent.appendChild(data.renderer.domElement);
+      }
+    }
+    if (data._fsResize) {
+      window.removeEventListener('resize', data._fsResize);
+      data._fsResize = null;
+    }
+    requestAnimationFrame(() => updateCanvasResolution(data));
+    data._fsOrigin = null;
+  }
+
+  const ov = fsOverlay;
+  fsOverlay = null;
+  fullscreenNodeId = null;
+  ov.classList.remove('show');
+  setTimeout(() => ov.remove(), 200);
+}
+
+/* =========================================================
+   整体重建
+   ========================================================= */
+let pendingRebuild = false;
+function scheduleRebuild() {
+  if (pendingRebuild) return;
+  pendingRebuild = true;
+  requestAnimationFrame(() => {
+    pendingRebuild = false;
+    rebuild();
+  });
+}
+
+function rebuild() {
+  for (const node of nodes) {
+    if (node.type !== 'canvas') continue;
+    const data = canvasNodeData.get(node.id);
+    if (!data) continue;
+    rebuildCanvasNode(node, data);
+  }
+}
+
+/* =========================================================
+   参数控件
+   ========================================================= */
+function fmt(v) {
+  const n = parseFloat(v);
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2);
+}
+
+function createParamEl(node, p) {
+  const wrap = document.createElement('div');
+  wrap.className = 'param';
+
+  const head = document.createElement('div');
+  head.className = 'param-head';
+  const lbl = document.createElement('span');
+  lbl.textContent = p.label;
+  head.appendChild(lbl);
+
+  if (p.type === 'range') {
+    const valInput = document.createElement('input');
+    valInput.type = 'number';
+    valInput.className = 'val-input';
+    valInput.min = p.min;
+    valInput.max = p.max;
+    valInput.step = p.step;
+    valInput.value = fmt(node.params[p.key]);
+    valInput.title = '可直接输入';
+    valInput.addEventListener('pointerdown', e => e.stopPropagation());
+
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = p.min; input.max = p.max; input.step = p.step;
+    input.value = node.params[p.key];
+    input.addEventListener('pointerdown', e => e.stopPropagation());
+    input.addEventListener('input', () => {
+      const v = parseFloat(input.value);
+      node.params[p.key] = v;
+      valInput.value = fmt(v);
+      scheduleRebuild();
+    });
+
+    valInput.addEventListener('change', () => {
+      let v = parseFloat(valInput.value);
+      if (isNaN(v)) v = p.value;
+      v = clamp(v, p.min, p.max);
+      node.params[p.key] = v;
+      valInput.value = fmt(v);
+      input.value = v;
+      scheduleRebuild();
+    });
+
+    valInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { valInput.blur(); }
+    });
+
+    head.appendChild(valInput);
+    wrap.append(head, input);
+
+  } else if (p.type === 'color') {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = node.params[p.key];
+    input.addEventListener('pointerdown', e => e.stopPropagation());
+    input.addEventListener('input', () => {
+      node.params[p.key] = input.value;
+      scheduleRebuild();
+    });
+    wrap.append(head, input);
+
+  } else if (p.type === 'toggle') {
+    const sw = document.createElement('div');
+    sw.className = 'toggle-switch' + (node.params[p.key] ? ' on' : '');
+    sw.addEventListener('pointerdown', e => e.stopPropagation());
+    sw.addEventListener('click', e => {
+      e.stopPropagation();
+      node.params[p.key] = !node.params[p.key];
+      sw.classList.toggle('on', node.params[p.key]);
+      scheduleRebuild();
+    });
+    head.appendChild(sw);
+    wrap.appendChild(head);
+
+  } else if (p.type === 'file') {
+    wrap.appendChild(head);
+
+    const row = document.createElement('div');
+    row.className = 'file-row';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'file-btn';
+    btn.textContent = '选择文件';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'file-name';
+    const entry = modelCache.get(node.id);
+    if (entry && entry.fileName) {
+      nameEl.textContent = entry.fileName;
+      nameEl.title = entry.fileName;
+      nameEl.classList.add(entry.error ? 'err' : 'ok');
+    } else {
+      nameEl.textContent = '未选择';
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.glb,.gltf,.obj,.stl,model/gltf-binary,model/gltf+json';
+    input.style.display = 'none';
+
+    btn.addEventListener('pointerdown', e => e.stopPropagation());
+    input.addEventListener('pointerdown', e => e.stopPropagation());
+
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      input.click();
+    });
+
+    input.addEventListener('change', async e => {
+      e.stopPropagation();
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      btn.disabled = true;
+      btn.textContent = '加载中';
+      nameEl.textContent = file.name;
+      nameEl.title = file.name;
+      nameEl.classList.remove('ok', 'err');
+
+      const res = await loadModelFromFile(node.id, file);
+
+      btn.disabled = false;
+      if (res.error) {
+        btn.textContent = '重新选择';
+        nameEl.textContent = res.error;
+        nameEl.title = res.error;
+        nameEl.classList.add('err');
+      } else {
+        btn.textContent = '更换文件';
+        nameEl.textContent = res.fileName;
+        nameEl.title = res.fileName;
+        nameEl.classList.add('ok');
+      }
+
+      scheduleRebuild();
+    });
+
+    row.append(btn, nameEl, input);
+    wrap.appendChild(row);
+  }
+
+  return wrap;
+}
+
+function applyCanvasSize(node, el) {
+  const box = el.querySelector('.node-canvas');
+  if (!box) return;
+  box.style.width  = node.canvasW + 'px';
+  box.style.height = node.canvasH + 'px';
+  el.style.width = Math.max(204, node.canvasW + 22) + 'px';
+}
+
+function clearPortCache(nodeId) {
+  const el = nodeEls.get(nodeId);
+  if (!el) return;
+  el.querySelectorAll('.port').forEach(p => {
+    p._ox = undefined;
+    p._oy = undefined;
+  });
+}
+
+function createNodeEl(node) {
+  const def = DEFS[node.type];
+  const cat = CATS[def.cat];
+  const isCanvas = node.type === 'canvas';
+
+  const el = document.createElement('div');
+  el.className = 'node';
+  el.dataset.id = node.id;
+  el.style.setProperty('--c', cat.color);
+
+  const head = document.createElement('div');
+  head.className = 'node-head';
+  head.title = '双击复制节点';
+
+  const ico = document.createElement('span');
+  ico.className = 'ico';
+  ico.textContent = def.icon;
+
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = def.label;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'close';
+  closeBtn.textContent = '✕';
+  closeBtn.title = '删除节点';
+  closeBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  closeBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    deleteNode(node.id);
+  });
+
+  head.append(ico, name, closeBtn);
+
+  head.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    duplicateNode(node);
+  });
+
+  el.appendChild(head);
+
+  const body = document.createElement('div');
+  body.className = 'node-body';
+  el.appendChild(body);
+
+  def.inputs.forEach(inp => {
+    const row = document.createElement('div');
+    row.className = 'port-row in';
+
+    const port = document.createElement('div');
+    port.className = 'port in';
+    port.dataset.node = node.id;
+    port.dataset.port = inp.name;
+    port.dataset.dir = 'in';
+    port.dataset.type = inp.type;
+
+    const lbl = document.createElement('span');
+    lbl.className = 'plabel';
+    lbl.textContent = inp.label;
+
+    row.append(port, lbl);
+    body.appendChild(row);
+  });
+
+  def.params.forEach(p => body.appendChild(createParamEl(node, p)));
+
+  if (isCanvas) {
+    const box = document.createElement('div');
+    box.className = 'node-canvas';
+    box.style.width = node.canvasW + 'px';
+    box.style.height = node.canvasH + 'px';
+
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'canvas-btns';
+
+    const resetBtn = document.createElement('button');
+    resetBtn.title = '重置视角';
+    resetBtn.setAttribute('aria-label', '重置视角');
+    resetBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/>
+        <path d="M3.5 4.5v5h5"/>
+      </svg>
+    `;
+    resetBtn.addEventListener('pointerdown', e => { e.stopPropagation(); });
+    resetBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const data = canvasNodeData.get(node.id);
+      if (data) fitCameraToContent(data);
+    });
+
+    const fsBtn = document.createElement('button');
+    fsBtn.title = '全屏预览';
+    fsBtn.setAttribute('aria-label', '全屏预览');
+    fsBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8V4h4"/>
+        <path d="M20 8V4h-4"/>
+        <path d="M4 16v4h4"/>
+        <path d="M20 16v4h-4"/>
+      </svg>
+    `;
+    fsBtn.addEventListener('pointerdown', e => { e.stopPropagation(); });
+    fsBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      enterFullscreen(node.id);
+    });
+
+    btnGroup.append(resetBtn, fsBtn);
+    box.appendChild(btnGroup);
+
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    handle.title = '拖拽调整画布大小';
+    box.appendChild(handle);
+
+    handle.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+
+      const startW = node.canvasW;
+      const startH = node.canvasH;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const sc = scale;
+
+      const onMove = ev => {
+        const dw = (ev.clientX - startX) / sc;
+        const dh = (ev.clientY - startY) / sc;
+        node.canvasW = Math.round(clamp(startW + dw, CANVAS_MIN_W, CANVAS_MAX_W));
+        node.canvasH = Math.round(clamp(startH + dh, CANVAS_MIN_H, CANVAS_MAX_H));
+        applyCanvasSize(node, el);
+        clearPortCache(node.id);
+        const data = canvasNodeData.get(node.id);
+        if (data) updateCanvasResolution(data);
+        drawWires();
+      };
+
+      const onUp = ev => {
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+        handle.removeEventListener('pointercancel', onUp);
+        try { handle.releasePointerCapture(ev.pointerId); } catch(e) {}
+      };
+
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+      handle.addEventListener('pointercancel', onUp);
+    });
+
+    box.addEventListener('dblclick', e => {
+      if (e.target.closest('button') || e.target.closest('.resize-handle')) return;
+      const data = canvasNodeData.get(node.id);
+      if (data) fitCameraToContent(data);
+    });
+
+    body.appendChild(box);
+    el.style.width = Math.max(204, node.canvasW + 22) + 'px';
+  }
+
+  def.outputs.forEach(outp => {
+    const row = document.createElement('div');
+    row.className = 'port-row out';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'plabel';
+    lbl.textContent = outp.label;
+
+    const port = document.createElement('div');
+    port.className = 'port out';
+    port.dataset.node = node.id;
+    port.dataset.port = outp.name;
+    port.dataset.dir = 'out';
+    port.dataset.type = outp.type;
+
+    row.append(lbl, port);
+    body.appendChild(row);
+  });
+
+  return el;
+}
+
+function disposeCanvasData(id) {
+  const data = canvasNodeData.get(id);
+  if (!data) return;
+  try { if (data.ro) data.ro.disconnect(); } catch(e){}
+  if (data._fsResize) {
+    try { window.removeEventListener('resize', data._fsResize); } catch(e){}
+    data._fsResize = null;
+  }
+  disposeObj(data.content);
+  try { data.renderer.dispose(); } catch(e){}
+  try { data.renderer.forceContextLoss?.(); } catch(e){}
+  canvasNodeData.delete(id);
+}
+
+function syncNodes() {
+  for (const [id, el] of [...nodeEls.entries()]) {
+    if (!nodes.find(n => n.id === id)) {
+      if (fullscreenNodeId === id) exitFullscreen();
+      disposeCanvasData(id);
+      el.remove();
+      nodeEls.delete(id);
+    }
+  }
+
+  for (const node of nodes) {
+    let el = nodeEls.get(node.id);
+    if (!el) {
+      el = createNodeEl(node);
+      nodeEls.set(node.id, el);
+      nodesLayer.appendChild(el);
+
+      if (node.type === 'canvas') {
+        const box = el.querySelector('.node-canvas');
+        if (box) {
+          try {
+            const data = initCanvasViewport(box, node.id);
+            canvasNodeData.set(node.id, data);
+          } catch (err) {
+            console.error('画布视口初始化失败:', err);
+            box.innerHTML = '<div class="empty-msg" style="display:flex">WebGL 初始化失败</div>';
+          }
+        }
+      }
+    } else if (node.type === 'canvas') {
+      applyCanvasSize(node, el);
+    }
+    el.style.transform = `translate(${node.x}px, ${node.y}px)`;
+  }
+
+  drawWires();
+}
+
+/* =========================================================
+   端口位置
+   ========================================================= */
+const SVG_OFFSET = 20000;
+
+function measurePortOffset(nodeEl, portEl) {
+  const nr = nodeEl.getBoundingClientRect();
+  const pr = portEl.getBoundingClientRect();
+  const ow = nodeEl.offsetWidth;
+  if (nr.width <= 0 || pr.width <= 0 || ow <= 0) return null;
+  const s = nr.width / ow;
+  if (!isFinite(s) || s <= 0) return null;
+  return {
+    x: (pr.left + pr.width / 2 - nr.left) / s,
+    y: (pr.top + pr.height / 2 - nr.top) / s,
+  };
+}
+
+function portPos(nodeId, portName, dir) {
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return null;
+  const nodeEl = nodeEls.get(nodeId);
+  if (!nodeEl) return null;
+  const portEl = nodeEl.querySelector(`.port[data-port="${portName}"][data-dir="${dir}"]`);
+  if (!portEl) return null;
+
+  if (portEl._ox === undefined || portEl._oy === undefined) {
+    const m = measurePortOffset(nodeEl, portEl);
+    if (!m) return null;
+    portEl._ox = m.x;
+    portEl._oy = m.y;
+  }
+
+  return {
+    x: node.x + portEl._ox + SVG_OFFSET,
+    y: node.y + portEl._oy + SVG_OFFSET,
+  };
+}
+
+function edgeColor(edge) {
+  const n = nodes.find(x => x.id === edge.from.node);
+  if (!n) return '#5b92dd';
+  return CATS[DEFS[n.type].cat].color;
+}
+
+let tempLink = null;
+
+/* =========================================================
+   连线绘制
+   ========================================================= */
+const wireGroups = new Map();
+let tempWireEl = null;
+
+function makePath(cls, stroke) {
+  const p = document.createElementNS(SVG_NS, 'path');
+  p.setAttribute('class', cls);
+  if (stroke) p.setAttribute('stroke', stroke);
+  return p;
+}
+
+function computePath(a, b) {
+  const dx = Math.max(36, Math.abs(b.x - a.x) * 0.46);
+  return `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`;
+}
+
+function drawWires() {
+  const seen = new Set();
+
+  for (const e of edges) {
+    seen.add(e.id);
+
+    let g = wireGroups.get(e.id);
+    if (!g) {
+      g = document.createElementNS(SVG_NS, 'g');
+      const hit  = makePath('wire-hit');
+      const glow = makePath('wire-glow');
+      const core = makePath('wire-core');
+      g.appendChild(hit);
+      g.appendChild(glow);
+      g.appendChild(core);
+      g._hit = hit;
+      g._glow = glow;
+      g._core = core;
+      hit.addEventListener('pointerdown', ev => {
+        ev.stopPropagation();
+        deleteEdgeById(e.id);
+      });
+      wireGroups.set(e.id, g);
+      wiresEl.appendChild(g);
+    }
+
+    const a = portPos(e.from.node, e.from.port, 'out');
+    const b = portPos(e.to.node, e.to.port, 'in');
+    if (!a || !b) {
+      g.style.display = 'none';
+      continue;
+    }
+    g.style.display = '';
+    const c = edgeColor(e);
+    const d = computePath(a, b);
+    g._hit.setAttribute('d', d);
+    g._glow.setAttribute('d', d);
+    g._glow.setAttribute('stroke', c);
+    g._core.setAttribute('d', d);
+    g._core.setAttribute('stroke', c);
+  }
+
+  for (const [id, g] of [...wireGroups]) {
+    if (!seen.has(id)) {
+      g.remove();
+      wireGroups.delete(id);
+    }
+  }
+
+  if (tempLink) {
+    if (!tempWireEl) {
+      const g = document.createElementNS(SVG_NS, 'g');
+      const p = makePath('wire-temp');
+      g.appendChild(p);
+      g._p = p;
+      tempWireEl = g;
+      wiresEl.appendChild(g);
+    }
+    const d = computePath(tempLink.from, tempLink.to);
+    tempWireEl._p.setAttribute('d', d);
+    tempWireEl._p.setAttribute('stroke', tempLink.color);
+  } else if (tempWireEl) {
+    tempWireEl.remove();
+    tempWireEl = null;
+  }
+}
+
+function deleteEdgeById(id) {
+  const idx = edges.findIndex(e => e.id === id);
+  if (idx < 0) return;
+  edges.splice(idx, 1);
+  drawWires();
+  scheduleRebuild();
+}
+
+/* =========================================================
+   坐标变换
+   ========================================================= */
+function applyTransform() {
+  worldEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  const gs = 22 * scale;
+  editorEl.style.backgroundSize = `${gs}px ${gs}px, ${gs}px ${gs}px`;
+  editorEl.style.backgroundPosition = `${panX}px ${panY}px, ${panX}px ${panY}px`;
+  scheduleCanvasResolutionUpdate();
+  drawWires();
+}
+
+function zoomAt(factor, cx, cy) {
+  const ns = clamp(scale * factor, 0.25, 2.6);
+  if (ns === scale) return;
+  const wx = (cx - panX) / scale;
+  const wy = (cy - panY) / scale;
+  scale = ns;
+  panX = cx - wx * ns;
+  panY = cy - wy * ns;
+  applyTransform();
+}
+
+/* =========================================================
+   指针交互
+   ========================================================= */
+const pointers = new Map();
+let gesture = null;
+
+function onPointerDown(e) {
+  if (e.target.closest('.param')) return;
+  if (e.target.closest('.zoomctl')) return;
+  if (e.target.closest('.fab')) return;
+  if (e.target.closest('.palette')) return;
+  if (e.target.closest('.node-head .close')) return;
+  if (e.target.closest('.node-canvas')) return;
+  if (e.target.closest('.canvas-fullscreen')) return;
+
+  const wireHit = e.target.closest('.wire-hit');
+  if (wireHit) {
+    e.stopPropagation();
+    return;
+  }
+
+  editorEl.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 2) {
+    if (gesture && gesture.type === 'node' && gesture.el) {
+      gesture.el.classList.remove('dragging');
+    }
+    const [a, b] = [...pointers.values()];
+    const eRect = editorEl.getBoundingClientRect();
+    gesture = {
+      type: 'pinch',
+      dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      cx: (a.x + b.x) / 2 - eRect.left,
+      cy: (a.y + b.y) / 2 - eRect.top,
+      panX0: panX, panY0: panY, scale0: scale,
+    };
+    tempLink = null;
+    drawWires();
+    return;
+  }
+  if (pointers.size > 2) return;
+
+  const portEl = e.target.closest('.port');
+  if (portEl) {
+    const dir = portEl.dataset.dir;
+    const from = portPos(portEl.dataset.node, portEl.dataset.port, dir);
+    if (from) {
+      gesture = {
+        type: 'link',
+        pointerId: e.pointerId,
+        from,
+        origin: {
+          node: portEl.dataset.node,
+          port: portEl.dataset.port,
+          dir,
+          type: portEl.dataset.type,
+        },
+      };
+      const n = nodes.find(n => n.id === portEl.dataset.node);
+      const c = n ? CATS[DEFS[n.type].cat].color : '#5b92dd';
+      tempLink = { from, to: { ...from }, color: c };
+      highlightPorts(portEl.dataset.type, dir);
+      drawWires();
+    }
+    return;
+  }
+
+  const headEl = e.target.closest('.node-head');
+  const nodeEl = e.target.closest('.node');
+  if (headEl && nodeEl) {
+    const node = nodes.find(n => n.id === nodeEl.dataset.id);
+    if (!node) return;
+
+    nodesLayer.appendChild(nodeEl);
+
+    const eRect = editorEl.getBoundingClientRect();
+    gesture = {
+      type: 'node',
+      pointerId: e.pointerId,
+      node, el: nodeEl,
+      ox: (e.clientX - eRect.left - panX) / scale - node.x,
+      oy: (e.clientY - eRect.top - panY) / scale - node.y,
+    };
+    nodeEl.classList.add('dragging');
+    return;
+  }
+
+  if (nodeEl) return;
+
+  gesture = {
+    type: 'pan',
+    pointerId: e.pointerId,
+    sx: e.clientX, sy: e.clientY,
+    px: panX, py: panY,
+  };
+  editorEl.classList.add('panning');
+  hideHint();
+}
+
+function onPointerMove(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (gesture?.type === 'pinch') {
+    if (pointers.size < 2) return;
+    const [a, b] = [...pointers.values()];
+    const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    const eRect = editorEl.getBoundingClientRect();
+    const cx = (a.x + b.x) / 2 - eRect.left;
+    const cy = (a.y + b.y) / 2 - eRect.top;
+
+    const ns = clamp(gesture.scale0 * (dist / gesture.dist), 0.25, 2.6);
+    const wx = (gesture.cx - gesture.panX0) / gesture.scale0;
+    const wy = (gesture.cy - gesture.panY0) / gesture.scale0;
+    scale = ns;
+    panX = cx - wx * ns;
+    panY = cy - wy * ns;
+    applyTransform();
+    return;
+  }
+
+  if (!gesture || gesture.pointerId !== e.pointerId) return;
+
+  const eRect = editorEl.getBoundingClientRect();
+
+  if (gesture.type === 'pan') {
+    panX = gesture.px + (e.clientX - gesture.sx);
+    panY = gesture.py + (e.clientY - gesture.sy);
+    applyTransform();
+  }
+  else if (gesture.type === 'node') {
+    gesture.node.x = (e.clientX - eRect.left - panX) / scale - gesture.ox;
+    gesture.node.y = (e.clientY - eRect.top - panY) / scale - gesture.oy;
+    gesture.el.style.transform = `translate(${gesture.node.x}px, ${gesture.node.y}px)`;
+    drawWires();
+  }
+  else if (gesture.type === 'link' && tempLink) {
+    tempLink.to = {
+      x: (e.clientX - eRect.left - panX) / scale + SVG_OFFSET,
+      y: (e.clientY - eRect.top - panY) / scale + SVG_OFFSET,
+    };
+    drawWires();
+  }
+}
+
+function onPointerUp(e) {
+  pointers.delete(e.pointerId);
+
+  if (gesture?.type === 'pinch') {
+    if (pointers.size < 2) gesture = null;
+    return;
+  }
+  if (!gesture || gesture.pointerId !== e.pointerId) {
+    if (pointers.size === 0) gesture = null;
+    return;
+  }
+
+  if (gesture.type === 'link') {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const portEl = el && el.closest ? el.closest('.port') : null;
+    if (portEl) tryConnect(gesture.origin, portEl);
+    tempLink = null;
+    clearPortHighlight();
+    drawWires();
+  }
+  else if (gesture.type === 'node') {
+    gesture.el.classList.remove('dragging');
+  }
+  else if (gesture.type === 'pan') {
+    editorEl.classList.remove('panning');
+  }
+
+  gesture = null;
+}
+
+editorEl.addEventListener('pointerdown', onPointerDown);
+editorEl.addEventListener('pointermove', onPointerMove);
+editorEl.addEventListener('pointerup', onPointerUp);
+editorEl.addEventListener('pointercancel', e => {
+  pointers.delete(e.pointerId);
+  if (gesture?.type === 'node' && gesture.el) gesture.el.classList.remove('dragging');
+  if (gesture?.type === 'pinch' && pointers.size < 2) gesture = null;
+  else if (gesture && gesture.type !== 'pinch') gesture = null;
+  tempLink = null;
+  editorEl.classList.remove('panning');
+  clearPortHighlight();
+  drawWires();
+});
+
+function highlightPorts(type, dir) {
+  nodesLayer.querySelectorAll('.port').forEach(p => {
+    const ok = p.dataset.type === type && p.dataset.dir !== dir;
+    if (!ok) p.classList.add('invalid');
+  });
+}
+function clearPortHighlight() {
+  nodesLayer.querySelectorAll('.port.invalid').forEach(p => p.classList.remove('invalid'));
+}
+
+function wouldCycle(fromNode, toNode) {
+  const stack = [toNode];
+  const seen = new Set();
+  while (stack.length) {
+    const cur = stack.pop();
+    if (cur === fromNode) return true;
+    if (seen.has(cur)) continue;
+    seen.add(cur);
+    edges.forEach(e => { if (e.from.node === cur) stack.push(e.to.node); });
+  }
+  return false;
+}
+
+function tryConnect(origin, portEl) {
+  const target = {
+    node: portEl.dataset.node,
+    port: portEl.dataset.port,
+    dir: portEl.dataset.dir,
+    type: portEl.dataset.type,
+  };
+
+  if (origin.dir === target.dir) return;
+  if (origin.node === target.node) return;
+  if (origin.type !== target.type) return;
+
+  let a = origin, b = target;
+  if (a.dir === 'in') { a = target; b = origin; }
+
+  if (wouldCycle(a.node, b.node)) return;
+
+  edges = edges.filter(e => !(e.to.node === b.node && e.to.port === b.port));
+  edges.push({
+    id: 'e' + (uid++),
+    from: { node: a.node, port: a.port },
+    to:   { node: b.node, port: b.port },
+  });
+
+  drawWires();
+  scheduleRebuild();
+}
+
+editorEl.addEventListener('wheel', e => {
+  if (e.target.closest('.node-canvas')) return;
+  e.preventDefault();
+  const rect = editorEl.getBoundingClientRect();
+  const factor = Math.exp(-e.deltaY * 0.0016);
+  zoomAt(factor, e.clientX - rect.left, e.clientY - rect.top);
+  hideHint();
+}, { passive: false });
+
+/* =========================================================
+   节点增删 / 复制
+   ========================================================= */
+function addNode(type, x, y, overrides) {
+  const def = DEFS[type];
+  const params = {};
+  def.params.forEach(p => params[p.key] = p.value);
+  if (overrides) Object.assign(params, overrides);
+
+  const node = { id: 'n' + (uid++), type, x, y, params };
+
+  if (type === 'canvas') {
+    node.canvasW = CANVAS_DEF_W;
+    node.canvasH = CANVAS_DEF_H;
+  }
+
+  nodes.push(node);
+  syncNodes();
+  scheduleRebuild();
+  return node;
+}
+
+function duplicateNode(node) {
+  const copy = {
+    id: 'n' + (uid++),
+    type: node.type,
+    x: node.x + 28,
+    y: node.y + 28,
+    params: JSON.parse(JSON.stringify(node.params)),
+  };
+  if (node.type === 'canvas') {
+    copy.canvasW = node.canvasW;
+    copy.canvasH = node.canvasH;
+  }
+
+  const src = modelCache.get(node.id);
+  if (src) {
+    modelCache.set(copy.id, { ...src });
+  }
+
+  nodes.push(copy);
+  syncNodes();
+  scheduleRebuild();
+  return copy;
+}
+
+function autoConnect(newNode) {
+  const def = DEFS[newNode.type];
+  if (!def.outputs.length) return false;
+  const outPort = def.outputs[0];
+  if (!['geo', 'light', 'scene'].includes(outPort.type)) return false;
+
+  const canvasNodes = nodes.filter(n => n.type === 'canvas');
+  for (const cn of canvasNodes) {
+    if (cn.id === newNode.id) continue;
+    const cdef = DEFS.canvas;
+    for (const inp of cdef.inputs) {
+      if (inp.type !== outPort.type) continue;
+      edges = edges.filter(e => !(e.to.node === cn.id && e.to.port === inp.name));
+      edges.push({
+        id: 'e' + (uid++),
+        from: { node: newNode.id, port: outPort.name },
+        to: { node: cn.id, port: inp.name },
+      });
+      return true;
+    }
+  }
+  return false;
+}
+
+function deleteNode(id) {
+  if (fullscreenNodeId === id) exitFullscreen();
+  nodes = nodes.filter(n => n.id !== id);
+  edges = edges.filter(e => e.from.node !== id && e.to.node !== id);
+  disposeCanvasData(id);
+  modelCache.delete(id);
+  const el = nodeEls.get(id);
+  if (el) { el.remove(); nodeEls.delete(id); }
+  drawWires();
+  scheduleRebuild();
+}
+
+/* =========================================================
+   视图适配
+   ========================================================= */
+function fitView() {
+  if (!nodes.length) {
+    panX = 60; panY = 60; scale = 1;
+    applyTransform();
+    return;
+  }
+  const rect = editorEl.getBoundingClientRect();
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+  nodes.forEach(n => {
+    const el = nodeEls.get(n.id);
+    const w = el ? el.offsetWidth : 204;
+    const h = el ? el.offsetHeight : 200;
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + w);
+    maxY = Math.max(maxY, n.y + h);
+  });
+
+  const pad = 56;
+  const gw = (maxX - minX) + pad * 2;
+  const gh = (maxY - minY) + pad * 2;
+  const s = clamp(Math.min(rect.width / gw, rect.height / gh), 0.3, 1.15);
+
+  scale = s;
+  panX = (rect.width  - (maxX - minX) * s) / 2 - minX * s;
+  panY = (rect.height - (maxY - minY) * s) / 2 - minY * s;
+  applyTransform();
+}
+
+/* =========================================================
+   调色板
+   ========================================================= */
+function buildPalette() {
+  const groups = {
+    geo:      palette.querySelector('[data-cat="geo"] .pal-grid'),
+    modifier: palette.querySelector('[data-cat="modifier"] .pal-grid'),
+    env:      palette.querySelector('[data-cat="env"] .pal-grid'),
+    material: palette.querySelector('[data-cat="material"] .pal-grid'),
+    output:   palette.querySelector('[data-cat="output"] .pal-grid'),
+  };
+
+  Object.entries(DEFS).forEach(([key, def]) => {
+    const grid = groups[def.cat];
+    if (!grid) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'pal-item';
+    btn.style.setProperty('--pc', CATS[def.cat].color);
+
+    const pi = document.createElement('span');
+    pi.className = 'pi';
+    pi.textContent = def.icon;
+    const tx = document.createElement('span');
+    tx.textContent = def.label;
+    btn.append(pi, tx);
+
+    btn.addEventListener('click', () => {
+      const rect = editorEl.getBoundingClientRect();
+      const cx = (rect.width / 2 - panX) / scale - 120;
+      const cy = (rect.height / 2 - panY) / scale - 90;
+      const jitter = () => (Math.random() - 0.5) * 100;
+
+      const node = addNode(key, cx + jitter(), cy + jitter());
+      autoConnect(node);
+
+      syncNodes();
+      drawWires();
+      scheduleRebuild();
+      closePalette();
+      hideHint();
+    });
+
+    grid.appendChild(btn);
+  });
+}
+
+function openPalette() {
+  palette.classList.remove('hidden');
+  fabAdd.classList.add('open');
+}
+function closePalette() {
+  palette.classList.add('hidden');
+  fabAdd.classList.remove('open');
+}
+function togglePalette() {
+  if (palette.classList.contains('hidden')) openPalette();
+  else closePalette();
+}
+
+fabAdd.addEventListener('click', e => { e.stopPropagation(); togglePalette(); });
+$('btnAdd').addEventListener('click', e => { e.stopPropagation(); togglePalette(); });
+
+document.addEventListener('pointerdown', e => {
+  if (palette.classList.contains('hidden')) return;
+  if (e.target.closest('.palette') || e.target.closest('.fab') || e.target.closest('#btnAdd')) return;
+  closePalette();
+});
+
+/* =========================================================
+   提示
+   ========================================================= */
+let hintHidden = false;
+function hideHint() {
+  if (hintHidden) return;
+  hintHidden = true;
+  hintEl.classList.add('hide');
+}
+setTimeout(hideHint, 9000);
+
+/* =========================================================
+   缩放按钮
+   ========================================================= */
+$('zoomIn').addEventListener('click', () => {
+  const r = editorEl.getBoundingClientRect();
+  zoomAt(1.22, r.width / 2, r.height / 2);
+});
+$('zoomOut').addEventListener('click', () => {
+  const r = editorEl.getBoundingClientRect();
+  zoomAt(1 / 1.22, r.width / 2, r.height / 2);
+});
+$('zoomFit').addEventListener('click', () => fitView());
+
+/* =========================================================
+   渲染循环
+   ========================================================= */
+function animate() {
+  requestAnimationFrame(animate);
+
+  const eRect = editorEl.getBoundingClientRect();
+
+  for (const data of canvasNodeData.values()) {
+    let visible;
+    if (fullscreenNodeId === data.nodeId) {
+      visible = true;
+    } else if (fullscreenNodeId !== null) {
+      visible = false;
+    } else {
+      const cr = data.containerEl.getBoundingClientRect();
+      visible = !(cr.right  < eRect.left   - 40 ||
+                  cr.left   > eRect.right  + 40 ||
+                  cr.bottom < eRect.top    - 40 ||
+                  cr.top    > eRect.bottom + 40);
+    }
+    if (!visible) continue;
+
+    data.stars.rotation.y += 0.0009;
+    data.controls.update();
+    data.renderer.render(data.scene, data.camera);
+  }
+}
+requestAnimationFrame(animate);
+
+/* =========================================================
+   默认场景
+   ========================================================= */
+function resetGraph() {
+  if (fsOverlay) exitFullscreen();
+
+  for (const id of [...canvasNodeData.keys()]) disposeCanvasData(id);
+  modelCache.clear();
+  wireGroups.clear();
+  if (tempWireEl) { tempWireEl.remove(); tempWireEl = null; }
+  while (wiresEl.firstChild) wiresEl.removeChild(wiresEl.firstChild);
+
+  nodes = [];
+  edges = [];
+  uid = 0;
+  nodesLayer.innerHTML = '';
+  nodeEls.clear();
+  closePalette();
+
+  const knot = addNode('torusKnot', 40, 40, { r: 0.95, t: 0.26, p: 2, q: 3 });
+  const tr   = addNode('transform', 320, 40, { ry: 0 });
+  const out  = addNode('canvas', 660, 40);
+  const mat  = addNode('material', 40, 460, {
+    color: '#5b8cff', metal: 0.88, rough: 0.2, emis: '#001a3d', glow: 1.0
+  });
+  const lt   = addNode('light', 320, 460);
+  const sc   = addNode('scene', 600, 460);
+
+  edges.push({ id:'e'+(uid++), from:{node:knot.id, port:'geo'}, to:{node:tr.id,   port:'geo'} });
+  edges.push({ id:'e'+(uid++), from:{node:tr.id,   port:'geo'}, to:{node:out.id,  port:'geo'} });
+  edges.push({ id:'e'+(uid++), from:{node:mat.id,  port:'mat'}, to:{node:out.id,  port:'mat'} });
+  edges.push({ id:'e'+(uid++), from:{node:lt.id,   port:'light'}, to:{node:out.id, port:'light'} });
+  edges.push({ id:'e'+(uid++), from:{node:sc.id,   port:'scene'}, to:{node:out.id, port:'scene'} });
+
+  syncNodes();
+  drawWires();
+
+  requestAnimationFrame(() => {
+    fitView();
+    rebuild();
+    setTimeout(() => {
+      for (const data of canvasNodeData.values()) {
+        updateCanvasResolution(data);
+      }
+      drawWires();
+    }, 60);
+  });
+}
+
+$('btnReset').addEventListener('click', resetGraph);
+
+/* =========================================================
+   键盘
+   ========================================================= */
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (fsOverlay) { exitFullscreen(); return; }
+    closePalette();
+    return;
+  }
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'f' || e.key === 'F') fitView();
+  if (e.key === 'n' || e.key === 'N') togglePalette();
+});
+
+/* =========================================================
+   启动
+   ========================================================= */
+buildPalette();
+resetGraph();
+
+window.addEventListener('resize', () => {
+  drawWires();
+});
+
+setTimeout(() => {
+  drawWires();
+  rebuild();
+}, 300);
+
+</script>
+</body>
+</html>
