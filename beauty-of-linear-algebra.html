@@ -1,0 +1,3318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<meta name="description" content="一场关于线性代数的视觉旅程：点积、行列式、基变换、SVD、幂迭代与最小二乘。">
+<title>线性代数之美 · The Beauty of Linear Algebra</title>
+<style>
+  :root{
+    --bg:#05060a;
+    --cyan:#3fe0ff;
+    --magenta:#ff3d9a;
+    --gold:#ffd166;
+    --violet:#8b5cf6;
+    --lime:#7dffb3;
+    --text:#e8ecf5;
+    --muted:#78869b;
+    --line:rgba(255,255,255,.08);
+  }
+
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro SC","PingFang SC","Hiragino Sans GB","Segoe UI","Microsoft YaHei",sans-serif;
+    line-height:1.55;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+  .aurora{
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(55% 42% at 10% 6%, rgba(63,224,255,.10), transparent 65%),
+      radial-gradient(52% 42% at 92% 94%, rgba(255,61,154,.10), transparent 65%),
+      radial-gradient(42% 36% at 74% 18%, rgba(139,92,246,.08), transparent 70%),
+      radial-gradient(60% 50% at 50% 50%, rgba(10,14,26,.6), transparent 80%);
+  }
+  .aurora::after{
+    content:'';position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 75%);
+    -webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 75%);
+  }
+
+  .progress{
+    position:fixed;top:0;left:0;right:0;height:2px;z-index:100;
+    background:rgba(255,255,255,.04);
+  }
+  .progress-bar{
+    height:100%;width:0%;
+    background:linear-gradient(90deg,var(--cyan),var(--violet),var(--magenta));
+    box-shadow:0 0 14px rgba(63,224,255,.7);
+    transition:width .12s linear;
+  }
+
+  .nav{
+    position:fixed;top:0;left:0;right:0;z-index:90;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px clamp(16px,4vw,44px);
+    pointer-events:none;
+  }
+  .brand{
+    display:flex;align-items:center;gap:10px;
+    pointer-events:auto;text-decoration:none;color:var(--text);
+    font-size:14px;letter-spacing:.02em;
+  }
+  .brand-mark{
+    width:30px;height:30px;border-radius:9px;
+    display:grid;place-items:center;
+    font-family:ui-monospace,monospace;font-size:16px;font-weight:600;
+    color:#04121a;
+    background:linear-gradient(135deg,var(--cyan),var(--violet));
+    box-shadow:0 0 22px -4px rgba(63,224,255,.9);
+  }
+  .dots{display:flex;gap:7px;pointer-events:auto;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:70%}
+  .dot{
+    width:7px;height:7px;border-radius:50%;padding:0;border:0;cursor:pointer;
+    background:rgba(255,255,255,.2);
+    transition:.35s cubic-bezier(.2,.8,.3,1);
+    position:relative;
+  }
+  .dot:hover{background:rgba(255,255,255,.5);transform:scale(1.25)}
+  .dot.active{
+    background:var(--cyan);width:20px;border-radius:5px;
+    box-shadow:0 0 14px rgba(63,224,255,.85);
+  }
+  .dot::after{
+    content:attr(data-label);
+    position:absolute;top:16px;left:50%;transform:translateX(-50%) translateY(-4px);
+    font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.1em;
+    color:rgba(255,255,255,.75);white-space:nowrap;
+    opacity:0;pointer-events:none;
+    transition:.24s;
+    background:rgba(10,14,24,.92);padding:3px 8px;border-radius:6px;
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .dot:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .hero{
+    position:relative;
+    min-height:100vh;min-height:100svh;
+    display:grid;place-items:center;
+    overflow:hidden;
+    isolation:isolate;
+  }
+  #cvHero{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+  .hero-inner{
+    position:relative;z-index:2;text-align:center;
+    padding:0 24px;
+    animation:heroIn 1.6s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes heroIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+
+  .eyebrow{
+    font-family:ui-monospace,monospace;
+    font-size:11px;letter-spacing:.42em;text-transform:uppercase;
+    color:rgba(63,224,255,.85);
+    margin:0 0 22px;
+    padding-left:.42em;
+  }
+  .hero h1{
+    margin:0;
+    font-size:clamp(44px,12.5vw,120px);
+    font-weight:700;
+    letter-spacing:-.045em;
+    line-height:.98;
+    background:linear-gradient(120deg,#ffffff 10%,#9fe8ff 38%,#c9a8ff 62%,#ff9ecb 88%);
+    background-size:220% 100%;
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:shimmer 9s ease-in-out infinite;
+  }
+  @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .hero .sub{
+    margin:26px auto 0;
+    max-width:26ch;
+    font-size:clamp(14px,3.6vw,18px);
+    color:#95a3b8;
+    line-height:1.85;
+    letter-spacing:.01em;
+  }
+  .hero .hint{
+    margin-top:38px;
+    display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center;
+    font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:rgba(255,255,255,.35);
+  }
+  .hero .hint span{
+    padding:6px 12px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.02);
+  }
+  .scroll-hint{
+    position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    font-family:ui-monospace,monospace;
+    font-size:10px;letter-spacing:.28em;text-transform:uppercase;
+    color:rgba(255,255,255,.35);
+    z-index:2;
+  }
+  .scroll-hint .rail{
+    width:1px;height:46px;
+    background:linear-gradient(to bottom, rgba(63,224,255,.9), transparent);
+    animation:railDrop 2.4s ease-in-out infinite;
+  }
+  @keyframes railDrop{
+    0%{transform:scaleY(0);transform-origin:top;opacity:0}
+    40%{transform:scaleY(1);transform-origin:top;opacity:1}
+    70%{transform:scaleY(1);transform-origin:bottom;opacity:1}
+    100%{transform:scaleY(0);transform-origin:bottom;opacity:0}
+  }
+
+  .sec{
+    position:relative;z-index:2;
+    max-width:1200px;
+    margin:0 auto;
+    padding:clamp(70px,13vh,150px) clamp(18px,5vw,48px);
+  }
+  .head{max-width:760px}
+  .kicker{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:ui-monospace,monospace;
+    font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--cyan);
+    margin-bottom:16px;
+  }
+  .kicker::before{
+    content:'';width:26px;height:1px;background:currentColor;opacity:.65;
+  }
+  .sec h2{
+    margin:0;
+    font-size:clamp(26px,6vw,46px);
+    font-weight:650;
+    letter-spacing:-.025em;
+    line-height:1.18;
+  }
+  .lead{
+    margin:16px 0 0;
+    max-width:62ch;
+    font-size:clamp(14px,2.5vw,16.5px);
+    line-height:1.85;
+    color:var(--muted);
+  }
+  .lead b{color:#c3d2e6;font-weight:500}
+
+  .stage{
+    position:relative;
+    margin-top:30px;
+    border-radius:22px;
+    overflow:hidden;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 0%, rgba(63,224,255,.07), transparent 62%),
+      linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    border:1px solid var(--line);
+    box-shadow:
+      0 40px 90px -50px rgba(0,0,0,.95),
+      inset 0 1px 0 rgba(255,255,255,.05);
+    contain:layout paint;
+  }
+  .stage::after{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,.35));
+  }
+  .stage canvas{
+    display:block;width:100%;
+    height:clamp(290px,46vh,520px);
+    touch-action:none;
+    cursor:grab;
+    position:relative;z-index:1;
+    contain:strict;
+  }
+  .stage canvas.grabbing{cursor:grabbing}
+  .stage.tall canvas{height:clamp(320px,54vh,580px)}
+
+  .panel{
+    margin-top:22px;
+    display:flex;flex-wrap:wrap;gap:16px 28px;
+  }
+  .ctrl{flex:1 1 200px;min-width:150px}
+  .ctrl-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    margin-bottom:9px;
+    font-family:ui-monospace,monospace;font-size:12px;
+  }
+  .ctrl-head .sym{font-weight:600;font-size:14px}
+  .ctrl-head .val{color:#fff;font-variant-numeric:tabular-nums}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:5px;border-radius:3px;
+    background:rgba(255,255,255,.08);
+    outline:none;cursor:pointer;
+    transition:filter .2s;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;height:20px;border-radius:50%;
+    background:#fff;border:0;
+    box-shadow:0 0 0 5px rgba(255,255,255,.07), 0 2px 12px rgba(0,0,0,.6);
+    transition:transform .18s;
+  }
+  input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
+  input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;background:#fff;border:0;
+    box-shadow:0 0 0 5px rgba(255,255,255,.07);
+  }
+
+  .readout{
+    margin-top:20px;
+    display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;
+    font-family:ui-monospace,monospace;
+    font-size:clamp(13px,2.6vw,15px);
+    color:#93a2b8;
+  }
+  .readout b{color:#fff;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .matrix-row{
+    margin-top:26px;
+    display:flex;flex-wrap:wrap;gap:24px 40px;align-items:center;
+  }
+  .matrix{
+    position:relative;
+    display:inline-grid;grid-template-columns:1fr 1fr;
+    gap:4px 24px;
+    padding:12px 18px;
+    font-family:ui-monospace,monospace;
+    font-size:clamp(15px,3.4vw,18px);
+    color:#fff;
+    font-variant-numeric:tabular-nums;
+  }
+  .matrix::before,.matrix::after{
+    content:'';position:absolute;top:0;bottom:0;width:10px;
+    border:1.5px solid rgba(255,255,255,.28);
+  }
+  .matrix::before{left:0;border-right:0;border-radius:5px 0 0 5px}
+  .matrix::after{right:0;border-left:0;border-radius:0 5px 5px 0}
+
+  .stats{display:flex;flex-wrap:wrap;gap:22px 34px}
+  .stat{display:flex;flex-direction:column;gap:3px}
+  .stat label{
+    font-family:ui-monospace,monospace;
+    font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);
+  }
+  .stat b{
+    font-family:ui-monospace,monospace;
+    font-size:clamp(15px,3.4vw,18px);
+    font-weight:600;color:#fff;
+    font-variant-numeric:tabular-nums;
+    transition:color .3s;
+  }
+
+  .presets{
+    margin-top:26px;
+    display:flex;flex-wrap:wrap;gap:9px;
+  }
+  .presets button{
+    font-family:ui-monospace,monospace;
+    font-size:13px;
+    padding:9px 17px;
+    border-radius:999px;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.1);
+    color:#c0cee0;
+    cursor:pointer;
+    transition:.26s cubic-bezier(.2,.8,.3,1);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .presets button:hover{
+    background:rgba(63,224,255,.1);
+    border-color:rgba(63,224,255,.38);
+    color:#fff;
+    transform:translateY(-2px);
+  }
+  .presets button.active{
+    background:linear-gradient(135deg, rgba(63,224,255,.24), rgba(139,92,246,.2));
+    border-color:rgba(63,224,255,.75);
+    color:#fff;
+    box-shadow:0 0 24px -6px rgba(63,224,255,.9);
+  }
+
+  .formula-band{
+    margin-top:30px;
+    padding:22px 26px;
+    border-radius:16px;
+    background:
+      linear-gradient(135deg, rgba(63,224,255,.06), rgba(255,61,154,.05));
+    border:1px solid rgba(255,255,255,.07);
+    display:flex;flex-wrap:wrap;gap:14px 30px;align-items:center;justify-content:center;
+    font-family:ui-monospace,monospace;
+    font-size:clamp(13px,3vw,17px);
+    color:#aab6c9;
+    text-align:center;
+  }
+  .formula-band .hl{color:var(--cyan);font-weight:600}
+  .formula-band .hl2{color:var(--magenta);font-weight:600}
+  .formula-band .hl3{color:var(--gold);font-weight:600}
+  .formula-band .hl4{color:var(--lime);font-weight:600}
+
+  .tag-row{
+    margin-top:22px;
+    display:flex;flex-wrap:wrap;gap:10px;
+  }
+  .tag{
+    font-family:ui-monospace,monospace;
+    font-size:11.5px;
+    padding:6px 12px;
+    border-radius:8px;
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(255,255,255,.07);
+    color:#94a3b8;
+    letter-spacing:.02em;
+  }
+  .tag.on{color:#e8f4ff;border-color:rgba(63,224,255,.4);background:rgba(63,224,255,.08)}
+
+  .outro{
+    position:relative;z-index:2;
+    text-align:center;
+    padding:clamp(90px,18vh,190px) 24px clamp(70px,12vh,120px);
+    max-width:900px;margin:0 auto;
+  }
+  .outro .big{
+    font-size:clamp(28px,7vw,58px);
+    font-weight:650;
+    letter-spacing:-.03em;
+    line-height:1.3;
+    background:linear-gradient(120deg,#fff 15%,#9fe8ff 45%,#ff9ecb 78%);
+    background-size:220% 100%;
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:shimmer 10s ease-in-out infinite;
+  }
+  .outro p{
+    margin:26px auto 0;max-width:44ch;
+    color:var(--muted);font-size:clamp(14px,2.6vw,16px);line-height:1.9;
+  }
+  .formula{
+    margin-top:44px;
+    font-family:ui-monospace,monospace;
+    font-size:clamp(13px,3vw,17px);
+    color:rgba(255,255,255,.42);
+    letter-spacing:.06em;
+  }
+  .formula span{color:var(--cyan)}
+  footer{
+    position:relative;z-index:2;
+    text-align:center;
+    padding:0 24px 46px;
+    font-family:ui-monospace,monospace;
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:rgba(255,255,255,.22);
+  }
+
+  .reveal{
+    opacity:0;transform:translateY(26px);
+    transition:opacity .95s cubic-bezier(.2,.8,.25,1), transform .95s cubic-bezier(.2,.8,.25,1);
+  }
+  .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:640px){
+    .dots{gap:5px;max-width:60%}
+    .dot{width:6px;height:6px}
+    .dot.active{width:14px}
+    .dot::after{display:none}
+    .brand span:last-child{display:none}
+    .sec{padding-left:18px;padding-right:18px}
+    .stage{border-radius:18px}
+    .stage canvas{height:clamp(260px,40vh,340px)}
+    .stage.tall canvas{height:clamp(300px,46vh,420px)}
+    .hero .hint{font-size:10px;gap:8px}
+    .hero .hint span{padding:5px 9px}
+    .matrix-row{gap:18px 24px}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"></div>
+
+<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="nav">
+  <a class="brand" href="#hero">
+    <span class="brand-mark">λ</span>
+    <span>线性代数之美</span>
+  </a>
+  <nav class="dots" id="dots" aria-label="章节导航"></nav>
+</header>
+
+<main>
+
+  <!-- ================= HERO ================= -->
+  <section id="hero" class="hero" data-title="序">
+    <canvas id="cvHero"></canvas>
+    <div class="hero-inner">
+      <p class="eyebrow">A Visual Journey</p>
+      <h1>线性代数<br>之美</h1>
+      <p class="sub">矩阵不是一堆数字，<br>而是空间的一次呼吸。</p>
+      <div class="hint">
+        <span>点积</span>
+        <span>行列式</span>
+        <span>基变换</span>
+        <span>SVD</span>
+        <span>幂迭代</span>
+        <span>最小二乘</span>
+      </div>
+    </div>
+    <div class="scroll-hint">
+      <span>向下滚动</span>
+      <div class="rail"></div>
+    </div>
+  </section>
+
+  <!-- ================= 01 点积 ================= -->
+  <section id="dot" class="sec" data-title="点积">
+    <div class="head reveal">
+      <div class="kicker">01 — 点积与投影</div>
+      <h2>两个向量的对话</h2>
+      <p class="lead">
+        点积 <b>u·v</b> 测量的不是别的，正是 <b>u 在 v 上投下的影子有多长</b>。
+        当影子为正，两个向量"同向而行"；影子为零，它们彼此正交；影子为负，它们背道而驰。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvDot"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span>u·v = <b id="dotVal">0.00</b></span>
+      <span>|u| = <b id="dotUlen">0.00</b></span>
+      <span>|v| = <b id="dotVlen">0.00</b></span>
+      <span>θ = <b id="dotAngle">0.0°</b></span>
+      <span>投影长度 = <b id="dotProj">0.00</b></span>
+    </div>
+
+    <div class="formula-band reveal">
+      <span>u · v = |u| |v| cos θ</span>
+      <span class="hl">＝ 影子长度 × |v|</span>
+    </div>
+  </section>
+
+  <!-- ================= 02 线性组合 ================= -->
+  <section id="vec" class="sec" data-title="组合">
+    <div class="head reveal">
+      <div class="kicker">02 — 线性组合</div>
+      <h2>空间，由两个箭头撑开</h2>
+      <p class="lead">
+        选择两个数 <b>a</b> 和 <b>b</b>，把它们分别乘到基向量 <b>î</b> 与 <b>ĵ</b> 上，再相加——
+        你就抵达了平面上的任意一点。这就是「线性组合」，也是整个线性代数的起点。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvVec"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span id="vecFormula">v = 1.60 î + 1.00 ĵ</span>
+      <span>坐标 <b id="vecCoord">(1.60, 1.00)</b></span>
+    </div>
+
+    <div class="panel reveal">
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <span class="sym" style="color:var(--cyan)">a</span>
+          <span class="val" id="aVal">1.60</span>
+        </div>
+        <input id="aRange" type="range" min="-3" max="3" step="0.01" value="1.6" aria-label="系数 a">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <span class="sym" style="color:var(--magenta)">b</span>
+          <span class="val" id="bVal">1.00</span>
+        </div>
+        <input id="bRange" type="range" min="-3" max="3" step="0.01" value="1.0" aria-label="系数 b">
+      </div>
+    </div>
+
+    <div class="tag-row reveal">
+      <span class="tag on">span{î, ĵ} = ℝ²</span>
+      <span class="tag">线性无关</span>
+      <span class="tag">基向量</span>
+    </div>
+  </section>
+
+  <!-- ================= 03 线性变换 ================= -->
+  <section id="matrix" class="sec" data-title="变换">
+    <div class="head reveal">
+      <div class="kicker">03 — 线性变换</div>
+      <h2>矩阵，让空间起舞</h2>
+      <p class="lead">
+        直接拖动画面中蓝色的 <b>î</b> 和粉色的 <b>ĵ</b>，亲眼看着整个平面被拉伸、旋转、剪切。
+        网格上的每一个点都遵循同一条规则移动——这就是「矩阵乘法」真正的含义：
+        <b>它不是数字的运算，而是空间的运动。</b>
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvMat"></canvas>
+    </div>
+
+    <div class="matrix-row reveal">
+      <div class="matrix" aria-label="当前矩阵">
+        <span id="m00">1.00</span><span id="m01">0.00</span>
+        <span id="m10">0.00</span><span id="m11">1.00</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><label>det 行列式</label><b id="detVal">1.00</b></div>
+        <div class="stat"><label>面积缩放</label><b id="areaVal">1.00×</b></div>
+        <div class="stat"><label>特征值</label><b id="eigVal">1.00 / 1.00</b></div>
+      </div>
+    </div>
+
+    <div class="presets reveal" id="presets">
+      <button data-preset="identity" class="active">单位阵 I</button>
+      <button data-preset="rotate">旋转 90°</button>
+      <button data-preset="rot45">旋转 45°</button>
+      <button data-preset="shear">水平剪切</button>
+      <button data-preset="scale">非均匀缩放</button>
+      <button data-preset="reflect">反射</button>
+      <button data-preset="project">投影到 y=x</button>
+      <button data-preset="squeeze">挤压</button>
+      <button data-preset="rotSca">旋转+缩放</button>
+    </div>
+  </section>
+
+  <!-- ================= 04 行列式 ================= -->
+  <section id="det" class="sec" data-title="行列式">
+    <div class="head reveal">
+      <div class="kicker">04 — 行列式与面积</div>
+      <h2>行列式，是面积的影子</h2>
+      <p class="lead">
+        把矩阵的两列看作两个箭头 <b>u</b> 与 <b>v</b>，它们张成一个平行四边形。
+        这个平行四边形的<b>有向面积</b>，就是矩阵的行列式。
+        当面积变为零，两个向量共线，矩阵再也无法张满平面。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvDet"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span>det = <b id="detSign">0.00</b></span>
+      <span>|面积| = <b id="detArea">0.00</b></span>
+      <span>定向 = <b id="detOrient">正</b></span>
+      <span>共线程度 = <b id="detCollinear">0%</b></span>
+    </div>
+
+    <div class="tag-row reveal">
+      <span class="tag" id="tagDet1">det &gt; 0 · 保持定向</span>
+      <span class="tag" id="tagDet2">det &lt; 0 · 翻转定向</span>
+      <span class="tag" id="tagDet3">det = 0 · 降维</span>
+    </div>
+  </section>
+
+  <!-- ================= 05 矩阵复合 ================= -->
+  <section id="compose" class="sec" data-title="复合">
+    <div class="head reveal">
+      <div class="kicker">05 — 矩阵乘法</div>
+      <h2>两次变形，一次抵达</h2>
+      <p class="lead">
+        矩阵乘法 <b>AB</b> 的含义是：<b>先施加 B，再施加 A</b>。
+        空间中每个点都经过两步旅程。而 <b>AB ≠ BA</b> 几乎是常态——
+        「先旋转再剪切」和「先剪切再旋转」，会把你送到完全不同的地方。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvCompose"></canvas>
+    </div>
+
+    <div class="matrix-row reveal">
+      <div class="matrix" aria-label="矩阵 A">
+        <span id="ca00">1.20</span><span id="ca01">0.60</span>
+        <span id="ca10">0.40</span><span id="ca11">0.90</span>
+      </div>
+      <div style="font-family:ui-monospace,monospace;font-size:22px;color:var(--muted)">·</div>
+      <div class="matrix" aria-label="矩阵 B">
+        <span id="cb00">0.90</span><span id="cb01">-0.80</span>
+        <span id="cb10">0.30</span><span id="cb11">1.10</span>
+      </div>
+      <div style="font-family:ui-monospace,monospace;font-size:22px;color:var(--muted)">=</div>
+      <div class="matrix" aria-label="矩阵 AB">
+        <span id="cab00">0.00</span><span id="cab01">0.00</span>
+        <span id="cab10">0.00</span><span id="cab11">0.00</span>
+      </div>
+    </div>
+
+    <div class="formula-band reveal">
+      <span>(AB)v = A(Bv)</span>
+      <span class="hl2">先 B 后 A</span>
+      <span class="hl3">AB ≠ BA</span>
+    </div>
+  </section>
+
+  <!-- ================= 06 基变换 ================= -->
+  <section id="basis" class="sec" data-title="基变换">
+    <div class="head reveal">
+      <div class="kicker">06 — 基变换</div>
+      <h2>同一个向量，不同的语言</h2>
+      <p class="lead">
+        向量本身只是空间中一支箭，但它的<b>坐标</b>取决于你选择了哪组基。
+        标准基 <b>{î, ĵ}</b> 说的是"向右 2，向上 1"；
+        换一组基 <b>{b₁, b₂}</b>，同一支箭就换成完全不同的两个数来描述。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvBasis"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span>标准基坐标 v = <b id="basisStd">(1.60, 0.80)</b></span>
+      <span>新基坐标 [v]<sub>B</sub> = <b id="basisNew">(0.00, 0.00)</b></span>
+      <span>基变换 det = <b id="basisDet">1.00</b></span>
+    </div>
+
+    <div class="panel reveal">
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <span class="sym" style="color:var(--lime)">θ 基旋转</span>
+          <span class="val" id="basisAngleVal">30°</span>
+        </div>
+        <input id="basisRange" type="range" min="0" max="90" step="1" value="30" aria-label="基旋转角度">
+      </div>
+    </div>
+
+    <div class="formula-band reveal">
+      <span>v = x î + y ĵ</span>
+      <span class="hl4">= c₁ b₁ + c₂ b₂</span>
+      <span>[v]<sub>B</sub> = P<sup>−1</sup> v</span>
+    </div>
+  </section>
+
+  <!-- ================= 07 圆与椭圆 ================= -->
+  <section id="ellipse" class="sec" data-title="圆与椭圆">
+    <div class="head reveal">
+      <div class="kicker">07 — 特征与奇异</div>
+      <h2>单位圆，跳成一支椭圆</h2>
+      <p class="lead">
+        让矩阵缓慢地呼吸——平面上的单位圆随之被拉伸成一个椭圆。
+        椭圆的长轴长度，就是矩阵的<b>最大奇异值</b>；椭圆的面积，等于 <b>|det|</b>。
+        一个矩阵究竟对空间做了什么，看这个椭圆就够了。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvEllipse"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span>det = <b id="ellDet">1.00</b></span>
+      <span>面积缩放 <b id="ellArea">1.00×</b></span>
+      <span>奇异值 σ₁ / σ₂ = <b id="ellSigma">1.00 / 1.00</b></span>
+    </div>
+  </section>
+
+  <!-- ================= 08 秩与零空间 ================= -->
+  <section id="rank" class="sec" data-title="秩与零空间">
+    <div class="head reveal">
+      <div class="kicker">08 — 秩与零空间</div>
+      <h2>当空间被压成一条线</h2>
+      <p class="lead">
+        有些矩阵会"吃掉"整个方向。当两列变得线性相关，平面被压扁成一条线——
+        这就是<b>降秩</b>。被压成零的那些向量，构成了<b>零空间（核）</b>。
+        青色方向就是零空间，它是这个变换的"盲区"。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvRank"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span>t = <b id="rankT">0.00</b></span>
+      <span>det = <b id="rankDet">1.00</b></span>
+      <span>秩 rank = <b id="rankVal">2</b></span>
+      <span>零空间维数 = <b id="rankNull">0</b></span>
+    </div>
+
+    <div class="formula-band reveal">
+      <span>rank + nullity = n</span>
+      <span class="hl">降秩 ⇔ det = 0</span>
+      <span class="hl3">零空间：Av = 0</span>
+    </div>
+  </section>
+
+  <!-- ================= 09 SVD ================= -->
+  <section id="svd" class="sec" data-title="SVD">
+    <div class="head reveal">
+      <div class="kicker">09 — 奇异值分解</div>
+      <h2>任何矩阵，都是"旋转·拉伸·旋转"</h2>
+      <p class="lead">
+        这是线性代数最优雅的定理：<b>任何一个矩阵</b>都能写成
+        <b>A = U Σ V<sup>T</sup></b> —— 先旋转，再沿坐标轴拉伸，最后再旋转。
+        动画依次分解为三步：先施加 <b>V<sup>T</sup></b>，再施加 <b>Σ</b>，最后施加 <b>U</b>。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvSvd"></canvas>
+    </div>
+
+    <div class="matrix-row reveal">
+      <div class="matrix" aria-label="矩阵 A">
+        <span id="svdA00">1.30</span><span id="svdA01">0.70</span>
+        <span id="svdA10">0.40</span><span id="svdA11">1.50</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><label>σ₁</label><b id="svdS1">1.97</b></div>
+        <div class="stat"><label>σ₂</label><b id="svdS2">0.85</b></div>
+        <div class="stat"><label>条件数 σ₁/σ₂</label><b id="svdCond">2.32</b></div>
+      </div>
+    </div>
+
+    <div class="readout reveal">
+      <span>阶段：<b id="svdPhase">单位圆</b></span>
+      <span>当前变换 det = <b id="svdCurDet">1.00</b></span>
+    </div>
+
+    <div class="formula-band reveal">
+      <span class="hl">V<sup>T</sup></span> 旋转
+      <span class="hl3">Σ</span> 拉伸
+      <span class="hl2">U</span> 旋转
+      <span>= A</span>
+    </div>
+  </section>
+
+  <!-- ================= 10 线性方程组 ================= -->
+  <section id="solve" class="sec" data-title="方程组">
+    <div class="head reveal">
+      <div class="kicker">10 — 线性方程组</div>
+      <h2>给定目标 b，反解 x</h2>
+      <p class="lead">
+        方程 <b>A x = b</b> 的几何含义是：给定目标向量 <b>b</b>，找到一组系数 <b>x = (x₁, x₂)</b>，
+        使得 <b>x₁ · 第一列 + x₂ · 第二列 = b</b>。
+        <br><br>这正是线性组合的<b>反问题</b>：组合我们知道，系数才是未知数。
+        拖动金色 <b>b</b>，看它被两列"瓜分"的比例如何变化。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvSolve"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span>b = <b id="solveB">(1.60, 1.00)</b></span>
+      <span>x₁ = <b id="solveX1">0.00</b></span>
+      <span>x₂ = <b id="solveX2">0.00</b></span>
+      <span>det A = <b id="solveDet">1.62</b></span>
+    </div>
+
+    <div class="formula-band reveal">
+      <span>X₁ · <span class="hl">c₁</span> + X₂ · <span class="hl2">c₂</span> = b</span>
+      <span class="hl3">x = A⁻¹ b</span>
+    </div>
+  </section>
+
+  <!-- ================= 11 幂迭代 ================= -->
+  <section id="power" class="sec" data-title="幂迭代">
+    <div class="head reveal">
+      <div class="kicker">11 — 幂迭代</div>
+      <h2>反复施加矩阵，向量会"长大"</h2>
+      <p class="lead">
+        随手取一个向量 <b>v</b>，反复施加同一个矩阵，并归一化长度。
+        无论起点在哪里，向量方向最终都会不由自主地转向<b>主特征向量</b>的方向，
+        而它的长度增长速率则趋近于<b>最大特征值 λ₁</b>。
+        <br><br>这就是 Google PageRank、主成分分析、马尔可夫链背后共同的算法——幂迭代。
+        点击画布可重新随机起点。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvPower"></canvas>
+    </div>
+
+    <div class="readout reveal">
+      <span>迭代次数 k = <b id="powerK">0</b></span>
+      <span>与主特征向量夹角 = <b id="powerAngle">45.0°</b></span>
+      <span>估计 λ₁ = <b id="powerLambda">0.00</b></span>
+      <span>真实 λ₁ = <b id="powerTrue">1.747</b></span>
+    </div>
+
+    <div class="formula-band reveal">
+      <span>v<sub>k+1</sub> = A v<sub>k</sub> / ‖A v<sub>k</sub>‖</span>
+      <span class="hl3">v<sub>k</sub> → v₁ · λ₁<sup>k</sup></span>
+    </div>
+
+    <div class="presets reveal" id="powerPresets">
+      <button data-powerpreset="sym" class="active">对称矩阵</button>
+      <button data-powerpreset="nonsym">非对称矩阵</button>
+      <button data-powerpreset="slow">特征值接近</button>
+      <button data-powerpreset="reset">重新开始</button>
+    </div>
+  </section>
+
+  <!-- ================= 12 最小二乘 ================= -->
+  <section id="lsq" class="sec" data-title="最小二乘">
+    <div class="head reveal">
+      <div class="kicker">12 — 正交投影与最小二乘</div>
+      <h2>当数据不可能完美共线</h2>
+      <p class="lead">
+        现实中的数据总有噪声，没有任何直线能穿过所有点。
+        但我们可以寻找一条"残差平方和最小"的直线——这就是<b>最小二乘</b>。
+        <br><br>它的几何含义是：把观测向量 <b>b</b> 正交投影到 <b>A</b> 的列空间上。
+        残差向量 <b>e = b − A x̂</b> 垂直于这个列空间，正是"最短距离"的含义。
+      </p>
+    </div>
+
+    <div class="stage reveal">
+      <canvas id="cvLsq"></canvas>
+    </div>
+
+    <div class="matrix-row reveal">
+      <div class="stats">
+        <div class="stat"><label>斜率 m</label><b id="lsqM">0.70</b></div>
+        <div class="stat"><label>截距 c</label><b id="lsqC">0.50</b></div>
+        <div class="stat"><label>残差平方和 SSE</label><b id="lsqSSE">0.00</b></div>
+        <div class="stat"><label>R²</label><b id="lsqR2">0.00</b></div>
+      </div>
+    </div>
+
+    <div class="formula-band reveal">
+      <span>A<sup>T</sup> A x̂ = A<sup>T</sup> b</span>
+      <span class="hl3">正规方程</span>
+      <span class="hl2">A<sup>T</sup> e = 0</span>
+    </div>
+  </section>
+
+  <!-- ================= 13 三维空间 ================= -->
+  <section id="space3d" class="sec" data-title="三维">
+    <div class="head reveal">
+      <div class="kicker">13 — 三维空间</div>
+      <h2>立方体在矩阵里旋转</h2>
+      <p class="lead">
+        线性变换从不局限于平面。在三维中，矩阵是一个 <b>3×3 的数字方块</b>，
+        它可以把立方体拉长、压扁、旋转、剪切。
+        <br><br>拖动旋转视角，或选择下方预设变换，观察立方体如何被重塑。
+      </p>
+    </div>
+
+    <div class="stage tall reveal">
+      <canvas id="cv3d"></canvas>
+    </div>
+
+    <div class="presets reveal" id="presets3d">
+      <button data-preset3d="identity" class="active">单位阵 I</button>
+      <button data-preset3d="rotY">绕 Y 轴旋转</button>
+      <button data-preset3d="rotX">绕 X 轴旋转</button>
+      <button data-preset3d="scale">缩放 (1.6, 0.7, 1.2)</button>
+      <button data-preset3d="shear">剪切</button>
+      <button data-preset3d="reflect">反射</button>
+      <button data-preset3d="stretch">拉伸</button>
+      <button data-preset3d="squash">压扁</button>
+    </div>
+  </section>
+
+  <!-- ================= 尾声 ================= -->
+  <section class="outro" id="outro" data-title="尾声">
+    <div class="big reveal">每一个矩阵，<br>都是一次空间的呼吸</div>
+    <p class="reveal">
+      当你再看到一个矩阵时，<br>
+      请不要只看到方括号里的数字。<br>
+      去看那片被拉伸、旋转、折叠的平面——<br>
+      去看那些岿然不动的特征方向。
+    </p>
+    <div class="formula reveal">
+      <span>A</span> v = λ v
+    </div>
+  </section>
+
+  <footer>Made with canvas &amp; math · 线性代数之美</footer>
+
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ============================================================
+     基础工具
+  ============================================================ */
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const fmt = v => (Math.abs(v) < 5e-3 ? 0 : v).toFixed(2);
+  const setText = (el, v) => { if (el && el.textContent !== v) el.textContent = v; };
+  const TAU = Math.PI * 2;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smoothstep = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+  const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  /* 2x2 矩阵工具：[a,b,c,d] = [[a,b],[c,d]] */
+  const mul2 = (A, B) => [
+    A[0] * B[0] + A[1] * B[2],
+    A[0] * B[1] + A[1] * B[3],
+    A[2] * B[0] + A[3] * B[2],
+    A[2] * B[1] + A[3] * B[3]
+  ];
+  const apply2 = (M, x, y) => [M[0] * x + M[1] * y, M[2] * x + M[3] * y];
+  const lerp2 = (A, B, t) => A.map((v, i) => lerp(v, B[i], t));
+  const det2 = M => M[0] * M[3] - M[1] * M[2];
+
+  /* 3x3 矩阵工具 */
+  const mul3 = (A, B) => {
+    const C = new Array(9);
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++)
+        C[i * 3 + j] = A[i * 3] * B[j] + A[i * 3 + 1] * B[3 + j] + A[i * 3 + 2] * B[6 + j];
+    return C;
+  };
+  const apply3 = (M, v) => [
+    M[0] * v[0] + M[1] * v[1] + M[2] * v[2],
+    M[3] * v[0] + M[4] * v[1] + M[5] * v[2],
+    M[6] * v[0] + M[7] * v[1] + M[8] * v[2]
+  ];
+
+  /* 2x2 SVD：返回 {s1,s2,V,Vt,U,S}，满足 A = U Σ Vᵀ */
+  function svd2(A) {
+    const [a, b, c, d] = A;
+    /* AᵀA 的特征分解 */
+    const m00 = a * a + c * c;
+    const m01 = a * b + c * d;
+    const m11 = b * b + d * d;
+    const tr = m00 + m11;
+    const dt = m00 * m11 - m01 * m01;
+    const disc = Math.sqrt(Math.max(0, tr * tr / 4 - dt));
+    const l1 = tr / 2 + disc, l2 = tr / 2 - disc;
+    const s1 = Math.sqrt(Math.max(0, l1));
+    const s2 = Math.sqrt(Math.max(0, l2));
+
+    let v1x, v1y;
+    if (Math.abs(m01) > 1e-9) { v1x = m01; v1y = l1 - m00; }
+    else if (m00 >= m11) { v1x = 1; v1y = 0; }
+    else { v1x = 0; v1y = 1; }
+    const n1 = Math.hypot(v1x, v1y) || 1;
+    v1x /= n1; v1y /= n1;
+    const v2x = -v1y, v2y = v1x;
+
+    let u1x = a * v1x + b * v1y;
+    let u1y = c * v1x + d * v1y;
+    if (s1 > 1e-9) { u1x /= s1; u1y /= s1; }
+    let u2x = -u1y, u2y = u1x;
+    if (det2(A) < 0) { u2x = -u2x; u2y = -u2y; }
+
+    return {
+      s1, s2,
+      V: [v1x, v2x, v1y, v2y],
+      Vt: [v1x, v1y, v2x, v2y],
+      U: [u1x, u2x, u1y, u2y],
+      S: [s1, 0, 0, s2]
+    };
+  }
+
+  /* 2x2 特征分解（实特征值情形） */
+  function eig2(A) {
+    const [a, b, c, d] = A;
+    const tr = a + d;
+    const det = a * d - b * c;
+    const disc = Math.max(0, tr * tr - 4 * det);
+    const l1 = (tr + Math.sqrt(disc)) / 2;
+    const l2 = (tr - Math.sqrt(disc)) / 2;
+    const getV = l => {
+      let x, y;
+      if (Math.abs(b) > 1e-9) { x = b; y = l - a; }
+      else if (Math.abs(c) > 1e-9) { x = l - d; y = c; }
+      else { x = 1; y = 0; }
+      const n = Math.hypot(x, y) || 1;
+      return [x / n, y / n];
+    };
+    return { l1, l2, v1: getV(l1), v2: getV(l2), disc };
+  }
+
+  /* 带种子随机 */
+  function makeRand(seed) {
+    let s = seed;
+    return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  }
+
+  /* ============================================================
+     Stage 基类 + 统一渲染循环
+  ============================================================ */
+  const stages = [];
+  let visibleCount = 0;
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      const st = e.target.__stage;
+      if (!st) return;
+      const was = st.visible;
+      st.visible = e.isIntersecting;
+      if (was !== st.visible) visibleCount += st.visible ? 1 : -1;
+    });
+  }, { rootMargin: '160px 0px' });
+
+  class Stage {
+    constructor(canvas) {
+      this.cv = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.w = 1; this.h = 1;
+      this.visible = true;
+      this.time = 0;
+      canvas.__stage = this;
+      this._ro = new ResizeObserver(() => this.resize());
+      this._ro.observe(canvas);
+      this.resize();
+      stages.push(this);
+      visibleCount++;
+      io.observe(canvas);
+      if (this.init) this.init();
+    }
+    resize() {
+      const r = this.cv.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;
+      this.w = r.width;
+      this.h = r.height;
+      this.cv.width = Math.round(r.width * DPR);
+      this.cv.height = Math.round(r.height * DPR);
+    }
+    tick(dt) {
+      if (!this.visible) return;
+      this.time += dt;
+      const ctx = this.ctx;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      this.draw(dt, this.time);
+    }
+  }
+
+  let lastT = performance.now();
+  let hidden = false;
+
+  document.addEventListener('visibilitychange', () => {
+    hidden = document.hidden;
+    if (!hidden) lastT = performance.now();
+  });
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (hidden) return;
+    const dt = Math.min((now - lastT) / 1000, 0.05);
+    lastT = now;
+    for (let i = 0; i < stages.length; i++) stages[i].tick(dt);
+  }
+
+  /* ============================================================
+     通用绘制
+  ============================================================ */
+  function drawArrow(ctx, x0, y0, x1, y1, color, lw = 2.2, head = 11) {
+    const dx = x1 - x0, dy = y1 - y0;
+    const len = Math.hypot(dx, dy);
+    if (len < 1.2) return;
+    const ux = dx / len, uy = dy / len;
+    const hl = Math.min(head, len * 0.62);
+    const bx = x1 - ux * hl, by = y1 - uy * hl;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(bx - uy * hl * 0.52, by + ux * hl * 0.52);
+    ctx.lineTo(bx + uy * hl * 0.52, by - ux * hl * 0.52);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGrid(ctx, w, h, ox, oy, unit, R, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = -R; i <= R; i++) {
+      const x = ox + i * unit;
+      ctx.moveTo(x, 0); ctx.lineTo(x, h);
+      const y = oy - i * unit;
+      ctx.moveTo(0, y); ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+  }
+
+  function drawTransformedGrid(ctx, M, P, R, color, lw = 1) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    for (let i = -R; i <= R; i++) {
+      const a1 = apply2(M, i, -R), a2 = apply2(M, i, R);
+      const p1 = P(a1[0], a1[1]), p2 = P(a2[0], a2[1]);
+      ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]);
+      const b1 = apply2(M, -R, i), b2 = apply2(M, R, i);
+      const q1 = P(b1[0], b1[1]), q2 = P(b2[0], b2[1]);
+      ctx.moveTo(q1[0], q1[1]); ctx.lineTo(q2[0], q2[1]);
+    }
+    ctx.stroke();
+  }
+
+  function drawAxes(ctx, w, h, ox, oy) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, oy); ctx.lineTo(w, oy);
+    ctx.moveTo(ox, 0); ctx.lineTo(ox, h);
+    ctx.stroke();
+  }
+
+  function drawHandle(ctx, x, y, color, time) {
+    const pulse = 0.6 + 0.4 * Math.sin(time * 3);
+    ctx.beginPath();
+    ctx.arc(x, y, 8 + pulse * 3, 0, TAU);
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, TAU);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 16;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  const MONO = '600 12px ui-monospace, SFMono-Regular, Menlo, monospace';
+
+  /* ============================================================
+     HERO — 流场粒子
+  ============================================================ */
+  const HERO_COLORS = [];
+  for (let i = 0; i <= 48; i++) {
+    const t = i / 48;
+    HERO_COLORS.push(`hsl(${188 + t * 145}, 100%, ${60 + t * 10}%)`);
+  }
+
+  class HeroStage extends Stage {
+    init() {
+      const isSmall = Math.min(window.innerWidth, window.innerHeight) < 760;
+      const n = isSmall ? 380 : 820;
+      this.parts = new Array(n);
+      for (let i = 0; i < n; i++) this.parts[i] = this.spawn(true);
+    }
+    spawn(spread) {
+      const r = spread ? Math.sqrt(Math.random()) * 1.05 : Math.pow(Math.random(), 1.6) * 0.09;
+      const a = Math.random() * TAU;
+      return { x: Math.cos(a) * r, y: Math.sin(a) * r };
+    }
+    draw(dt, t) {
+      const ctx = this.ctx, w = this.w, h = this.h;
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'rgba(0,0,0,0.085)';
+      ctx.fillRect(0, 0, w, h);
+      const cx = w / 2, cy = h / 2;
+      const Rd = Math.hypot(w, h) * 0.5;
+      const th = t * 0.26;
+      const sh = 0.62 * Math.sin(t * 0.42);
+      const ca = Math.cos(th), sa = Math.sin(th);
+      const m00 = ca, m01 = ca * sh - sa;
+      const m10 = sa, m11 = sa * sh + ca;
+      const speed = 0.52;
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < this.parts.length; i++) {
+        const p = this.parts[i];
+        const vx = m00 * p.x + m01 * p.y;
+        const vy = m10 * p.x + m11 * p.y;
+        p.x += vx * dt * speed;
+        p.y += vy * dt * speed;
+        const r = Math.hypot(p.x, p.y);
+        if (r > 1.12) {
+          const np = this.spawn(false);
+          p.x = np.x; p.y = np.y;
+          continue;
+        }
+        const idx = Math.min(48, (r * 43) | 0);
+        const px = cx + p.x * Rd;
+        const py = cy - p.y * Rd;
+        ctx.globalAlpha = 0.16 + 0.72 * (r / 1.12);
+        ctx.fillStyle = HERO_COLORS[idx];
+        ctx.beginPath();
+        ctx.arc(px, py, 0.9 + r * 1.5, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  /* ============================================================
+     01 — 点积
+  ============================================================ */
+  const elDotVal = document.getElementById('dotVal');
+  const elDotUlen = document.getElementById('dotUlen');
+  const elDotVlen = document.getElementById('dotVlen');
+  const elDotAngle = document.getElementById('dotAngle');
+  const elDotProj = document.getElementById('dotProj');
+
+  class DotStage extends Stage {
+    init() {
+      this.u = [2.2, 1.2]; this.v = [1.4, -1.2];
+      this.tu = [2.2, 1.2]; this.tv = [1.4, -1.2];
+      this.drag = null;
+      this._bind();
+      this._sync();
+    }
+    _unit() { return Math.min(this.w, this.h) / 8.5; }
+    _world(e) {
+      const r = this.cv.getBoundingClientRect();
+      const unit = this._unit();
+      return {
+        x: (e.clientX - r.left - this.w / 2) / unit,
+        y: (this.h / 2 - (e.clientY - r.top)) / unit
+      };
+    }
+    _hit(e) {
+      const p = this._world(e);
+      const unit = this._unit();
+      const d1 = Math.hypot((p.x - this.tu[0]) * unit, (p.y - this.tu[1]) * unit);
+      const d2 = Math.hypot((p.x - this.tv[0]) * unit, (p.y - this.tv[1]) * unit);
+      const T = 52;
+      if (d1 < T && d1 <= d2) return 'u';
+      if (d2 < T) return 'v';
+      return null;
+    }
+    _bind() {
+      const cv = this.cv;
+      const down = e => {
+        const hit = this._hit(e);
+        if (!hit) return;
+        this.drag = hit;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.add('grabbing');
+      };
+      const move = e => {
+        if (!this.drag) return;
+        const p = this._world(e);
+        const x = clamp(p.x, -3.6, 3.6), y = clamp(p.y, -3.6, 3.6);
+        if (this.drag === 'u') { this.tu[0] = x; this.tu[1] = y; }
+        else { this.tv[0] = x; this.tv[1] = y; }
+        this._sync();
+      };
+      const up = e => {
+        this.drag = null;
+        try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.remove('grabbing');
+      };
+      cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
+    _sync() {
+      const u = this.tu, v = this.tv;
+      const dot = u[0] * v[0] + u[1] * v[1];
+      const lu = Math.hypot(u[0], u[1]);
+      const lv = Math.hypot(v[0], v[1]);
+      const ang = (lu < 1e-6 || lv < 1e-6) ? 0 : Math.acos(clamp(dot / (lu * lv), -1, 1)) * 180 / Math.PI;
+      setText(elDotVal, fmt(dot));
+      setText(elDotUlen, lu.toFixed(2));
+      setText(elDotVlen, lv.toFixed(2));
+      setText(elDotAngle, ang.toFixed(1) + '°');
+      setText(elDotProj, (lv < 1e-6 ? 0 : dot / lv).toFixed(2));
+      if (elDotVal) elDotVal.style.color =
+        Math.abs(dot) < 0.05 ? '#ffd166' : (dot > 0 ? '#7dffb3' : '#ff3d9a');
+    }
+    draw(dt) {
+      const k = 1 - Math.exp(-dt * 12);
+      this.u[0] += (this.tu[0] - this.u[0]) * k;
+      this.u[1] += (this.tu[1] - this.u[1]) * k;
+      this.v[0] += (this.tv[0] - this.v[0]) * k;
+      this.v[1] += (this.tv[1] - this.v[1]) * k;
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = this._unit(), ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 5, 'rgba(255,255,255,0.045)');
+      drawAxes(ctx, w, h, ox, oy);
+      const u = this.u, v = this.v;
+      const O = S(0, 0), U = S(u[0], u[1]), V = S(v[0], v[1]);
+      const vv = v[0] * v[0] + v[1] * v[1];
+      const dot = u[0] * v[0] + u[1] * v[1];
+      const P = S(v[0] * (vv < 1e-6 ? 0 : dot / vv), v[1] * (vv < 1e-6 ? 0 : dot / vv));
+      if (Math.hypot(v[0], v[1]) > 0.2) {
+        const ln = Math.hypot(v[0], v[1]);
+        const ux = v[0] / ln, uy = v[1] / ln;
+        const p1 = S(ux * 6.5, uy * 6.5), p2 = S(-ux * 6.5, -uy * 6.5);
+        ctx.setLineDash([3, 8]);
+        ctx.strokeStyle = 'rgba(255,61,154,0.22)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.setLineDash([5, 6]);
+      ctx.strokeStyle = 'rgba(255,209,102,0.5)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(U[0], U[1]); ctx.lineTo(P[0], P[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawArrow(ctx, O[0], O[1], P[0], P[1], '#ffd166', 2.8, 12);
+      const pulse = 0.5 + 0.5 * Math.sin(this.time * 3);
+      ctx.beginPath();
+      ctx.arc(P[0], P[1], 6 + pulse * 4, 0, TAU);
+      ctx.strokeStyle = `rgba(255,209,102,${0.5 - pulse * 0.35})`;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      drawArrow(ctx, O[0], O[1], V[0], V[1], '#ff3d9a', 3, 13);
+      drawArrow(ctx, O[0], O[1], U[0], U[1], '#3fe0ff', 3, 13);
+      const lu = Math.hypot(u[0], u[1]), lv = Math.hypot(v[0], v[1]);
+      if (lu > 0.3 && lv > 0.3) {
+        const au = Math.atan2(u[1], u[0]);
+        const av = Math.atan2(v[1], v[0]);
+        let diff = av - au;
+        while (diff > Math.PI) diff -= TAU;
+        while (diff < -Math.PI) diff += TAU;
+        const r = Math.min(unit * 1.4, 60);
+        const a0 = -au, a1 = -(au + diff);
+        ctx.beginPath();
+        ctx.arc(ox, oy, r, Math.min(a0, a1), Math.max(a0, a1), false);
+        ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+      drawHandle(ctx, U[0], U[1], '#3fe0ff', this.time);
+      drawHandle(ctx, V[0], V[1], '#ff3d9a', this.time);
+      ctx.font = MONO;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(63,224,255,0.95)';
+      ctx.fillText('u', U[0] + 16, U[1] - 16);
+      ctx.fillStyle = 'rgba(255,61,154,0.95)';
+      ctx.fillText('v', V[0] + 16, V[1] - 16);
+      ctx.fillStyle = 'rgba(255,209,102,0.95)';
+      ctx.fillText('proj', P[0] + 24, P[1] - 12);
+    }
+  }
+
+  /* ============================================================
+     02 — 线性组合
+  ============================================================ */
+  class VectorStage extends Stage {
+    init() {
+      this.a = 1.6; this.b = 1.0;
+      this.ta = 1.6; this.tb = 1.0;
+      this.drag = false;
+      this._bind();
+    }
+    _bind() {
+      const cv = this.cv;
+      const down = e => {
+        this.drag = true;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.add('grabbing');
+        this._fromPointer(e);
+      };
+      const move = e => { if (this.drag) this._fromPointer(e); };
+      const up = e => {
+        this.drag = false;
+        try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.remove('grabbing');
+      };
+      cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
+    _fromPointer(e) {
+      const r = this.cv.getBoundingClientRect();
+      const unit = Math.min(this.w, this.h) / 7;
+      const wx = (e.clientX - r.left - r.width / 2) / unit;
+      const wy = (r.height / 2 - (e.clientY - r.top)) / unit;
+      this.ta = clamp(wx, -3, 3);
+      this.tb = clamp(wy, -3, 3);
+      syncVecUI();
+    }
+    draw(dt) {
+      const k = 1 - Math.exp(-dt * 13);
+      this.a += (this.ta - this.a) * k;
+      this.b += (this.tb - this.b) * k;
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = Math.min(w, h) / 7, ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 6, 'rgba(255,255,255,0.048)');
+      drawAxes(ctx, w, h, ox, oy);
+      drawArrow(ctx, ox, oy, ...S(1, 0), 'rgba(63,224,255,0.42)', 1.6, 8);
+      drawArrow(ctx, ox, oy, ...S(0, 1), 'rgba(255,61,154,0.42)', 1.6, 8);
+      const [ax, ay] = S(this.a, 0);
+      const [bx, by] = S(0, this.b);
+      const [vx, vy] = S(this.a, this.b);
+      ctx.save();
+      ctx.setLineDash([5, 7]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(bx, by); ctx.lineTo(vx, vy);
+      ctx.moveTo(ax, ay); ctx.lineTo(vx, vy);
+      ctx.stroke();
+      ctx.restore();
+      drawArrow(ctx, ox, oy, ax, ay, '#3fe0ff', 2.6, 12);
+      drawArrow(ctx, ax, ay, vx, vy, '#ff3d9a', 2.6, 12);
+      drawArrow(ctx, ox, oy, vx, vy, '#ffd166', 3.1, 14);
+      const pulse = 0.5 + 0.5 * Math.sin(this.time * 3.2);
+      ctx.beginPath();
+      ctx.arc(vx, vy, 7 + pulse * 5, 0, TAU);
+      ctx.strokeStyle = `rgba(255,209,102,${0.55 - pulse * 0.38})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(vx, vy, 3.4, 0, TAU);
+      ctx.fillStyle = '#ffd166';
+      ctx.fill();
+      ctx.font = MONO;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (Math.hypot(ax - ox, ay - oy) > 42) {
+        ctx.fillStyle = 'rgba(63,224,255,0.95)';
+        ctx.fillText('a·î', (ox + ax) / 2, (oy + ay) / 2 - 15);
+      }
+      if (Math.hypot(vx - ax, vy - ay) > 42) {
+        ctx.fillStyle = 'rgba(255,61,154,0.95)';
+        ctx.fillText('b·ĵ', (ax + vx) / 2 + 20, (ay + vy) / 2);
+      }
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('v', vx + 18, vy - 16);
+    }
+  }
+
+  /* ============================================================
+     03 — 线性变换
+  ============================================================ */
+  const PRESETS = {
+    identity: [1, 0, 0, 1],
+    rotate:   [0, -1, 1, 0],
+    rot45:    [0.707, -0.707, 0.707, 0.707],
+    shear:    [1, 1.1, 0, 1],
+    scale:    [1.7, 0, 0, 0.55],
+    reflect:  [1, 0, 0, -1],
+    project:  [0.5, 0.5, 0.5, 0.5],
+    squeeze:  [1, 0.6, 0.4, 0.9],
+    rotSca:   [1.2, -0.9, 0.9, 1.2]
+  };
+
+  class TransformStage extends Stage {
+    init() {
+      this.m = { a: 1, b: 0, c: 0, d: 1 };
+      this.tgt = { a: 1, b: 0, c: 0, d: 1 };
+      this.drag = null;
+      this._bind();
+      syncMatUI(this);
+    }
+    _bind() {
+      const cv = this.cv;
+      const down = e => {
+        const hit = this._hit(e);
+        if (hit) {
+          this.drag = hit;
+          try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+          cv.classList.add('grabbing');
+          document.querySelectorAll('#presets [data-preset]').forEach(b => b.classList.remove('active'));
+        }
+      };
+      const move = e => {
+        if (!this.drag) return;
+        const p = this._world(e);
+        const x = clamp(p.x, -3.4, 3.4), y = clamp(p.y, -3.4, 3.4);
+        if (this.drag === 'i') { this.m.a = this.tgt.a = x; this.m.c = this.tgt.c = y; }
+        else { this.m.b = this.tgt.b = x; this.m.d = this.tgt.d = y; }
+        syncMatUI(this);
+      };
+      const up = e => {
+        this.drag = null;
+        try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.remove('grabbing');
+      };
+      cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
+    _unit() { return Math.min(this.w, this.h) / 9; }
+    _world(e) {
+      const r = this.cv.getBoundingClientRect();
+      const unit = this._unit();
+      return {
+        x: (e.clientX - r.left - this.w / 2) / unit,
+        y: (this.h / 2 - (e.clientY - r.top)) / unit
+      };
+    }
+    _hit(e) {
+      const p = this._world(e);
+      const unit = this._unit();
+      const d1 = Math.hypot((p.x - this.m.a) * unit, (p.y - this.m.c) * unit);
+      const d2 = Math.hypot((p.x - this.m.b) * unit, (p.y - this.m.d) * unit);
+      const T = 52;
+      if (d1 < T && d1 <= d2) return 'i';
+      if (d2 < T) return 'j';
+      return null;
+    }
+    draw(dt) {
+      const k = 1 - Math.exp(-dt * 10);
+      for (const key in this.tgt) this.m[key] += (this.tgt[key] - this.m[key]) * k;
+      syncMatUI(this);
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = this._unit(), ox = w / 2, oy = h / 2;
+      const P = (x, y) => [ox + x * unit, oy - y * unit];
+      const M = this.m;
+      const Mv = [M.a, M.b, M.c, M.d];
+      ctx.clearRect(0, 0, w, h);
+      const R = Math.ceil(Math.max(w, h) / unit) + 6;
+      ctx.strokeStyle = 'rgba(255,255,255,0.036)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = -R; i <= R; i++) {
+        const a = P(i, -R), b = P(i, R);
+        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+        const c = P(-R, i), d = P(R, i);
+        ctx.moveTo(c[0], c[1]); ctx.lineTo(d[0], d[1]);
+      }
+      ctx.stroke();
+      drawTransformedGrid(ctx, Mv, P, R, 'rgba(63,224,255,0.13)', 1);
+      const det = M.a * M.d - M.b * M.c;
+      const pos = det >= 0;
+      const sq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => P(M.a * x + M.b * y, M.c * x + M.d * y));
+      ctx.beginPath();
+      ctx.moveTo(sq[0][0], sq[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(sq[i][0], sq[i][1]);
+      ctx.closePath();
+      ctx.fillStyle = pos ? 'rgba(63,224,255,0.11)' : 'rgba(255,61,154,0.11)';
+      ctx.fill();
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = pos ? 'rgba(63,224,255,0.7)' : 'rgba(255,61,154,0.7)';
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const oSq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => P(x, y));
+      ctx.setLineDash([3, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(oSq[0][0], oSq[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(oSq[i][0], oSq[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const e = eig2(Mv);
+      if (e.disc >= -1e-6) {
+        const dirs = [e.v1];
+        if (Math.abs(e.l1 - e.l2) > 1e-6) dirs.push(e.v2);
+        const pulse = 0.55 + 0.45 * Math.sin(this.time * 2.4);
+        ctx.save();
+        ctx.setLineDash([7, 7]);
+        ctx.lineDashOffset = -this.time * 22;
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = `rgba(255,209,102,${0.24 + pulse * 0.4})`;
+        ctx.shadowColor = 'rgba(255,209,102,0.55)';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        dirs.forEach(([vx, vy]) => {
+          const a = P(vx * 7, vy * 7), b = P(-vx * 7, -vy * 7);
+          ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+        });
+        ctx.stroke();
+        ctx.restore();
+      }
+      const iEnd = P(M.a, M.c), jEnd = P(M.b, M.d), oS = P(0, 0);
+      drawArrow(ctx, oS[0], oS[1], iEnd[0], iEnd[1], '#3fe0ff', 3, 13);
+      drawArrow(ctx, oS[0], oS[1], jEnd[0], jEnd[1], '#ff3d9a', 3, 13);
+      drawHandle(ctx, iEnd[0], iEnd[1], '#3fe0ff', this.time);
+      drawHandle(ctx, jEnd[0], jEnd[1], '#ff3d9a', this.time);
+      ctx.font = MONO;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(63,224,255,0.95)';
+      ctx.fillText('î', iEnd[0] + 16, iEnd[1] - 16);
+      ctx.fillStyle = 'rgba(255,61,154,0.95)';
+      ctx.fillText('ĵ', jEnd[0] + 16, jEnd[1] - 16);
+      if (Math.abs(det) < 0.04) {
+        ctx.font = MONO;
+        ctx.fillStyle = `rgba(255,209,102,${0.5 + 0.5 * Math.sin(this.time * 4)})`;
+        ctx.textAlign = 'left';
+        ctx.fillText('det ≈ 0 · 空间被压扁了', 18, 26);
+      }
+    }
+  }
+
+  const elM00 = document.getElementById('m00');
+  const elM01 = document.getElementById('m01');
+  const elM10 = document.getElementById('m10');
+  const elM11 = document.getElementById('m11');
+  const elDet = document.getElementById('detVal');
+  const elArea = document.getElementById('areaVal');
+  const elEig = document.getElementById('eigVal');
+
+  function syncMatUI(stage) {
+    const M = stage.m;
+    setText(elM00, fmt(M.a));
+    setText(elM01, fmt(M.b));
+    setText(elM10, fmt(M.c));
+    setText(elM11, fmt(M.d));
+    const det = M.a * M.d - M.b * M.c;
+    setText(elDet, fmt(det));
+    setText(elArea, Math.abs(det).toFixed(2) + '×');
+    if (elDet) elDet.style.color = Math.abs(det) < 0.04 ? '#ffd166' : '#fff';
+    const tr = M.a + M.d, disc = tr * tr - 4 * det;
+    if (disc < -1e-6) {
+      setText(elEig, '共轭复数');
+      if (elEig) elEig.style.color = '#8b5cf6';
+    } else {
+      const s = Math.sqrt(Math.max(0, disc));
+      setText(elEig, fmt((tr + s) / 2) + ' / ' + fmt((tr - s) / 2));
+      if (elEig) elEig.style.color = '#ffd166';
+    }
+  }
+
+  /* ============================================================
+     04 — 行列式
+  ============================================================ */
+  const elDetSign = document.getElementById('detSign');
+  const elDetArea = document.getElementById('detArea');
+  const elDetOrient = document.getElementById('detOrient');
+  const elDetCollinear = document.getElementById('detCollinear');
+  const tagDet1 = document.getElementById('tagDet1');
+  const tagDet2 = document.getElementById('tagDet2');
+  const tagDet3 = document.getElementById('tagDet3');
+
+  class DetStage extends Stage {
+    init() {
+      this.u = [1.6, 0.4]; this.v = [0.6, 1.4];
+      this.tu = [1.6, 0.4]; this.tv = [0.6, 1.4];
+      this.drag = null;
+      this._bind();
+      this._sync();
+    }
+    _unit() { return Math.min(this.w, this.h) / 7; }
+    _world(e) {
+      const r = this.cv.getBoundingClientRect();
+      const unit = this._unit();
+      return {
+        x: (e.clientX - r.left - this.w / 2) / unit,
+        y: (this.h / 2 - (e.clientY - r.top)) / unit
+      };
+    }
+    _hit(e) {
+      const p = this._world(e);
+      const unit = this._unit();
+      const d1 = Math.hypot((p.x - this.tu[0]) * unit, (p.y - this.tu[1]) * unit);
+      const d2 = Math.hypot((p.x - this.tv[0]) * unit, (p.y - this.tv[1]) * unit);
+      const T = 52;
+      if (d1 < T && d1 <= d2) return 'u';
+      if (d2 < T) return 'v';
+      return null;
+    }
+    _bind() {
+      const cv = this.cv;
+      const down = e => {
+        const hit = this._hit(e);
+        if (!hit) return;
+        this.drag = hit;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.add('grabbing');
+      };
+      const move = e => {
+        if (!this.drag) return;
+        const p = this._world(e);
+        const x = clamp(p.x, -3.2, 3.2), y = clamp(p.y, -3.2, 3.2);
+        if (this.drag === 'u') { this.tu[0] = x; this.tu[1] = y; }
+        else { this.tv[0] = x; this.tv[1] = y; }
+        this._sync();
+      };
+      const up = e => {
+        this.drag = null;
+        try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.remove('grabbing');
+      };
+      cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
+    _sync() {
+      const u = this.tu, v = this.tv;
+      const det = u[0] * v[1] - u[1] * v[0];
+      const lu = Math.hypot(u[0], u[1]), lv = Math.hypot(v[0], v[1]);
+      const collinear = (lu < 1e-6 || lv < 1e-6) ? 1 : Math.abs(det) / (lu * lv);
+      setText(elDetSign, fmt(det));
+      setText(elDetArea, Math.abs(det).toFixed(3));
+      setText(elDetOrient, det > 0.005 ? '正' : det < -0.005 ? '负' : '零');
+      setText(elDetCollinear, (collinear * 100).toFixed(0) + '%');
+      if (elDetSign) elDetSign.style.color =
+        Math.abs(det) < 0.02 ? '#ffd166' : (det > 0 ? '#7dffb3' : '#ff3d9a');
+      if (elDetOrient) elDetOrient.style.color =
+        Math.abs(det) < 0.02 ? '#ffd166' : (det > 0 ? '#7dffb3' : '#ff3d9a');
+      if (tagDet1) tagDet1.classList.toggle('on', det > 0.02);
+      if (tagDet2) tagDet2.classList.toggle('on', det < -0.02);
+      if (tagDet3) tagDet3.classList.toggle('on', Math.abs(det) < 0.02);
+    }
+    draw(dt) {
+      const k = 1 - Math.exp(-dt * 13);
+      this.u[0] += (this.tu[0] - this.u[0]) * k;
+      this.u[1] += (this.tu[1] - this.u[1]) * k;
+      this.v[0] += (this.tv[0] - this.v[0]) * k;
+      this.v[1] += (this.tv[1] - this.v[1]) * k;
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = this._unit(), ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 6, 'rgba(255,255,255,0.045)');
+      drawAxes(ctx, w, h, ox, oy);
+      const u = this.u, v = this.v;
+      const det = u[0] * v[1] - u[1] * v[0];
+      const pos = det >= 0;
+      const O = S(0, 0), U = S(u[0], u[1]), V = S(v[0], v[1]);
+      const UV = S(u[0] + v[0], u[1] + v[1]);
+      ctx.beginPath();
+      ctx.moveTo(O[0], O[1]);
+      ctx.lineTo(U[0], U[1]);
+      ctx.lineTo(UV[0], UV[1]);
+      ctx.lineTo(V[0], V[1]);
+      ctx.closePath();
+      const pulse = 0.5 + 0.5 * Math.sin(this.time * 2.4);
+      if (pos) {
+        ctx.fillStyle = `rgba(63,224,255,${0.09 + pulse * 0.04})`;
+        ctx.strokeStyle = 'rgba(63,224,255,0.85)';
+      } else {
+        ctx.fillStyle = `rgba(255,61,154,${0.09 + pulse * 0.04})`;
+        ctx.strokeStyle = 'rgba(255,61,154,0.85)';
+      }
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.shadowColor = pos ? 'rgba(63,224,255,0.7)' : 'rgba(255,61,154,0.7)';
+      ctx.shadowBlur = 16;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(U[0], U[1]); ctx.lineTo(V[0], V[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const cxm = (O[0] + UV[0]) / 2, cym = (O[1] + UV[1]) / 2;
+      ctx.font = '600 15px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = pos ? 'rgba(63,224,255,0.95)' : 'rgba(255,61,154,0.95)';
+      ctx.fillText('|S| = ' + Math.abs(det).toFixed(2), cxm, cym);
+      drawArrow(ctx, O[0], O[1], U[0], U[1], '#3fe0ff', 3, 13);
+      drawArrow(ctx, O[0], O[1], V[0], V[1], '#ff3d9a', 3, 13);
+      drawHandle(ctx, U[0], U[1], '#3fe0ff', this.time);
+      drawHandle(ctx, V[0], V[1], '#ff3d9a', this.time);
+      ctx.font = MONO;
+      ctx.fillStyle = 'rgba(63,224,255,0.95)';
+      ctx.fillText('u', U[0] + 16, U[1] - 16);
+      ctx.fillStyle = 'rgba(255,61,154,0.95)';
+      ctx.fillText('v', V[0] + 16, V[1] - 16);
+      if (Math.abs(det) < 0.02) {
+        ctx.font = MONO;
+        ctx.fillStyle = `rgba(255,209,102,${0.5 + 0.5 * Math.sin(this.time * 4)})`;
+        ctx.textAlign = 'left';
+        ctx.fillText('det ≈ 0 · 两向量共线', 18, 26);
+      } else if (det < 0) {
+        ctx.font = MONO;
+        ctx.fillStyle = 'rgba(255,61,154,0.8)';
+        ctx.textAlign = 'left';
+        ctx.fillText('det < 0 · 定向被翻转', 18, 26);
+      }
+    }
+  }
+
+  /* ============================================================
+     05 — 矩阵复合
+  ============================================================ */
+  const elCa00 = document.getElementById('ca00');
+  const elCa01 = document.getElementById('ca01');
+  const elCa10 = document.getElementById('ca10');
+  const elCa11 = document.getElementById('ca11');
+  const elCb00 = document.getElementById('cb00');
+  const elCb01 = document.getElementById('cb01');
+  const elCb10 = document.getElementById('cb10');
+  const elCb11 = document.getElementById('cb11');
+  const elCab00 = document.getElementById('cab00');
+  const elCab01 = document.getElementById('cab01');
+  const elCab10 = document.getElementById('cab10');
+  const elCab11 = document.getElementById('cab11');
+
+  class ComposeStage extends Stage {
+    init() {
+      this.A = [1.2, 0.6, 0.4, 0.9];
+      this.B = [0.9, -0.8, 0.3, 1.1];
+      this.AB = mul2(this.A, this.B);
+      this.period = 8;
+      this.t = 0;
+      setText(elCa00, fmt(this.A[0]));
+      setText(elCa01, fmt(this.A[1]));
+      setText(elCa10, fmt(this.A[2]));
+      setText(elCa11, fmt(this.A[3]));
+      setText(elCb00, fmt(this.B[0]));
+      setText(elCb01, fmt(this.B[1]));
+      setText(elCb10, fmt(this.B[2]));
+      setText(elCb11, fmt(this.B[3]));
+      setText(elCab00, fmt(this.AB[0]));
+      setText(elCab01, fmt(this.AB[1]));
+      setText(elCab10, fmt(this.AB[2]));
+      setText(elCab11, fmt(this.AB[3]));
+    }
+    _currentMatrix() {
+      const t = this.t;
+      let from, to, phase;
+      if (t < 1.8) { from = [1, 0, 0, 1]; to = this.B; phase = t / 1.8; }
+      else if (t < 3.4) { from = this.B; to = this.B; phase = 1; }
+      else if (t < 5.2) { from = this.B; to = this.AB; phase = (t - 3.4) / 1.8; }
+      else { from = this.AB; to = this.AB; phase = 1; }
+      return lerp2(from, to, smoothstep(phase));
+    }
+    _phaseLabel() {
+      const t = this.t;
+      if (t < 1.8) return '① 原始网格 → 应用 B';
+      if (t < 3.4) return '② 停在 B 之后';
+      if (t < 5.2) return '③ 继续应用 A → 得到 AB';
+      return '④ 停在 AB 之后';
+    }
+    draw(dt) {
+      this.t = (this.t + dt) % this.period;
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = Math.min(w, h) / 7.2, ox = w / 2, oy = h / 2;
+      const P = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 6, 'rgba(255,255,255,0.045)');
+      drawAxes(ctx, w, h, ox, oy);
+      const M = this._currentMatrix();
+      const R = 6;
+      if (this.t >= 1.8) drawTransformedGrid(ctx, this.B, P, R, 'rgba(255,61,154,0.2)', 1);
+      drawTransformedGrid(ctx, M, P, R, 'rgba(63,224,255,0.3)', 1);
+      const oSq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => P(x, y));
+      ctx.setLineDash([3, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(oSq[0][0], oSq[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(oSq[i][0], oSq[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const sq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => {
+        const r = apply2(M, x, y);
+        return P(r[0], r[1]);
+      });
+      ctx.beginPath();
+      ctx.moveTo(sq[0][0], sq[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(sq[i][0], sq[i][1]);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(63,224,255,0.13)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(63,224,255,0.9)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(63,224,255,0.7)';
+      ctx.shadowBlur = 16;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      const oS = P(0, 0);
+      const iEnd = P(M[0], M[2]), jEnd = P(M[1], M[3]);
+      drawArrow(ctx, oS[0], oS[1], iEnd[0], iEnd[1], '#3fe0ff', 2.6, 12);
+      drawArrow(ctx, oS[0], oS[1], jEnd[0], jEnd[1], '#ff3d9a', 2.6, 12);
+      ctx.font = MONO;
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(this._phaseLabel(), 18, 18);
+      const N = 16;
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * TAU;
+        const x0 = Math.cos(a), y0 = Math.sin(a);
+        const p0 = P(x0, y0);
+        ctx.beginPath();
+        ctx.arc(p0[0], p0[1], 1.6, 0, TAU);
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fill();
+        const r = apply2(M, x0, y0);
+        const p1 = P(r[0], r[1]);
+        const hue = 190 + (i / N) * 150;
+        ctx.beginPath();
+        ctx.arc(p1[0], p1[1], 2.8, 0, TAU);
+        ctx.fillStyle = `hsl(${hue}, 95%, 68%)`;
+        ctx.shadowColor = `hsl(${hue}, 95%, 68%)`;
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+
+  /* ============================================================
+     06 — 基变换
+  ============================================================ */
+  const elBasisStd = document.getElementById('basisStd');
+  const elBasisNew = document.getElementById('basisNew');
+  const elBasisDet = document.getElementById('basisDet');
+  const elBasisAngleVal = document.getElementById('basisAngleVal');
+  const basisRange = document.getElementById('basisRange');
+
+  class BasisStage extends Stage {
+    init() {
+      this.v = [1.6, 0.8];
+      this.tv = [1.6, 0.8];
+      this.theta = 30 * Math.PI / 180;
+      this.tTheta = this.theta;
+      this.drag = false;
+      this._bind();
+      this._sync();
+    }
+    _unit() { return Math.min(this.w, this.h) / 7; }
+    _world(e) {
+      const r = this.cv.getBoundingClientRect();
+      const unit = this._unit();
+      return {
+        x: (e.clientX - r.left - this.w / 2) / unit,
+        y: (this.h / 2 - (e.clientY - r.top)) / unit
+      };
+    }
+    _bind() {
+      const cv = this.cv;
+      const down = e => {
+        const p = this._world(e);
+        const unit = this._unit();
+        const d = Math.hypot((p.x - this.tv[0]) * unit, (p.y - this.tv[1]) * unit);
+        if (d > 70) return;
+        this.drag = true;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.add('grabbing');
+      };
+      const move = e => {
+        if (!this.drag) return;
+        const p = this._world(e);
+        this.tv[0] = clamp(p.x, -3.2, 3.2);
+        this.tv[1] = clamp(p.y, -3.2, 3.2);
+        this._sync();
+      };
+      const up = e => {
+        this.drag = false;
+        try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.remove('grabbing');
+      };
+      cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
+    _basisVectors() {
+      const c = Math.cos(this.theta), s = Math.sin(this.theta);
+      return { b1: [c, s], b2: [-s, c] };
+    }
+    _sync() {
+      const { b1, b2 } = this._basisVectors();
+      const det = b1[0] * b2[1] - b2[0] * b1[1];
+      const vx = this.tv[0], vy = this.tv[1];
+      let c1 = 0, c2 = 0;
+      if (Math.abs(det) > 1e-6) {
+        c1 = (b2[1] * vx - b2[0] * vy) / det;
+        c2 = (-b1[1] * vx + b1[0] * vy) / det;
+      }
+      setText(elBasisStd, `(${fmt(vx)}, ${fmt(vy)})`);
+      setText(elBasisNew, `(${fmt(c1)}, ${fmt(c2)})`);
+      setText(elBasisDet, fmt(det));
+      setText(elBasisAngleVal, (this.theta * 180 / Math.PI).toFixed(0) + '°');
+    }
+    draw(dt) {
+      const k = 1 - Math.exp(-dt * 12);
+      this.v[0] += (this.tv[0] - this.v[0]) * k;
+      this.v[1] += (this.tv[1] - this.v[1]) * k;
+      this.theta += (this.tTheta - this.theta) * k;
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = this._unit(), ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 6, 'rgba(255,255,255,0.045)');
+      drawAxes(ctx, w, h, ox, oy);
+      const O = S(0, 0);
+      const { b1, b2 } = this._basisVectors();
+      const R = 6;
+      ctx.strokeStyle = 'rgba(125,255,179,0.13)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = -R; i <= R; i++) {
+        const a1 = S(b1[0] * i + b2[0] * (-R), b1[1] * i + b2[1] * (-R));
+        const a2 = S(b1[0] * i + b2[0] * R, b1[1] * i + b2[1] * R);
+        ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]);
+        const c1 = S(b1[0] * (-R) + b2[0] * i, b1[1] * (-R) + b2[1] * i);
+        const c2 = S(b1[0] * R + b2[0] * i, b1[1] * R + b2[1] * i);
+        ctx.moveTo(c1[0], c1[1]); ctx.lineTo(c2[0], c2[1]);
+      }
+      ctx.stroke();
+      const iEnd = S(1, 0), jEnd = S(0, 1);
+      drawArrow(ctx, O[0], O[1], iEnd[0], iEnd[1], 'rgba(63,224,255,0.36)', 1.8, 9);
+      drawArrow(ctx, O[0], O[1], jEnd[0], jEnd[1], 'rgba(255,61,154,0.36)', 1.8, 9);
+      const b1End = S(b1[0], b1[1]), b2End = S(b2[0], b2[1]);
+      drawArrow(ctx, O[0], O[1], b1End[0], b1End[1], '#7dffb3', 3, 13);
+      drawArrow(ctx, O[0], O[1], b2End[0], b2End[1], '#7dffb3', 3, 13);
+      const det = b1[0] * b2[1] - b2[0] * b1[1];
+      let c1 = 0, c2 = 0;
+      if (Math.abs(det) > 1e-6) {
+        c1 = (b2[1] * this.v[0] - b2[0] * this.v[1]) / det;
+        c2 = (-b1[1] * this.v[0] + b1[0] * this.v[1]) / det;
+      }
+      const V = S(this.v[0], this.v[1]);
+      const mid1 = S(b1[0] * c1, b1[1] * c1);
+      const mid2 = S(b2[0] * c2, b2[1] * c2);
+      ctx.setLineDash([5, 6]);
+      ctx.strokeStyle = 'rgba(125,255,179,0.45)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(mid1[0], mid1[1]); ctx.lineTo(V[0], V[1]);
+      ctx.moveTo(mid2[0], mid2[1]); ctx.lineTo(V[0], V[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawArrow(ctx, O[0], O[1], mid1[0], mid1[1], 'rgba(125,255,179,0.8)', 2.4, 11);
+      drawArrow(ctx, O[0], O[1], mid2[0], mid2[1], 'rgba(125,255,179,0.8)', 2.4, 11);
+      drawArrow(ctx, O[0], O[1], V[0], V[1], '#ffd166', 3.2, 14);
+      drawHandle(ctx, V[0], V[1], '#ffd166', this.time);
+      ctx.font = MONO;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(125,255,179,0.95)';
+      ctx.fillText('b₁', b1End[0] + 18, b1End[1] - 14);
+      ctx.fillText('b₂', b2End[0] + 18, b2End[1] - 14);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('v', V[0] + 18, V[1] - 16);
+      ctx.font = '600 13px ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(`v = ${fmt(this.v[0])}·î + ${fmt(this.v[1])}·ĵ`, 18, 22);
+      ctx.fillStyle = 'rgba(125,255,179,0.85)';
+      ctx.fillText(`    = ${fmt(c1)}·b₁ + ${fmt(c2)}·b₂`, 18, 44);
+    }
+  }
+
+  /* ============================================================
+     07 — 单位圆与椭圆
+  ============================================================ */
+  function rotM(a) {
+    const c = Math.cos(a), s = Math.sin(a);
+    return { a: c, b: -s, c: s, d: c };
+  }
+  function mulM(A, B) {
+    return {
+      a: A.a * B.a + A.b * B.c,
+      b: A.a * B.b + A.b * B.d,
+      c: A.c * B.a + A.d * B.c,
+      d: A.c * B.b + A.d * B.d
+    };
+  }
+
+  const elEllDet = document.getElementById('ellDet');
+  const elEllArea = document.getElementById('ellArea');
+  const elEllSigma = document.getElementById('ellSigma');
+
+  class EllipseStage extends Stage {
+    draw(dt, t) {
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = Math.min(w, h) / 7, ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      const th = t * 0.30, ph = t * 0.19;
+      const s1 = 1.85 + 0.45 * Math.sin(t * 0.47);
+      const s2 = 0.55 + 0.25 * Math.cos(t * 0.61);
+      const R1 = rotM(th);
+      const Sc = { a: s1, b: 0, c: 0, d: s2 };
+      const R2 = rotM(ph);
+      const M = mulM(R1, mulM(Sc, R2));
+      drawGrid(ctx, w, h, ox, oy, unit, 6, 'rgba(255,255,255,0.028)');
+      ctx.setLineDash([4, 7]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(ox, oy, unit, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const N = 160;
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const a = (i / N) * TAU;
+        const x = Math.cos(a), y = Math.sin(a);
+        const px = M.a * x + M.b * y, py = M.c * x + M.d * y;
+        const s = S(px, py);
+        i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(63,224,255,0.9)';
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = 'rgba(63,224,255,0.85)';
+      ctx.shadowBlur = 20;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      const K = 26;
+      for (let i = 0; i < K; i++) {
+        const a = (i / K) * TAU;
+        const x = Math.cos(a), y = Math.sin(a);
+        const px = M.a * x + M.b * y, py = M.c * x + M.d * y;
+        const p0 = S(x, y), p1 = S(px, py);
+        const hue = 190 + (i / K) * 150;
+        ctx.strokeStyle = `hsla(${hue}, 90%, 68%, 0.18)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p0[0], p0[1]);
+        ctx.lineTo(p1[0], p1[1]);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(p0[0], p0[1], 2, 0, TAU);
+        ctx.fillStyle = `hsla(${hue}, 90%, 68%, 0.32)`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(p1[0], p1[1], 3.1, 0, TAU);
+        ctx.fillStyle = `hsl(${hue}, 95%, 65%)`;
+        ctx.shadowColor = `hsl(${hue}, 95%, 65%)`;
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      const tA = t * 0.95;
+      const cx0 = Math.cos(tA), cy0 = Math.sin(tA);
+      const mx = M.a * cx0 + M.b * cy0, my = M.c * cx0 + M.d * cy0;
+      const q0 = S(cx0, cy0), q1 = S(mx, my);
+      ctx.strokeStyle = 'rgba(255,209,102,0.6)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(q0[0], q0[1], 4.5, 0, TAU);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(q1[0], q1[1], 6.5, 0, TAU);
+      ctx.fillStyle = '#ffd166';
+      ctx.shadowColor = 'rgba(255,209,102,0.95)';
+      ctx.shadowBlur = 22;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      const det = M.a * M.d - M.b * M.c;
+      const tr = M.a + M.d;
+      const disc = Math.max(0, tr * tr - 4 * det);
+      const lmax = (tr + Math.sqrt(disc)) / 2;
+      const lmin = (tr - Math.sqrt(disc)) / 2;
+      const sigma1 = Math.sqrt(Math.max(Math.abs(lmax), Math.abs(lmin)));
+      const sigma2 = Math.sqrt(Math.min(Math.abs(lmax), Math.abs(lmin)));
+      setText(elEllDet, fmt(det));
+      setText(elEllArea, Math.abs(det).toFixed(2) + '×');
+      setText(elEllSigma, sigma1.toFixed(2) + ' / ' + sigma2.toFixed(2));
+    }
+  }
+
+  /* ============================================================
+     08 — 秩与零空间
+  ============================================================ */
+  const elRankT = document.getElementById('rankT');
+  const elRankDet = document.getElementById('rankDet');
+  const elRankVal = document.getElementById('rankVal');
+  const elRankNull = document.getElementById('rankNull');
+
+  class RankStage extends Stage {
+    init() { this.period = 9; this.t = 0; }
+    draw(dt, time) {
+      this.t = (this.t + dt) % this.period;
+      const ph = this.t / this.period;
+      const tv = 0.55 + 0.9 * (0.5 - 0.5 * Math.cos(ph * TAU));
+      const A = [1, tv, tv, 1];
+      const det = det2(A);
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = Math.min(w, h) / 7, ox = w / 2, oy = h / 2;
+      const P = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      const R = 6;
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = -R; i <= R; i++) {
+        const a = P(i, -R), b = P(i, R);
+        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+        const c = P(-R, i), d = P(R, i);
+        ctx.moveTo(c[0], c[1]); ctx.lineTo(d[0], d[1]);
+      }
+      ctx.stroke();
+      const absDet = Math.abs(det);
+      const gridAlpha = 0.12 + (1 - Math.min(absDet, 1)) * 0.35;
+      drawTransformedGrid(ctx, A, P, R, `rgba(63,224,255,${gridAlpha})`, 1.2);
+      const oSq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => P(x, y));
+      ctx.setLineDash([3, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(oSq[0][0], oSq[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(oSq[i][0], oSq[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const sq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => {
+        const r = apply2(A, x, y);
+        return P(r[0], r[1]);
+      });
+      ctx.beginPath();
+      ctx.moveTo(sq[0][0], sq[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(sq[i][0], sq[i][1]);
+      ctx.closePath();
+      const collapsed = absDet < 0.05;
+      const pulse = 0.5 + 0.5 * Math.sin(time * 3.2);
+      ctx.fillStyle = collapsed ? `rgba(255,209,102,${0.15 + pulse * 0.1})` : 'rgba(63,224,255,0.12)';
+      ctx.fill();
+      ctx.strokeStyle = collapsed ? `rgba(255,209,102,${0.7 + pulse * 0.3})` : 'rgba(63,224,255,0.9)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = collapsed ? 'rgba(255,209,102,0.8)' : 'rgba(63,224,255,0.7)';
+      ctx.shadowBlur = 18;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      if (absDet < 0.5) {
+        const alpha = 1 - absDet / 0.5;
+        const ux = 1 / Math.SQRT2, uy = -1 / Math.SQRT2;
+        const p1 = P(ux * 5.5, uy * 5.5), p2 = P(-ux * 5.5, -uy * 5.5);
+        ctx.setLineDash([8, 6]);
+        ctx.lineDashOffset = -time * 30;
+        ctx.strokeStyle = `rgba(255,209,102,${alpha * 0.85})`;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = 'rgba(255,209,102,0.7)';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.setLineDash([]);
+        ctx.font = MONO;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = `rgba(255,209,102,${alpha})`;
+        ctx.fillText('零空间方向 (1, -1)', 18, 48);
+      }
+      const col1 = [A[0], A[2]], col2 = [A[1], A[3]];
+      const l1 = Math.hypot(col1[0], col1[1]), l2 = Math.hypot(col2[0], col2[1]);
+      const c1 = l1 > 1e-6 ? [col1[0] / l1, col1[1] / l1] : [1, 0];
+      const c2 = l2 > 1e-6 ? [col2[0] / l2, col2[1] / l2] : [1, 0];
+      const dot = c1[0] * c2[0] + c1[1] * c2[1];
+      if (Math.abs(dot) > 0.85) {
+        const alpha = (Math.abs(dot) - 0.85) / 0.15;
+        const p1 = P(c1[0] * 5, c1[1] * 5), p2 = P(-c1[0] * 5, -c1[1] * 5);
+        ctx.setLineDash([6, 8]);
+        ctx.strokeStyle = `rgba(63,224,255,${alpha * 0.5})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = MONO;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = `rgba(63,224,255,${alpha})`;
+        ctx.fillText('列空间（一条线）', 18, 68);
+      }
+      const oS = P(0, 0);
+      const iEnd = P(A[0], A[2]), jEnd = P(A[1], A[3]);
+      drawArrow(ctx, oS[0], oS[1], iEnd[0], iEnd[1], '#3fe0ff', 3, 13);
+      drawArrow(ctx, oS[0], oS[1], jEnd[0], jEnd[1], '#ff3d9a', 3, 13);
+      setText(elRankT, tv.toFixed(2));
+      setText(elRankDet, fmt(det));
+      const rank = absDet < 0.03 ? 1 : 2;
+      setText(elRankVal, String(rank));
+      setText(elRankNull, rank === 1 ? '1' : '0');
+      if (elRankDet) elRankDet.style.color = absDet < 0.03 ? '#ffd166' : '#fff';
+      if (elRankVal) elRankVal.style.color = rank === 1 ? '#ffd166' : '#7dffb3';
+      if (elRankNull) elRankNull.style.color = rank === 1 ? '#ffd166' : '#fff';
+      if (collapsed) {
+        ctx.font = '600 13px ui-monospace, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(255,209,102,${0.6 + pulse * 0.4})`;
+        ctx.fillText('秩 = 1 · 空间被压成一条线', w / 2, h - 28);
+      }
+    }
+  }
+
+  /* ============================================================
+     09 — SVD
+  ============================================================ */
+  const elSvdA00 = document.getElementById('svdA00');
+  const elSvdA01 = document.getElementById('svdA01');
+  const elSvdA10 = document.getElementById('svdA10');
+  const elSvdA11 = document.getElementById('svdA11');
+  const elSvdS1 = document.getElementById('svdS1');
+  const elSvdS2 = document.getElementById('svdS2');
+  const elSvdCond = document.getElementById('svdCond');
+  const elSvdPhase = document.getElementById('svdPhase');
+  const elSvdCurDet = document.getElementById('svdCurDet');
+
+  class SvdStage extends Stage {
+    init() {
+      this.A = [1.3, 0.7, 0.4, 1.5];
+      this.dec = svd2(this.A);
+      setText(elSvdA00, fmt(this.A[0]));
+      setText(elSvdA01, fmt(this.A[1]));
+      setText(elSvdA10, fmt(this.A[2]));
+      setText(elSvdA11, fmt(this.A[3]));
+      setText(elSvdS1, this.dec.s1.toFixed(3));
+      setText(elSvdS2, this.dec.s2.toFixed(3));
+      const cond = this.dec.s2 > 1e-9 ? this.dec.s1 / this.dec.s2 : Infinity;
+      setText(elSvdCond, isFinite(cond) ? cond.toFixed(2) : '∞');
+      this.period = 10;
+      this.t = 0;
+    }
+    _currentMatrixAndPhase() {
+      const t = this.t;
+      const Vt = this.dec.Vt, S = this.dec.S, U = this.dec.U;
+      const I = [1, 0, 0, 1];
+      const SVt = mul2(S, Vt);
+      const USVt = this.A;
+      let from, to, phase, label;
+      if (t < 1.6) { from = I; to = I; phase = 0; label = '单位圆'; }
+      else if (t < 3.6) { from = I; to = Vt; phase = (t - 1.6) / 2; label = '① Vᵀ · 旋转'; }
+      else if (t < 5.6) { from = Vt; to = SVt; phase = (t - 3.6) / 2; label = '② Σ · 拉伸'; }
+      else if (t < 7.6) { from = SVt; to = USVt; phase = (t - 5.6) / 2; label = '③ U · 旋转'; }
+      else { from = USVt; to = USVt; phase = 1; label = 'A = UΣVᵀ'; }
+      const M = lerp2(from, to, easeInOut(clamp(phase, 0, 1)));
+      return { M, label };
+    }
+    draw(dt, time) {
+      this.t = (this.t + dt) % this.period;
+      const { M, label } = this._currentMatrixAndPhase();
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = Math.min(w, h) / 7, ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 6, 'rgba(255,255,255,0.03)');
+      drawAxes(ctx, w, h, ox, oy);
+      ctx.setLineDash([4, 7]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(ox, oy, unit, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const N = 140;
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const a = (i / N) * TAU;
+        const x = Math.cos(a), y = Math.sin(a);
+        const r = apply2(M, x, y);
+        const s = S(r[0], r[1]);
+        i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(63,224,255,0.92)';
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = 'rgba(63,224,255,0.9)';
+      ctx.shadowBlur = 22;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      const K = 24;
+      for (let i = 0; i < K; i++) {
+        const a = (i / K) * TAU;
+        const x = Math.cos(a), y = Math.sin(a);
+        const r = apply2(M, x, y);
+        const p0 = S(x, y), p1 = S(r[0], r[1]);
+        const hue = 190 + (i / K) * 150;
+        ctx.strokeStyle = `hsla(${hue}, 90%, 68%, 0.14)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p0[0], p0[1]);
+        ctx.lineTo(p1[0], p1[1]);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(p1[0], p1[1], 2.6, 0, TAU);
+        ctx.fillStyle = `hsl(${hue}, 95%, 65%)`;
+        ctx.shadowColor = `hsl(${hue}, 95%, 65%)`;
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      const v1 = [this.dec.V[0], this.dec.V[2]];
+      const v2 = [this.dec.V[1], this.dec.V[3]];
+      const av1 = apply2(M, v1[0], v1[1]);
+      const av2 = apply2(M, v2[0], v2[1]);
+      const v1p = S(v1[0], v1[1]), v2p = S(v2[0], v2[1]);
+      const av1p = S(av1[0], av1[1]), av2p = S(av2[0], av2[1]);
+      ctx.setLineDash([3, 5]);
+      ctx.strokeStyle = 'rgba(255,209,102,0.32)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(v1p[0], v1p[1]); ctx.lineTo(av1p[0], av1p[1]);
+      ctx.moveTo(v2p[0], v2p[1]); ctx.lineTo(av2p[0], av2p[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(v1p[0], v1p[1], 4, 0, TAU);
+      ctx.fillStyle = 'rgba(255,209,102,0.7)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(v2p[0], v2p[1], 4, 0, TAU);
+      ctx.fillStyle = 'rgba(255,209,102,0.7)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(av1p[0], av1p[1], 5.5, 0, TAU);
+      ctx.fillStyle = '#ffd166';
+      ctx.shadowColor = '#ffd166';
+      ctx.shadowBlur = 16;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(av2p[0], av2p[1], 5.5, 0, TAU);
+      ctx.fillStyle = '#ffd166';
+      ctx.shadowColor = '#ffd166';
+      ctx.shadowBlur = 16;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.font = MONO;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText(label, 18, 18);
+      setText(elSvdPhase, label);
+      setText(elSvdCurDet, fmt(det2(M)));
+    }
+  }
+
+  /* ============================================================
+     10 — 线性方程组
+  ============================================================ */
+  const elSolveB = document.getElementById('solveB');
+  const elSolveX1 = document.getElementById('solveX1');
+  const elSolveX2 = document.getElementById('solveX2');
+  const elSolveDet = document.getElementById('solveDet');
+
+  class SolveStage extends Stage {
+    init() {
+      this.A = [1.2, -0.6, 0.5, 1.1];
+      this.detA = det2(this.A);
+      this.b = [1.6, 1.0];
+      this.tb = [1.6, 1.0];
+      this.drag = false;
+      setText(elSolveDet, this.detA.toFixed(2));
+      this._sync();
+      this._bind();
+    }
+    _unit() { return Math.min(this.w, this.h) / 7.6; }
+    _world(e) {
+      const r = this.cv.getBoundingClientRect();
+      const unit = this._unit();
+      return {
+        x: (e.clientX - r.left - this.w / 2) / unit,
+        y: (this.h / 2 - (e.clientY - r.top)) / unit
+      };
+    }
+    _bind() {
+      const cv = this.cv;
+      const down = e => {
+        const p = this._world(e);
+        const unit = this._unit();
+        const d = Math.hypot((p.x - this.tb[0]) * unit, (p.y - this.tb[1]) * unit);
+        if (d > 80) return;
+        this.drag = true;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.add('grabbing');
+      };
+      const move = e => {
+        if (!this.drag) return;
+        const p = this._world(e);
+        this.tb[0] = clamp(p.x, -3.2, 3.2);
+        this.tb[1] = clamp(p.y, -3.2, 3.2);
+        this._sync();
+      };
+      const up = e => {
+        this.drag = false;
+        try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.remove('grabbing');
+      };
+      cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
+    _solve() {
+      const [a, b, c, d] = this.A;
+      const [bx, by] = this.tb;
+      return [
+        (d * bx - b * by) / this.detA,
+        (-c * bx + a * by) / this.detA
+      ];
+    }
+    _sync() {
+      const [x1, x2] = this._solve();
+      setText(elSolveB, `(${fmt(this.tb[0])}, ${fmt(this.tb[1])})`);
+      setText(elSolveX1, fmt(x1));
+      setText(elSolveX2, fmt(x2));
+    }
+    draw(dt) {
+      const k = 1 - Math.exp(-dt * 12);
+      this.b[0] += (this.tb[0] - this.b[0]) * k;
+      this.b[1] += (this.tb[1] - this.b[1]) * k;
+      const [x1, x2] = this._solve();
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = this._unit(), ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 6, 'rgba(255,255,255,0.045)');
+      drawAxes(ctx, w, h, ox, oy);
+      const O = S(0, 0);
+      const c1 = [this.A[0], this.A[2]];
+      const c2 = [this.A[1], this.A[3]];
+      const c1End = S(c1[0], c1[1]);
+      const c2End = S(c2[0], c2[1]);
+      drawArrow(ctx, O[0], O[1], c1End[0], c1End[1], 'rgba(63,224,255,0.65)', 2.4, 11);
+      drawArrow(ctx, O[0], O[1], c2End[0], c2End[1], 'rgba(255,61,154,0.65)', 2.4, 11);
+      const mid = S(x1 * c1[0], x1 * c1[1]);
+      const B = S(this.b[0], this.b[1]);
+      ctx.save();
+      ctx.setLineDash([5, 7]);
+      ctx.strokeStyle = 'rgba(255,209,102,0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(mid[0], mid[1]); ctx.lineTo(B[0], B[1]);
+      ctx.moveTo(c1End[0], c1End[1]);
+      ctx.lineTo(c1End[0] + (c2End[0] - O[0]), c1End[1] + (c2End[1] - O[1]));
+      ctx.moveTo(c2End[0], c2End[1]);
+      ctx.lineTo(c2End[0] + (c1End[0] - O[0]), c2End[1] + (c1End[1] - O[1]));
+      ctx.stroke();
+      ctx.restore();
+      if (Math.abs(x1) > 0.05) drawArrow(ctx, O[0], O[1], mid[0], mid[1], '#3fe0ff', 3, 13);
+      if (Math.abs(x2) > 0.05) drawArrow(ctx, mid[0], mid[1], B[0], B[1], '#ff3d9a', 3, 13);
+      drawArrow(ctx, O[0], O[1], B[0], B[1], '#ffd166', 3.4, 15);
+      drawHandle(ctx, B[0], B[1], '#ffd166', this.time);
+      ctx.font = MONO;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(63,224,255,0.95)';
+      ctx.fillText('c₁', c1End[0] + 18, c1End[1] + 18);
+      ctx.fillStyle = 'rgba(255,61,154,0.95)';
+      ctx.fillText('c₂', c2End[0] + 18, c2End[1] + 18);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('b', B[0] + 18, B[1] - 16);
+      ctx.font = '600 13px ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'rgba(63,224,255,0.85)';
+      ctx.fillText(`x₁ · c₁ = ${fmt(x1)} · c₁`, 18, 22);
+      ctx.fillStyle = 'rgba(255,61,154,0.85)';
+      ctx.fillText(`x₂ · c₂ = ${fmt(x2)} · c₂`, 18, 44);
+      if (Math.abs(this.detA) < 0.05) {
+        ctx.fillStyle = '#ffd166';
+        ctx.fillText('det A ≈ 0 · 无唯一解', 18, 66);
+      }
+    }
+  }
+
+  /* ============================================================
+     11 — 幂迭代（优化：缓存特征分解，节流迭代频率）
+  ============================================================ */
+  const elPowerK = document.getElementById('powerK');
+  const elPowerAngle = document.getElementById('powerAngle');
+  const elPowerLambda = document.getElementById('powerLambda');
+  const elPowerTrue = document.getElementById('powerTrue');
+
+  class PowerStage extends Stage {
+    init() {
+      this.stepInterval = 1 / 14; /* 每秒约 14 次迭代，视觉上更从容 */
+      this.stepAccum = 0;
+      this.A = [1.5, 0.4, 0.4, 1.1];
+      this._computeEigen();
+      this._reset();
+      this._bind();
+    }
+    _computeEigen() {
+      const e = eig2(this.A);
+      this.eigen = e;
+      setText(elPowerTrue, e.l1.toFixed(3));
+    }
+    _reset() {
+      const a = Math.random() * TAU;
+      this.v = [Math.cos(a), Math.sin(a)];
+      this.k = 0;
+      this.history = [];
+      this.lambdaEst = 0;
+      this.stepAccum = 0;
+      this._updateStats();
+    }
+    _updateStats() {
+      const { l1, v1 } = this.eigen;
+      const dot = this.v[0] * v1[0] + this.v[1] * v1[1];
+      const angle = Math.acos(clamp(Math.abs(dot), 0, 1)) * 180 / Math.PI;
+      setText(elPowerK, String(this.k));
+      setText(elPowerAngle, angle.toFixed(1) + '°');
+      setText(elPowerLambda, this.lambdaEst.toFixed(3));
+      if (elPowerAngle) elPowerAngle.style.color =
+        angle < 1 ? '#7dffb3' : (angle < 15 ? '#ffd166' : '#fff');
+    }
+    _step() {
+      const [a, b, c, d] = this.A;
+      const vx = a * this.v[0] + b * this.v[1];
+      const vy = c * this.v[0] + d * this.v[1];
+      const n = Math.hypot(vx, vy) || 1;
+      this.v = [vx / n, vy / n];
+      this.lambdaEst = n;
+      this.k++;
+      this.history.push([this.v[0], this.v[1]]);
+      if (this.history.length > 40) this.history.shift();
+      this._updateStats();
+    }
+    _bind() {
+      this.cv.addEventListener('pointerdown', () => this._reset());
+    }
+    setPreset(name) {
+      if (name === 'sym') this.A = [1.5, 0.4, 0.4, 1.1];
+      else if (name === 'nonsym') this.A = [1.6, 0.2, 0.8, 1.1];
+      else if (name === 'slow') this.A = [1.3, 0.3, 0.3, 1.25];
+      this._computeEigen();
+      this._reset();
+    }
+    draw(dt, time) {
+      /* 节流迭代频率 */
+      this.stepAccum += dt;
+      let steps = 0;
+      while (this.stepAccum >= this.stepInterval && steps < 3) {
+        this.stepAccum -= this.stepInterval;
+        this._step();
+        steps++;
+      }
+
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = Math.min(w, h) / 4.2, ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 4, 'rgba(255,255,255,0.045)');
+      drawAxes(ctx, w, h, ox, oy);
+
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(ox, oy, unit, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const { l1, l2, v1, v2, disc } = this.eigen;
+
+      /* 主特征方向 */
+      ctx.setLineDash([7, 6]);
+      ctx.lineDashOffset = -time * 20;
+      ctx.strokeStyle = 'rgba(255,209,102,0.5)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      const p1 = S(v1[0] * 1.25, v1[1] * 1.25);
+      const p2 = S(-v1[0] * 1.25, -v1[1] * 1.25);
+      ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      /* 次特征方向 */
+      if (disc > 1e-6) {
+        ctx.setLineDash([4, 6]);
+        ctx.strokeStyle = 'rgba(139,92,246,0.4)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        const q1 = S(v2[0] * 1.25, v2[1] * 1.25);
+        const q2 = S(-v2[0] * 1.25, -v2[1] * 1.25);
+        ctx.moveTo(q1[0], q1[1]); ctx.lineTo(q2[0], q2[1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      /* 历史轨迹 */
+      for (let i = 0; i < this.history.length; i++) {
+        const alpha = (i / this.history.length) * 0.4;
+        const [hx, hy] = this.history[i];
+        const p = S(hx, hy);
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 2, 0, TAU);
+        ctx.fillStyle = `rgba(63,224,255,${alpha})`;
+        ctx.fill();
+      }
+
+      /* 当前 v */
+      const V = S(this.v[0], this.v[1]);
+      drawArrow(ctx, ox, oy, V[0], V[1], '#3fe0ff', 3.4, 15);
+      ctx.beginPath();
+      ctx.arc(V[0], V[1], 6, 0, TAU);
+      ctx.fillStyle = '#3fe0ff';
+      ctx.shadowColor = '#3fe0ff';
+      ctx.shadowBlur = 20;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      /* A v */
+      const Av = apply2(this.A, this.v[0], this.v[1]);
+      const AvP = S(Av[0], Av[1]);
+      drawArrow(ctx, ox, oy, AvP[0], AvP[1], 'rgba(255,209,102,0.85)', 2.6, 12);
+      ctx.beginPath();
+      ctx.arc(AvP[0], AvP[1], 5, 0, TAU);
+      ctx.fillStyle = '#ffd166';
+      ctx.shadowColor = '#ffd166';
+      ctx.shadowBlur = 16;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      /* 标注 */
+      ctx.font = MONO;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(63,224,255,0.95)';
+      ctx.fillText('v', V[0] + 18, V[1] - 16);
+      ctx.fillStyle = 'rgba(255,209,102,0.95)';
+      ctx.fillText('A·v', AvP[0] + 24, AvP[1] - 12);
+
+      ctx.font = '600 13px ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(`k = ${this.k}`, 18, 18);
+      ctx.fillStyle = 'rgba(255,209,102,0.75)';
+      ctx.fillText(`主特征方向 (λ₁ = ${l1.toFixed(3)})`, 18, 40);
+      if (disc > 1e-6) {
+        ctx.fillStyle = 'rgba(139,92,246,0.7)';
+        ctx.fillText(`次特征方向 (λ₂ = ${l2.toFixed(3)})`, 18, 62);
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillText('点击画布重新开始', 18, 86);
+    }
+  }
+
+  /* ============================================================
+     12 — 最小二乘
+  ============================================================ */
+  const elLsqM = document.getElementById('lsqM');
+  const elLsqC = document.getElementById('lsqC');
+  const elLsqSSE = document.getElementById('lsqSSE');
+  const elLsqR2 = document.getElementById('lsqR2');
+
+  class LsqStage extends Stage {
+    init() {
+      const rand = makeRand(42);
+      const pts = [];
+      const trueM = 0.7, trueC = 0.5;
+      for (let i = 0; i < 13; i++) {
+        const x = -2.4 + i * (4.8 / 12);
+        const noise = (rand() - 0.5) * 1.2;
+        const y = trueM * x + trueC + noise;
+        pts.push([x, y]);
+      }
+      this.pts = pts;
+      this.fit();
+    }
+    fit() {
+      const n = this.pts.length;
+      let sx = 0, sy = 0, sxx = 0, sxy = 0;
+      for (const [x, y] of this.pts) {
+        sx += x; sy += y; sxx += x * x; sxy += x * y;
+      }
+      this.m = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+      this.c = (sy - this.m * sx) / n;
+      let sse = 0, sst = 0;
+      const yBar = sy / n;
+      for (const [x, y] of this.pts) {
+        const pred = this.m * x + this.c;
+        sse += (y - pred) * (y - pred);
+        sst += (y - yBar) * (y - yBar);
+      }
+      this.sse = sse;
+      this.r2 = sst > 1e-9 ? 1 - sse / sst : 0;
+      setText(elLsqM, this.m.toFixed(3));
+      setText(elLsqC, this.c.toFixed(3));
+      setText(elLsqSSE, sse.toFixed(3));
+      setText(elLsqR2, this.r2.toFixed(3));
+    }
+    draw(dt, time) {
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const unit = Math.min(w, h) / 7, ox = w / 2, oy = h / 2;
+      const S = (x, y) => [ox + x * unit, oy - y * unit];
+      ctx.clearRect(0, 0, w, h);
+      drawGrid(ctx, w, h, ox, oy, unit, 5, 'rgba(255,255,255,0.045)');
+      drawAxes(ctx, w, h, ox, oy);
+      const x1 = -3.2, x2 = 3.2;
+      const y1 = this.m * x1 + this.c, y2 = this.m * x2 + this.c;
+      const a = S(x1, y1), b = S(x2, y2);
+      ctx.strokeStyle = 'rgba(255,209,102,0.9)';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = 'rgba(255,209,102,0.85)';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      const pulse = 0.5 + 0.5 * Math.sin(time * 2.5);
+      for (let i = 0; i < this.pts.length; i++) {
+        const [x, y] = this.pts[i];
+        const pred = this.m * x + this.c;
+        const P0 = S(x, y);
+        const P1 = S(x, pred);
+        ctx.strokeStyle = `rgba(255,61,154,${0.35 + pulse * 0.15})`;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(P0[0], P0[1]);
+        ctx.lineTo(P1[0], P1[1]);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(P0[0], P0[1], 4.2, 0, TAU);
+        ctx.fillStyle = '#3fe0ff';
+        ctx.shadowColor = '#3fe0ff';
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(P1[0], P1[1], 2.4, 0, TAU);
+        ctx.fillStyle = 'rgba(255,209,102,0.85)';
+        ctx.fill();
+      }
+      ctx.font = '600 13px ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'rgba(255,209,102,0.85)';
+      ctx.fillText(`ŷ = ${this.m.toFixed(3)} x + ${this.c.toFixed(3)}`, 18, 22);
+      ctx.fillStyle = 'rgba(255,61,154,0.75)';
+      ctx.fillText(`SSE = ${this.sse.toFixed(3)}`, 18, 44);
+      ctx.fillStyle = 'rgba(125,255,179,0.75)';
+      ctx.fillText(`R² = ${this.r2.toFixed(3)}`, 18, 66);
+      ctx.font = MONO;
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(63,224,255,0.75)';
+      ctx.fillText('● 观测', w - 18, 22);
+      ctx.fillStyle = 'rgba(255,209,102,0.75)';
+      ctx.fillText('● 拟合', w - 18, 42);
+      ctx.fillStyle = 'rgba(255,61,154,0.65)';
+      ctx.fillText('│ 残差', w - 18, 62);
+    }
+  }
+
+  /* ============================================================
+     13 — 三维变换
+  ============================================================ */
+  const PRESETS_3D = {
+    identity: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+    rotY:     [0, 0, 1, 0, 1, 0, -1, 0, 0],
+    rotX:     [1, 0, 0, 0, 0, -1, 0, 1, 0],
+    scale:    [1.6, 0, 0, 0, 0.7, 0, 0, 0, 1.2],
+    shear:    [1, 0.7, 0, 0, 1, 0, 0, 0, 1],
+    reflect:  [1, 0, 0, 0, -1, 0, 0, 0, 1],
+    stretch:  [0.7, 0, 0, 0, 1.5, 0, 0, 0, 1.1],
+    squash:   [1.4, 0, 0, 0, 1.3, 0, 0, 0, 0.35]
+  };
+
+  class Space3DStage extends Stage {
+    init() {
+      const V = [];
+      for (let x = -1; x <= 1; x += 2)
+        for (let y = -1; y <= 1; y += 2)
+          for (let z = -1; z <= 1; z += 2)
+            V.push([x, y, z]);
+      this.verts = V;
+      this.edges = [
+        [0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6],
+        [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]
+      ];
+      this.T = PRESETS_3D.identity.slice();
+      this.tgtT = PRESETS_3D.identity.slice();
+      this.rx = 0.42; this.ry = 0.62;
+      this.trx = 0.42; this.try = 0.62;
+      this.drag = null;
+      this.lastX = 0;
+      this.lastY = 0;
+      this.autoRotate = true;
+      this.autoTimer = 0;
+      this._bind();
+    }
+    _bind() {
+      const cv = this.cv;
+      const down = e => {
+        this.drag = 'rot';
+        this.autoRotate = false;
+        this.autoTimer = 0;
+        this.lastX = e.clientX;
+        this.lastY = e.clientY;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.add('grabbing');
+      };
+      const move = e => {
+        if (this.drag !== 'rot') return;
+        const dx = e.clientX - this.lastX;
+        const dy = e.clientY - this.lastY;
+        this.lastX = e.clientX;
+        this.lastY = e.clientY;
+        this.try += dx * 0.011;
+        this.trx = clamp(this.trx + dy * 0.011, -1.45, 1.45);
+      };
+      const up = e => {
+        this.drag = null;
+        try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+        cv.classList.remove('grabbing');
+        this.autoTimer = 0;
+      };
+      cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
+    _rotMatrix() {
+      const cx = Math.cos(this.rx), sx = Math.sin(this.rx);
+      const cy = Math.cos(this.ry), sy = Math.sin(this.ry);
+      return [
+        cy, 0, sy,
+        sx * sy, cx, -sx * cy,
+        -cx * sy, sx, cx * cy
+      ];
+    }
+    draw(dt, time) {
+      const k = 1 - Math.exp(-dt * 8);
+      for (let i = 0; i < 9; i++) this.T[i] += (this.tgtT[i] - this.T[i]) * k;
+      if (!this.drag) {
+        this.autoTimer += dt;
+        if (this.autoTimer > 2.5) this.autoRotate = true;
+      }
+      if (this.autoRotate) this.try += dt * 0.32;
+      const rk = 1 - Math.exp(-dt * 9);
+      this.rx += (this.trx - this.rx) * rk;
+      this.ry += (this.try - this.ry) * rk;
+      const ctx = this.ctx, w = this.w, h = this.h;
+      ctx.clearRect(0, 0, w, h);
+      const R = this._rotMatrix();
+      const RT = mul3(R, this.T);
+      const d = 5.2;
+      const zoom = Math.min(w, h) / 4.6;
+      const project = v => {
+        const z = v[2];
+        const scale = d / (d - z * 0.85);
+        return [
+          w / 2 + v[0] * scale * zoom * 0.55,
+          h / 2 - v[1] * scale * zoom * 0.55
+        ];
+      };
+      const tv = this.verts.map(v => apply3(RT, v));
+      const proj = tv.map(project);
+      ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = -2; i <= 2; i++) {
+        const a1 = project(apply3(R, [i * 0.9, -2, -2]));
+        const a2 = project(apply3(R, [i * 0.9, 2, -2]));
+        ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]);
+        const b1 = project(apply3(R, [-2, i * 0.9, -2]));
+        const b2 = project(apply3(R, [2, i * 0.9, -2]));
+        ctx.moveTo(b1[0], b1[1]); ctx.lineTo(b2[0], b2[1]);
+      }
+      ctx.stroke();
+      const axes = [
+        [[-2.2, 0, 0], [2.2, 0, 0], 'rgba(63,224,255,0.32)'],
+        [[0, -2.2, 0], [0, 2.2, 0], 'rgba(255,61,154,0.32)'],
+        [[0, 0, -2.2], [0, 0, 2.2], 'rgba(255,209,102,0.32)']
+      ];
+      axes.forEach(([a, b, col]) => {
+        const pa = project(apply3(R, a));
+        const pb = project(apply3(R, b));
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath();
+        ctx.moveTo(pa[0], pa[1]);
+        ctx.lineTo(pb[0], pb[1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+      const faces = [
+        [0, 1, 3, 2], [4, 5, 7, 6],
+        [0, 1, 5, 4], [2, 3, 7, 6],
+        [0, 2, 6, 4], [1, 3, 7, 5]
+      ];
+      faces.forEach(f => {
+        ctx.beginPath();
+        ctx.moveTo(proj[f[0]][0], proj[f[0]][1]);
+        for (let i = 1; i < 4; i++) ctx.lineTo(proj[f[i]][0], proj[f[i]][1]);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(63,224,255,0.045)';
+        ctx.fill();
+      });
+      ctx.strokeStyle = 'rgba(63,224,255,0.9)';
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = 'rgba(63,224,255,0.6)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      this.edges.forEach(([a, b]) => {
+        ctx.moveTo(proj[a][0], proj[a][1]);
+        ctx.lineTo(proj[b][0], proj[b][1]);
+      });
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      proj.forEach((p, i) => {
+        const isFront = tv[i][2] > 0;
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], isFront ? 3.4 : 2.4, 0, TAU);
+        ctx.fillStyle = isFront ? '#3fe0ff' : 'rgba(63,224,255,0.4)';
+        if (isFront) {
+          ctx.shadowColor = '#3fe0ff';
+          ctx.shadowBlur = 12;
+        }
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+      const O = [0, 0, 0];
+      const oP = project(apply3(R, O));
+      const e1 = project(apply3(RT, [1, 0, 0]));
+      const e2 = project(apply3(RT, [0, 1, 0]));
+      const e3 = project(apply3(RT, [0, 0, 1]));
+      drawArrow(ctx, oP[0], oP[1], e1[0], e1[1], '#3fe0ff', 3, 12);
+      drawArrow(ctx, oP[0], oP[1], e2[0], e2[1], '#ff3d9a', 3, 12);
+      drawArrow(ctx, oP[0], oP[1], e3[0], e3[1], '#ffd166', 3, 12);
+      const T = this.T;
+      const det3 =
+        T[0] * (T[4] * T[8] - T[5] * T[7]) -
+        T[1] * (T[3] * T[8] - T[5] * T[6]) +
+        T[2] * (T[3] * T[7] - T[4] * T[6]);
+      ctx.font = MONO;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText('det = ' + fmt(det3), 18, 18);
+      ctx.fillText(this.drag ? '拖拽旋转中…' : '拖拽以旋转视角', 18, 38);
+    }
+  }
+
+  /* ============================================================
+     向量场景 UI 联动
+  ============================================================ */
+  const aRange = document.getElementById('aRange');
+  const bRange = document.getElementById('bRange');
+  const aValEl = document.getElementById('aVal');
+  const bValEl = document.getElementById('bVal');
+  const vecFormula = document.getElementById('vecFormula');
+  const vecCoord = document.getElementById('vecCoord');
+  let vecStage = null;
+
+  function paintRange(el, color) {
+    const min = +el.min, max = +el.max, v = +el.value;
+    const p = ((v - min) / (max - min)) * 100;
+    el.style.background =
+      `linear-gradient(90deg, ${color} 0%, ${color} ${p}%, rgba(255,255,255,.08) ${p}%, rgba(255,255,255,.08) 100%)`;
+  }
+
+  function syncVecUI() {
+    if (!vecStage) return;
+    const a = vecStage.ta, b = vecStage.tb;
+    setText(aValEl, fmt(a));
+    setText(bValEl, fmt(b));
+    aRange.value = a;
+    bRange.value = b;
+    paintRange(aRange, '#3fe0ff');
+    paintRange(bRange, '#ff3d9a');
+    setText(vecFormula, `v = ${fmt(a)} î + ${fmt(b)} ĵ`);
+    setText(vecCoord, `(${fmt(a)}, ${fmt(b)})`);
+  }
+
+  /* ============================================================
+     初始化
+  ============================================================ */
+  function boot() {
+    const ids = {
+      hero: 'cvHero',
+      dot: 'cvDot',
+      vec: 'cvVec',
+      matrix: 'cvMat',
+      det: 'cvDet',
+      compose: 'cvCompose',
+      basis: 'cvBasis',
+      ellipse: 'cvEllipse',
+      rank: 'cvRank',
+      svd: 'cvSvd',
+      solve: 'cvSolve',
+      power: 'cvPower',
+      lsq: 'cvLsq',
+      space3d: 'cv3d'
+    };
+    const cv = {};
+    Object.keys(ids).forEach(k => {
+      const el = document.getElementById(ids[k]);
+      if (el) cv[k] = el;
+    });
+
+    if (cv.hero) new HeroStage(cv.hero);
+    if (cv.dot) new DotStage(cv.dot);
+
+    if (cv.vec) {
+      vecStage = new VectorStage(cv.vec);
+      syncVecUI();
+      aRange.addEventListener('input', () => { vecStage.ta = +aRange.value; syncVecUI(); });
+      bRange.addEventListener('input', () => { vecStage.tb = +bRange.value; syncVecUI(); });
+    }
+
+    if (cv.matrix) {
+      const matStage = new TransformStage(cv.matrix);
+      document.getElementById('presets').addEventListener('click', e => {
+        const btn = e.target.closest('[data-preset]');
+        if (!btn) return;
+        const p = PRESETS[btn.dataset.preset];
+        if (!p) return;
+        matStage.tgt.a = p[0]; matStage.tgt.b = p[1];
+        matStage.tgt.c = p[2]; matStage.tgt.d = p[3];
+        document.querySelectorAll('#presets [data-preset]').forEach(b =>
+          b.classList.toggle('active', b === btn));
+      });
+    }
+
+    if (cv.det) new DetStage(cv.det);
+    if (cv.compose) new ComposeStage(cv.compose);
+
+    if (cv.basis) {
+      const bs = new BasisStage(cv.basis);
+      if (basisRange) {
+        basisRange.addEventListener('input', () => {
+          bs.tTheta = (+basisRange.value) * Math.PI / 180;
+          bs._sync();
+        });
+      }
+    }
+
+    if (cv.ellipse) new EllipseStage(cv.ellipse);
+    if (cv.rank) new RankStage(cv.rank);
+    if (cv.svd) new SvdStage(cv.svd);
+    if (cv.solve) new SolveStage(cv.solve);
+
+    if (cv.power) {
+      const ps = new PowerStage(cv.power);
+      const pp = document.getElementById('powerPresets');
+      if (pp) {
+        pp.addEventListener('click', e => {
+          const btn = e.target.closest('[data-powerpreset]');
+          if (!btn) return;
+          const name = btn.dataset.powerpreset;
+          if (name === 'reset') {
+            ps._reset();
+          } else {
+            ps.setPreset(name);
+            pp.querySelectorAll('[data-powerpreset]').forEach(b =>
+              b.classList.toggle('active', b === btn));
+          }
+        });
+      }
+    }
+
+    if (cv.lsq) new LsqStage(cv.lsq);
+
+    if (cv.space3d) {
+      const s3d = new Space3DStage(cv.space3d);
+      document.getElementById('presets3d').addEventListener('click', e => {
+        const btn = e.target.closest('[data-preset3d]');
+        if (!btn) return;
+        const p = PRESETS_3D[btn.dataset.preset3d];
+        if (!p) return;
+        s3d.tgtT = p.slice();
+        document.querySelectorAll('#presets3d [data-preset3d]').forEach(b =>
+          b.classList.toggle('active', b === btn));
+      });
+    }
+  }
+
+  /* ============================================================
+     导航 & 滚动
+  ============================================================ */
+  function setupNav() {
+    const sections = Array.from(document.querySelectorAll('[data-title]'));
+    const dotsEl = document.getElementById('dots');
+    const bar = document.getElementById('progressBar');
+    const dots = [];
+
+    sections.forEach(sec => {
+      const b = document.createElement('button');
+      b.className = 'dot';
+      b.type = 'button';
+      b.dataset.label = sec.dataset.title;
+      b.setAttribute('aria-label', sec.dataset.title);
+      b.addEventListener('click', () => {
+        sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      dotsEl.appendChild(b);
+      dots.push(b);
+    });
+
+    const navIO = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const i = sections.indexOf(e.target);
+          if (i >= 0) dots.forEach((d, j) => d.classList.toggle('active', j === i));
+        }
+      });
+    }, { threshold: 0.3 });
+
+    sections.forEach(s => navIO.observe(s));
+
+    let raf = false;
+    const onScroll = () => {
+      if (raf) return;
+      raf = true;
+      requestAnimationFrame(() => {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const p = max > 0 ? clamp(window.scrollY / max, 0, 1) : 0;
+        bar.style.width = (p * 100).toFixed(2) + '%';
+        raf = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    onScroll();
+  }
+
+  function setupReveal() {
+    const items = document.querySelectorAll('.reveal');
+    const ro = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const el = e.target;
+          const delay = Math.min(el.dataset.delay || 0, 400);
+          setTimeout(() => el.classList.add('in'), delay);
+          ro.unobserve(el);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+
+    items.forEach((el, i) => {
+      el.dataset.delay = (i % 3) * 90;
+      ro.observe(el);
+    });
+  }
+
+  function start() {
+    boot();
+    setupNav();
+    setupReveal();
+    requestAnimationFrame(frame);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+
+})();
+</script>
+</body>
+</html>

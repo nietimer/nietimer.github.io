@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>数字电路之美 · DIGITAL CIRCUIT AESTHETICS</title>
+<style>
+  :root{
+    --cyan: #5fe9ff;
+    --cyan-bright: #c9f7ff;
+    --magenta: #ff5fa8;
+    --amber: #ffbe5c;
+    --ink: #e6f5fb;
+    --muted: #7f97a9;
+    --glass: rgba(9,19,28,.42);
+    --stroke: rgba(95,233,255,.16);
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html, body{
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior:none;
+  }
+
+  body{
+    background:#04070c;
+    color:var(--ink);
+    font-family: 'Inter','Helvetica Neue',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+    font-weight:300;
+    letter-spacing:.02em;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  body::before{
+    content:'';
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 55% 45% at 50% 42%, rgba(35,130,175,.20), transparent 68%),
+      radial-gradient(ellipse 80% 55% at 50% 108%, rgba(110,40,140,.14), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 12% 90%, rgba(20,90,120,.10), transparent 70%);
+  }
+
+  #scene{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    display:block;
+    z-index:1;
+    touch-action:none;
+    cursor:grab;
+  }
+  #scene:active{ cursor:grabbing; }
+
+  .vignette{
+    position:fixed; inset:0; z-index:2; pointer-events:none;
+    background: radial-gradient(ellipse at 50% 48%, transparent 48%, rgba(2,5,9,.72) 100%);
+  }
+
+  .scanline{
+    position:fixed; inset:0; z-index:3; pointer-events:none; opacity:.22;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(95,233,255,.03) 0px,
+      rgba(95,233,255,.03) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode:screen;
+  }
+
+  /* ===== 品牌 ===== */
+  .brand{
+    position:fixed;
+    top:clamp(16px,3.2vw,40px);
+    left:clamp(16px,3.2vw,48px);
+    z-index:6;
+    display:flex; align-items:center; gap:13px;
+    pointer-events:none;
+    animation: fadeIn .9s .05s both ease-out;
+  }
+  .brand-mark{
+    width:clamp(28px,3.2vw,38px);
+    height:clamp(28px,3.2vw,38px);
+    color:var(--cyan);
+    filter: drop-shadow(0 0 8px rgba(95,233,255,.65));
+    flex:0 0 auto;
+  }
+  .brand-mark svg{ width:100%; height:100%; display:block; }
+  .brand h1{
+    font-size:clamp(13px,1.5vw,19px);
+    font-weight:300;
+    letter-spacing:.16em;
+    line-height:1.2;
+    color:#eafbff;
+    text-shadow:0 0 22px rgba(95,233,255,.35);
+  }
+  .brand p{
+    margin-top:5px;
+    font-size:clamp(6px,.7vw,9px);
+    letter-spacing:.34em;
+    color:var(--muted);
+    font-weight:300;
+  }
+
+  /* ===== 读数 ===== */
+  .readout{
+    position:fixed;
+    top:clamp(16px,3.2vw,40px);
+    right:clamp(16px,3.2vw,48px);
+    z-index:6;
+    display:flex; align-items:center; gap:9px;
+    padding:8px 15px;
+    border-radius:999px;
+    background:var(--glass);
+    backdrop-filter:blur(16px) saturate(1.3);
+    -webkit-backdrop-filter:blur(16px) saturate(1.3);
+    border:1px solid var(--stroke);
+    font-size:clamp(9px,1vw,11px);
+    letter-spacing:.18em;
+    color:var(--muted);
+    pointer-events:none;
+    animation: fadeIn .9s .15s both ease-out;
+  }
+  .readout .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--cyan);
+    box-shadow:0 0 10px var(--cyan), 0 0 20px rgba(95,233,255,.5);
+    animation:pulseDot 2.2s ease-in-out infinite;
+  }
+  .readout .sep{ opacity:.35; }
+  #readoutMode{ color:var(--cyan-bright); text-shadow:0 0 10px rgba(95,233,255,.6); }
+
+  @keyframes pulseDot{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:.28; transform:scale(.8); }
+  }
+
+  /* ===== 探索进度 ===== */
+  .progress{
+    position:fixed;
+    top:clamp(56px,7vw,84px);
+    right:clamp(16px,3.2vw,48px);
+    z-index:6;
+    display:flex; align-items:center; gap:10px;
+    padding:7px 14px;
+    border-radius:999px;
+    background:var(--glass);
+    backdrop-filter:blur(16px) saturate(1.3);
+    -webkit-backdrop-filter:blur(16px) saturate(1.3);
+    border:1px solid var(--stroke);
+    font-size:clamp(9px,.95vw,10.5px);
+    letter-spacing:.18em;
+    color:var(--muted);
+    pointer-events:none;
+    animation: fadeIn .9s .25s both ease-out;
+  }
+  .prog-label{ color:var(--muted); }
+  .prog-bar{
+    display:inline-block;
+    width:42px; height:3px;
+    border-radius:2px;
+    background:rgba(95,233,255,.14);
+    overflow:hidden;
+    position:relative;
+  }
+  .prog-bar span{
+    position:absolute; left:0; top:0; bottom:0;
+    width:0%;
+    background:linear-gradient(90deg, var(--cyan), var(--cyan-bright));
+    box-shadow:0 0 8px rgba(95,233,255,.8);
+    transition: width .5s cubic-bezier(.2,.8,.3,1), background .4s, box-shadow .4s;
+  }
+  #progText{ color:var(--cyan-bright); text-shadow:0 0 10px rgba(95,233,255,.6); transition: color .4s; }
+
+  @keyframes fadeIn{
+    from{ opacity:0; }
+    to{ opacity:1; }
+  }
+
+  /* ===== 底部信息卡 ===== */
+  .info-card{
+    position:fixed;
+    left:50%;
+    bottom:clamp(92px,10vw,112px);
+    transform:translateX(-50%);
+    width:min(470px, calc(100vw - 28px));
+    max-height:min(44vh, 380px);
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:16px 20px 17px;
+    border-radius:18px;
+    background:rgba(10,20,30,.5);
+    backdrop-filter:blur(22px) saturate(1.4);
+    -webkit-backdrop-filter:blur(22px) saturate(1.4);
+    border:1px solid var(--stroke);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.02) inset,
+      0 30px 70px -34px rgba(0,0,0,.95);
+    z-index:5;
+    animation: fadeIn .9s .3s both ease-out, cardIn .5s cubic-bezier(.2,.8,.3,1);
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color: rgba(95,233,255,.25) transparent;
+    transition: border-color .3s;
+  }
+  .info-card::-webkit-scrollbar{ width:3px; }
+  .info-card::-webkit-scrollbar-thumb{ background:rgba(95,233,255,.25); border-radius:3px; }
+  .info-card::-webkit-scrollbar-track{ background:transparent; }
+
+  .info-card::before{
+    content:'';
+    position:absolute;
+    top:0; left:20px; right:20px; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(95,233,255,.75), transparent);
+    pointer-events:none;
+  }
+
+  @keyframes cardIn{
+    from{ transform:translateX(-50%) translateY(10px); opacity:0; }
+    to{ transform:translateX(-50%) translateY(0); opacity:1; }
+  }
+
+  .ic-close{
+    position:absolute;
+    top:10px; right:12px;
+    width:26px; height:26px;
+    border-radius:50%;
+    border:1px solid rgba(95,233,255,.16);
+    background:rgba(95,233,255,.04);
+    color:var(--muted);
+    font-size:15px;
+    line-height:1;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:300;
+    display:flex; align-items:center; justify-content:center;
+    transition:all .25s;
+    padding:0;
+    outline:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .ic-close:hover{
+    color:var(--cyan-bright);
+    border-color:rgba(95,233,255,.5);
+    background:rgba(95,233,255,.12);
+  }
+
+  .ic-tag{
+    font-size:9.5px;
+    letter-spacing:.3em;
+    color:var(--cyan);
+    text-shadow:0 0 12px rgba(95,233,255,.7);
+    margin-bottom:8px;
+    font-weight:300;
+  }
+  .ic-tag.hot{
+    color:var(--magenta);
+    text-shadow:0 0 12px rgba(255,95,168,.7);
+  }
+  .ic-tag.gold{
+    color:var(--amber);
+    text-shadow:0 0 12px rgba(255,190,92,.7);
+  }
+  .info-card h3{
+    font-size:clamp(15px,1.6vw,18px);
+    font-weight:300;
+    letter-spacing:.08em;
+    color:#f0fcff;
+    margin-bottom:9px;
+    text-shadow:0 0 26px rgba(95,233,255,.3);
+  }
+  .info-card p{
+    font-size:12px;
+    line-height:1.78;
+    color:#9db4c4;
+    letter-spacing:.025em;
+    margin:0;
+  }
+  .ic-extra{
+    margin-top:11px;
+  }
+  .ic-extra:empty{ margin-top:0; }
+
+  .ic-formula{
+    display:inline-block;
+    margin-top:9px;
+    padding:6px 12px;
+    border-radius:8px;
+    background:rgba(95,233,255,.06);
+    border:1px solid rgba(95,233,255,.2);
+    color:#c9f7ff;
+    font-family:ui-monospace,Menlo,Consolas,'Courier New',monospace;
+    font-size:10.5px;
+    letter-spacing:.04em;
+    text-shadow:0 0 12px rgba(95,233,255,.5);
+    box-shadow:inset 0 0 18px rgba(95,233,255,.06);
+  }
+
+  .ic-table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+    font-family:ui-monospace,Menlo,Consolas,'Courier New',monospace;
+    font-size:10.5px;
+  }
+  .ic-table th, .ic-table td{
+    padding:4px 6px;
+    border:1px solid rgba(95,233,255,.14);
+    text-align:center;
+    color:#9db4c4;
+    letter-spacing:.06em;
+  }
+  .ic-table th{
+    color:#c9f7ff;
+    background:rgba(95,233,255,.08);
+    font-weight:400;
+    text-shadow:0 0 8px rgba(95,233,255,.45);
+  }
+  .ic-table td:first-child{ color:#7f97a9; }
+
+  /* ===== 按钮坞 ===== */
+  .dock{
+    position:fixed;
+    left:50%;
+    bottom:clamp(14px,2.4vw,26px);
+    transform:translateX(-50%);
+    z-index:7;
+    display:flex;
+    gap:6px;
+    padding:6px;
+    border-radius:999px;
+    background:rgba(8,16,24,.58);
+    backdrop-filter:blur(20px) saturate(1.4);
+    -webkit-backdrop-filter:blur(20px) saturate(1.4);
+    border:1px solid rgba(95,233,255,.14);
+    box-shadow:0 20px 60px -28px rgba(0,0,0,.95);
+    max-width:calc(100vw - 20px);
+    overflow-x:auto;
+    scrollbar-width:none;
+    animation: fadeIn .9s .35s both ease-out;
+  }
+  .dock::-webkit-scrollbar{ display:none; }
+
+  .dock-btn{
+    flex:0 0 auto;
+    padding:9px 17px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.07);
+    background:rgba(255,255,255,.028);
+    color:#94aec0;
+    font-family:inherit;
+    font-size:12px;
+    font-weight:300;
+    letter-spacing:.16em;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:all .32s cubic-bezier(.2,.8,.3,1);
+    -webkit-tap-highlight-color:transparent;
+    outline:none;
+  }
+  .dock-btn:hover{
+    color:#dff8ff;
+    border-color:rgba(95,233,255,.42);
+    background:rgba(95,233,255,.07);
+  }
+  .dock-btn:active{ transform:scale(.96); }
+  .dock-btn.active{
+    color:#eafeff;
+    border-color:rgba(95,233,255,.85);
+    background:rgba(95,233,255,.11);
+    box-shadow:
+      0 0 0 1px rgba(95,233,255,.25),
+      0 0 20px rgba(95,233,255,.5),
+      inset 0 0 16px rgba(95,233,255,.14);
+    text-shadow:0 0 12px rgba(95,233,255,.85);
+  }
+
+  .hint{
+    position:fixed;
+    right:clamp(16px,3.4vw,48px);
+    bottom:clamp(24px,3.2vw,40px);
+    z-index:6;
+    font-size:9.5px;
+    letter-spacing:.2em;
+    color:rgba(127,151,169,.55);
+    pointer-events:none;
+    animation: fadeIn 1s .5s both ease-out;
+    transition: opacity .5s;
+  }
+  .hint.hide{ opacity:0; }
+
+  /* ===== 移动端 ===== */
+  @media (max-width: 820px){
+    .info-card{
+      bottom:84px;
+      width:calc(100vw - 24px);
+      max-height:38vh;
+      padding:13px 16px 14px;
+      border-radius:15px;
+    }
+    .info-card h3{ font-size:14.5px; margin-bottom:7px; }
+    .info-card p{ font-size:11.5px; line-height:1.7; }
+    .ic-tag{ font-size:9px; margin-bottom:6px; }
+    .ic-table{ font-size:10px; }
+    .ic-table th, .ic-table td{ padding:3px 4px; }
+
+    .dock{ bottom:12px; padding:5px; gap:5px; }
+    .dock-btn{ padding:8px 13px; font-size:11px; letter-spacing:.12em; }
+
+    .readout{ padding:6px 11px; font-size:9px; gap:7px; }
+    .brand{ gap:10px; }
+    .progress{ top:52px; padding:6px 11px; font-size:9px; }
+    .prog-bar{ width:34px; }
+    .hint{ display:none; }
+  }
+
+  @media (max-width: 400px){
+    .dock-btn{ padding:8px 11px; font-size:10.5px; }
+    .info-card{ bottom:80px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+<div class="vignette"></div>
+<div class="scanline"></div>
+
+<div class="brand">
+  <div class="brand-mark">
+    <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="11" y="11" width="18" height="18" rx="3.5"/>
+      <rect x="16.5" y="16.5" width="7" height="7" rx="1.5" opacity=".75"/>
+      <path d="M17 11V5.5M23 11V5.5M17 34.5V29M23 34.5V29M11 17H5.5M11 23H5.5M34.5 17H29M34.5 23H29"/>
+    </svg>
+  </div>
+  <div>
+    <h1>数字电路之美</h1>
+    <p>DIGITAL CIRCUIT AESTHETICS</p>
+  </div>
+</div>
+
+<div class="readout">
+  <span class="dot"></span>
+  <span id="readoutMode">CORE</span>
+  <span class="sep">/</span>
+  <span id="readoutFps">60 FPS</span>
+</div>
+
+<div class="progress" id="progress">
+  <span class="prog-label">已探索</span>
+  <span class="prog-bar"><span id="progFill"></span></span>
+  <span id="progText">0 / 4</span>
+</div>
+
+<div class="info-card" id="infoCard">
+  <button class="ic-close" id="icClose" aria-label="关闭">×</button>
+  <div class="ic-tag" id="icTag">01 / CORE</div>
+  <h3 id="icTitle">芯片核心</h3>
+  <p id="icBody">点击场景中闪烁的节点，探索数字电路的秘密。</p>
+  <div class="ic-extra" id="icExtra"></div>
+</div>
+
+<nav class="dock" id="dock">
+  <button class="dock-btn active" data-mode="core">核心</button>
+  <button class="dock-btn" data-mode="trace">走线</button>
+  <button class="dock-btn" data-mode="logic">逻辑</button>
+  <button class="dock-btn" data-mode="wave">波形</button>
+  <button class="dock-btn" data-mode="matrix">矩阵</button>
+</nav>
+
+<div class="hint" id="hint">拖拽旋转 · 点击光点探索</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ============================================================
+   0. 常量与工具
+============================================================ */
+const COL = {
+  cyan:       0x5fe9ff,
+  cyanBright: 0xc9f7ff,
+  magenta:    0xff5fa8,
+  amber:      0xffbe5c,
+  grid:       0x8fa8bd
+};
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+let _dotTex = null;
+function makeDotTexture(){
+  if (_dotTex) return _dotTex;
+  const s = 64;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(0.28,'rgba(205,247,255,0.92)');
+  g.addColorStop(0.65,'rgba(120,230,255,0.28)');
+  g.addColorStop(1,   'rgba(95,233,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  _dotTex = new THREE.CanvasTexture(c);
+  return _dotTex;
+}
+
+let _hotspotTex = null;
+function getHotspotTex(){
+  if (_hotspotTex) return _hotspotTex;
+  const s = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  const half = s / 2;
+
+  ctx.strokeStyle = 'rgba(95,233,255,.22)';
+  ctx.lineWidth = 11;
+  ctx.beginPath();
+  ctx.arc(half, half, 42, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(95,233,255,.95)';
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.arc(half, half, 42, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const g = ctx.createRadialGradient(half, half, 0, half, half, 17);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.4, 'rgba(205,247,255,1)');
+  g.addColorStop(0.75, 'rgba(95,233,255,.55)');
+  g.addColorStop(1, 'rgba(95,233,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(half, half, 17, 0, Math.PI * 2);
+  ctx.fill();
+
+  _hotspotTex = new THREE.CanvasTexture(c);
+  return _hotspotTex;
+}
+
+function registerFade(group, initial = 1){
+  const mats = new Set();
+  group.traverse(o => {
+    const m = o.material;
+    if (!m) return;
+    (Array.isArray(m) ? m : [m]).forEach(mm => {
+      if (mm.userData._base === undefined){
+        mm.userData._base = (mm.opacity !== undefined) ? mm.opacity : 1;
+      }
+      mats.add(mm);
+    });
+  });
+  group.userData._mats = mats;
+  group.userData._fade = initial;
+  group.userData._targetFade = initial;
+  return group;
+}
+
+function updateFade(group){
+  const u = group.userData;
+  if (!u._mats) return;
+  u._fade += (u._targetFade - u._fade) * 0.075;
+  const f = u._fade;
+  group.visible = f > 0.004;
+  if (group.visible){
+    u._mats.forEach(mm => { mm.opacity = mm.userData._base * f; });
+  }
+}
+
+/* 统一的无 tone mapping 材质构造（关键：让线条保持锐利高饱和） */
+function lineMat(color, opacity, opts = {}){
+  return new THREE.LineBasicMaterial(Object.assign({
+    color, transparent: true, opacity, toneMapped: false
+  }, opts));
+}
+function dashMat(color, opacity, dashSize, gapSize){
+  return new THREE.LineDashedMaterial({
+    color, transparent: true, opacity, dashSize, gapSize, toneMapped: false
+  });
+}
+
+/* ============================================================
+   1. 渲染器 / 场景 / 相机（清晰度核心优化）
+============================================================ */
+const canvas = document.getElementById('scene');
+const isMobile = window.innerWidth < 820;
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: false,              // 由 MSAA render target 接管
+  alpha: true,
+  powerPreference: 'high-performance'
+});
+const DPR = Math.min(window.devicePixelRatio || 1, isMobile ? 1.8 : 2);
+renderer.setPixelRatio(DPR);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x04070c, 0.009);   // 雾效减淡 → 远景更清晰
+
+const camera = new THREE.PerspectiveCamera(
+  42,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  400
+);
+
+/* ---- 使用 MSAA 的 HalfFloat render target 提升画质 ---- */
+const msaaSamples = isMobile ? 2 : 4;
+const rt = new THREE.WebGLRenderTarget(1, 1, {
+  type: THREE.HalfFloatType,
+  samples: msaaSamples,
+  depthBuffer: true,
+  stencilBuffer: false
+});
+
+const composer = new EffectComposer(renderer, rt);
+composer.setPixelRatio(DPR);
+composer.setSize(window.innerWidth, window.innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+
+/* Bloom 参数收紧 → 不再泛白模糊 */
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  isMobile ? 0.42 : 0.5,   // strength
+  0.4,                     // radius
+  0.28                     // threshold
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   2. 场景构建（去除文字标签，增加结构细节）
+============================================================ */
+
+/* ---------- 2.1 虚线网格 ---------- */
+function buildGrid(){
+  const g = new THREE.Group();
+  const SIZE = 64, DIV = 32;
+  const step = SIZE / DIV, half = SIZE / 2;
+
+  const mat     = dashMat(COL.grid, 0.18, 0.32, 0.5);
+  const matAxis = dashMat(COL.cyan, 0.34, 0.55, 0.55);
+
+  for (let i = 0; i <= DIV; i++){
+    const p = -half + i * step;
+    const isAxis = Math.abs(p) < 0.001;
+
+    const l1 = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(p, 0, -half),
+        new THREE.Vector3(p, 0,  half)
+      ]),
+      isAxis ? matAxis : mat
+    );
+    l1.computeLineDistances();
+    g.add(l1);
+
+    const l2 = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-half, 0, p),
+        new THREE.Vector3( half, 0, p)
+      ]),
+      isAxis ? matAxis : mat
+    );
+    l2.computeLineDistances();
+    g.add(l2);
+  }
+
+  g.position.y = -3.2;
+  return g;
+}
+
+/* ---------- 2.2 方向箭头 ---------- */
+function buildArrows(){
+  const g = new THREE.Group();
+  const y = -2.9;
+
+  const add = (dir, origin, len, color) => {
+    g.add(new THREE.ArrowHelper(dir.normalize(), origin, len, color, 0.72, 0.44));
+  };
+
+  add(new THREE.Vector3(1, 0, 0),  new THREE.Vector3(-10, y, -10), 2.7, COL.cyan);
+  add(new THREE.Vector3(0, 0, 1),  new THREE.Vector3(-10, y, -10), 2.7, COL.magenta);
+  add(new THREE.Vector3(0, 1, 0),  new THREE.Vector3(-10, y, -10), 2.7, COL.amber);
+  add(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(10, y, 10), 2.7, COL.cyan);
+  add(new THREE.Vector3(0, 0, -1), new THREE.Vector3(10, y, 10), 2.7, COL.magenta);
+
+  return g;
+}
+
+/* ---------- 2.3 芯片主体（增强：功能区块 + BGA 焊球） ---------- */
+function buildChip(){
+  const g = new THREE.Group();
+  const CW = 4.4, CH = 0.9;
+  const topY = CH / 2 + 0.012;
+
+  // 主体线框
+  g.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(CW, CH, CW)),
+    lineMat(COL.cyan, 0.96)
+  ));
+
+  // 外扩光晕框
+  g.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(CW * 1.16, CH * 1.06, CW * 1.16)),
+    lineMat(COL.cyan, 0.15)
+  ));
+
+  // 内部功能区（代替字母标签）
+  const addBlock = (cx, cz, w, d, color, op) => {
+    const hw = w / 2, hd = d / 2;
+    g.add(new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(cx - hw, topY, cz - hd),
+        new THREE.Vector3(cx + hw, topY, cz - hd),
+        new THREE.Vector3(cx + hw, topY, cz + hd),
+        new THREE.Vector3(cx - hw, topY, cz + hd)
+      ]),
+      lineMat(color, op)
+    ));
+    // 内部斜纹填充
+    const fillMat = lineMat(color, op * 0.35);
+    const steps = 4;
+    for (let i = 1; i < steps; i++){
+      const t = i / steps;
+      g.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(cx - hw + w * t, topY, cz - hd),
+          new THREE.Vector3(cx - hw + w * t, topY, cz + hd)
+        ]),
+        fillMat
+      ));
+    }
+  };
+
+  addBlock(-1.1, -1.15, 1.7, 1.15, COL.amber, 0.58);       // ALU 区
+  addBlock( 1.1, -1.15, 1.7, 1.15, COL.magenta, 0.52);      // Cache 区
+  addBlock( 0.0,  0.35, 3.5, 0.7,  COL.cyanBright, 0.5);    // I/O 总线
+  addBlock(-1.1,  1.55, 1.7, 0.95, COL.cyan, 0.42);         // 寄存器区
+  addBlock( 1.1,  1.55, 1.7, 0.95, COL.cyan, 0.42);         // 控制区
+
+  // 功能区连接线
+  const linkMat = lineMat(COL.cyanBright, 0.32);
+  [
+    [[-1.1, 0.35], [-1.1, -0.575]],
+    [[ 1.1, 0.35], [ 1.1, -0.575]],
+    [[-1.1, 0.35], [-1.1, 1.075]],
+    [[ 1.1, 0.35], [ 1.1, 1.075]]
+  ].forEach(([[x1, z1], [x2, z2]]) => {
+    g.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x1, topY, z1),
+        new THREE.Vector3(x2, topY, z2)
+      ]),
+      linkMat
+    ));
+  });
+
+  // 四角 L 形标记
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx, sz]) => {
+    const x = sx * 1.78, z = sz * 1.78;
+    g.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, topY, z - sz * 0.34),
+        new THREE.Vector3(x, topY, z),
+        new THREE.Vector3(x - sx * 0.34, topY, z)
+      ]),
+      lineMat(COL.cyan, 0.5)
+    ));
+  });
+
+  // 引脚
+  const pinGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.44, 0.1, 0.2));
+  const pinMat = lineMat(COL.cyanBright, 0.55);
+  const N = 7, span = CW - 0.95;
+
+  const mkPin = (x, z, rotY = 0) => {
+    const p = new THREE.LineSegments(pinGeo, pinMat);
+    p.position.set(x, 0, z);
+    p.rotation.y = rotY;
+    g.add(p);
+  };
+
+  for (let i = 0; i < N; i++){
+    const t = -span / 2 + (i / (N - 1)) * span;
+    mkPin(t,  CW / 2 + 0.22);
+    mkPin(t, -CW / 2 - 0.22);
+    mkPin(-CW / 2 - 0.22, t, Math.PI / 2);
+    mkPin( CW / 2 + 0.22, t, Math.PI / 2);
+  }
+
+  // 底部 BGA 焊球阵列
+  const ballPos = [];
+  for (let ix = -3; ix <= 3; ix++){
+    for (let iz = -3; iz <= 3; iz++){
+      if (Math.abs(ix) === 3 && Math.abs(iz) === 3) continue;
+      ballPos.push(ix * 0.55, -CH / 2 - 0.07, iz * 0.55);
+    }
+  }
+  const ballGeo = new THREE.BufferGeometry();
+  ballGeo.setAttribute('position', new THREE.Float32BufferAttribute(ballPos, 3));
+  g.add(new THREE.Points(ballGeo, new THREE.PointsMaterial({
+    color: COL.cyanBright,
+    size: 0.11,
+    map: makeDotTexture(),
+    transparent: true,
+    opacity: 0.46,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+    toneMapped: false
+  })));
+
+  return g;
+}
+
+/* ---------- 2.4 悬浮内核（增强：多层 + 能量环） ---------- */
+function buildCore(){
+  const g = new THREE.Group();
+
+  // 最外层八面体
+  g.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.OctahedronGeometry(1.55, 0)),
+    lineMat(COL.cyan, 0.24)
+  ));
+
+  // 中间二十面体
+  g.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(0.95, 0)),
+    lineMat(COL.magenta, 0.9)
+  ));
+
+  // 内层立方体
+  g.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(0.42, 0.42, 0.42)),
+    lineMat(COL.cyanBright, 0.85)
+  ));
+
+  // 能量环 1
+  const r1 = [];
+  const N1 = 64;
+  for (let k = 0; k <= N1; k++){
+    const a = k / N1 * Math.PI * 2;
+    r1.push(new THREE.Vector3(Math.cos(a) * 1.28, 0, Math.sin(a) * 1.28));
+  }
+  const ring1 = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(r1),
+    lineMat(COL.cyan, 0.42)
+  );
+  ring1.rotation.x = 0.6;
+  g.add(ring1);
+
+  // 能量环 2
+  const r2 = [];
+  const N2 = 64;
+  for (let k = 0; k <= N2; k++){
+    const a = k / N2 * Math.PI * 2;
+    r2.push(new THREE.Vector3(Math.cos(a) * 1.1, 0, Math.sin(a) * 1.1));
+  }
+  const ring2 = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(r2),
+    lineMat(COL.magenta, 0.36)
+  );
+  ring2.rotation.x = -0.5;
+  ring2.rotation.z = 0.8;
+  g.add(ring2);
+
+  g.position.y = 2.35;
+  return g;
+}
+
+/* ---------- 2.5 数据走线（增补两条） ---------- */
+function buildTraces(){
+  const g = new THREE.Group();
+  const Y = -0.5;
+
+  const defs = [
+    [[ 2.7,  1.0], [ 4.3,  1.0], [ 4.3,  3.7], [ 7.2,  3.7]],
+    [[ 2.7, -1.5], [ 3.9, -1.5], [ 3.9, -4.5], [ 6.8, -4.5]],
+    [[-2.7, -1.0], [-4.3, -1.0], [-4.3, -3.7], [-7.2, -3.7]],
+    [[-2.7,  1.5], [-3.9,  1.5], [-3.9,  4.5], [-6.8,  4.5]],
+    [[ 1.5, -2.7], [ 1.5, -4.5], [ 3.7, -4.5], [ 3.7, -6.9]],
+    [[-1.5,  2.7], [-1.5,  4.5], [-3.7,  4.5], [-3.7,  6.9]],
+    [[ 2.7,  0.0], [ 5.5,  0.0], [ 5.5, -2.2], [ 8.2, -2.2]],
+    [[-2.7,  0.0], [-5.5,  0.0], [-5.5,  2.2], [-8.2,  2.2]]
+  ];
+
+  const paths = [];
+  const lMat = lineMat(COL.cyan, 0.8);
+  const nMat = lineMat(COL.cyanBright, 0.6);
+  const pMat = lineMat(COL.cyanBright, 0.9);
+
+  defs.forEach(def => {
+    const pts = def.map(([x, z]) => new THREE.Vector3(x, Y, z));
+    paths.push(pts);
+
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lMat));
+
+    // 拐点节点
+    for (let i = 1; i < pts.length - 1; i++){
+      const p = pts[i];
+      g.add(new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(p.x - 0.13, Y, p.z - 0.13),
+          new THREE.Vector3(p.x + 0.13, Y, p.z - 0.13),
+          new THREE.Vector3(p.x + 0.13, Y, p.z + 0.13),
+          new THREE.Vector3(p.x - 0.13, Y, p.z + 0.13)
+        ]),
+        nMat
+      ));
+    }
+
+    // 末端焊盘
+    const end = pts[pts.length - 1];
+    g.add(new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(end.x - 0.27, Y, end.z - 0.27),
+        new THREE.Vector3(end.x + 0.27, Y, end.z - 0.27),
+        new THREE.Vector3(end.x + 0.27, Y, end.z + 0.27),
+        new THREE.Vector3(end.x - 0.27, Y, end.z + 0.27)
+      ]),
+      pMat
+    ));
+  });
+
+  return { group: g, paths };
+}
+
+/* ---------- 2.6 流动粒子 ---------- */
+function buildFlow(paths){
+  const PER = 10;
+  const total = paths.length * PER;
+  const pos = new Float32Array(total * 3);
+  const data = [];
+  let idx = 0;
+
+  paths.forEach(pts => {
+    const segs = [];
+    let acc = 0;
+    for (let i = 0; i < pts.length - 1; i++){
+      const len = pts[i].distanceTo(pts[i + 1]);
+      segs.push({ a: pts[i], b: pts[i + 1], len });
+      acc += len;
+    }
+    const totalLen = acc;
+
+    for (let k = 0; k < PER; k++){
+      data.push({ segs, totalLen, t: k / PER, speed: 0.1 + Math.random() * 0.08, idx });
+      idx++;
+    }
+  });
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  const mat = new THREE.PointsMaterial({
+    color: COL.cyanBright,
+    size: 0.26,
+    map: makeDotTexture(),
+    transparent: true,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+    toneMapped: false
+  });
+
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+
+  return { points, data, pos, geo };
+}
+
+function sampleAlong(segs, totalLen, t){
+  let d = (((t % 1) + 1) % 1) * totalLen;
+  for (let i = 0; i < segs.length; i++){
+    const s = segs[i];
+    if (d <= s.len || i === segs.length - 1){
+      const k = s.len > 0 ? Math.min(1, d / s.len) : 0;
+      return {
+        x: s.a.x + (s.b.x - s.a.x) * k,
+        y: s.a.y + (s.b.y - s.a.y) * k,
+        z: s.a.z + (s.b.z - s.a.z) * k
+      };
+    }
+    d -= s.len;
+  }
+  return { x: 0, y: 0, z: 0 };
+}
+
+/* ---------- 2.7 逻辑节点网络（无标签 + 网状连接） ---------- */
+const LOGIC_POS = [];
+function buildNodes(){
+  const g = new THREE.Group();
+  const R = 7.4, COUNT = 6;
+
+  const nodeMat = lineMat(COL.cyan, 0.9);
+  const ringMat = lineMat(COL.magenta, 0.6);
+  const linkMat = lineMat(COL.cyan, 0.18);
+  const netMat  = lineMat(COL.cyanBright, 0.28);
+
+  LOGIC_POS.length = 0;
+
+  for (let i = 0; i < COUNT; i++){
+    const a = (i / COUNT) * Math.PI * 2 + 0.42;
+    const x = Math.cos(a) * R;
+    const z = Math.sin(a) * R;
+    const y = 0.5 + Math.sin(i * 1.9) * 1.9;
+
+    LOGIC_POS.push(new THREE.Vector3(x, y, z));
+
+    const node = new THREE.Group();
+    node.position.set(x, y, z);
+
+    node.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.46, 0)),
+      nodeMat
+    ));
+
+    const rp = [];
+    for (let k = 0; k <= 32; k++){
+      const t = (k / 32) * Math.PI * 2;
+      rp.push(new THREE.Vector3(Math.cos(t) * 0.78, 0, Math.sin(t) * 0.78));
+    }
+    node.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rp), ringMat));
+    node.rotation.x = 0.42;
+
+    g.add(node);
+  }
+
+  // 相邻节点网状连接
+  for (let i = 0; i < COUNT; i++){
+    const j = (i + 1) % COUNT;
+    g.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([LOGIC_POS[i], LOGIC_POS[j]]),
+      netMat
+    ));
+  }
+
+  // 节点连向中心
+  LOGIC_POS.forEach(p => {
+    const dir = p.clone().multiplyScalar(-1).normalize();
+    const start = p.clone().add(dir.multiplyScalar(2.0));
+    g.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([start, p]),
+      linkMat
+    ));
+  });
+
+  return g;
+}
+
+/* ---------- 2.8 时钟波形（无标签 + 辅助网格） ---------- */
+const WAVE = { N: 260, SPAN: 19, BASE_Y: 3.3, AMP: 0.92 };
+
+function digitalSignal(u, period){
+  const x = ((u % period) + period) % period;
+  const edge = 0.16;
+  const half = period / 2;
+  if (x < half - edge) return 0;
+  if (x < half)        return (x - (half - edge)) / edge;
+  if (x < period - edge) return 1;
+  return 1 - (x - (period - edge)) / edge;
+}
+
+function buildWave(){
+  const g = new THREE.Group();
+  const N = WAVE.N;
+
+  const posA = new Float32Array(N * 3);
+  const posB = new Float32Array(N * 3);
+
+  const geoA = new THREE.BufferGeometry();
+  geoA.setAttribute('position', new THREE.BufferAttribute(posA, 3));
+  const geoB = new THREE.BufferGeometry();
+  geoB.setAttribute('position', new THREE.BufferAttribute(posB, 3));
+
+  const lineA = new THREE.Line(geoA, lineMat(COL.cyan, 0.95));
+  const lineB = new THREE.Line(geoB, lineMat(COL.magenta, 0.6));
+  lineA.frustumCulled = false;
+  lineB.frustumCulled = false;
+
+  // 辅助水平网格
+  const gridMat = dashMat(COL.grid, 0.1, 0.3, 0.5);
+  for (let i = -3; i <= 3; i++){
+    const y = WAVE.BASE_Y + i * 0.9;
+    const l = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-WAVE.SPAN / 2, y, 0),
+        new THREE.Vector3( WAVE.SPAN / 2, y, 0)
+      ]),
+      gridMat
+    );
+    l.computeLineDistances();
+    g.add(l);
+  }
+
+  // 基线
+  const base = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-WAVE.SPAN / 2, WAVE.BASE_Y, 0),
+      new THREE.Vector3( WAVE.SPAN / 2, WAVE.BASE_Y, 0)
+    ]),
+    dashMat(COL.grid, 0.3, 0.35, 0.4)
+  );
+  base.computeLineDistances();
+
+  g.add(base, lineA, lineB);
+
+  return { group: g, geoA, geoB, posA, posB };
+}
+
+function updateWave(w, time){
+  const { N, SPAN, BASE_Y, AMP } = WAVE;
+  const { posA, posB } = w;
+
+  for (let i = 0; i < N; i++){
+    const x = -SPAN / 2 + (i / (N - 1)) * SPAN;
+
+    posA[i * 3]     = x;
+    posA[i * 3 + 1] = BASE_Y + digitalSignal(x * 0.9 + time * 3.0, 2.6) * AMP;
+    posA[i * 3 + 2] = 0;
+
+    posB[i * 3]     = x;
+    posB[i * 3 + 1] = BASE_Y - 1.45 + digitalSignal(x * 0.9 + time * 3.0 + 1.3, 2.6) * AMP * 0.78;
+    posB[i * 3 + 2] = 0.9;
+  }
+
+  w.geoA.attributes.position.needsUpdate = true;
+  w.geoB.attributes.position.needsUpdate = true;
+}
+
+/* ---------- 2.9 晶圆矩阵（无标签 + 切割道） ---------- */
+function buildWafer(){
+  const g = new THREE.Group();
+  const Y = -3.05;
+
+  // 同心圆
+  [2.5, 4.6, 6.8, 9.0].forEach((r, i) => {
+    const pts = [];
+    const N = 96;
+    for (let k = 0; k <= N; k++){
+      const a = k / N * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a) * r, Y, Math.sin(a) * r));
+    }
+    g.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      lineMat(COL.cyan, 0.16 + i * 0.05)
+    ));
+  });
+
+  // 放射线
+  const RN = 32;
+  for (let i = 0; i < RN; i++){
+    const a = i / RN * Math.PI * 2;
+    g.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(Math.cos(a) * 2.5, Y, Math.sin(a) * 2.5),
+        new THREE.Vector3(Math.cos(a) * 9.0, Y, Math.sin(a) * 9.0)
+      ]),
+      lineMat(COL.cyan, 0.15)
+    ));
+  }
+
+  // 晶粒阵列
+  const cell = 0.62;
+  const cellMat = lineMat(COL.cyanBright, 0.22);
+  for (let x = -9; x <= 9; x += cell){
+    for (let z = -9; z <= 9; z += cell){
+      const d = Math.hypot(x + cell / 2, z + cell / 2);
+      if (d > 8.8 || d < 2.9) continue;
+      if (Math.random() > 0.6) continue;
+      g.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x, Y, z),
+          new THREE.Vector3(x + cell * 0.8, Y, z),
+          new THREE.Vector3(x + cell * 0.8, Y, z + cell * 0.8),
+          new THREE.Vector3(x, Y, z + cell * 0.8),
+          new THREE.Vector3(x, Y, z)
+        ]),
+        cellMat
+      ));
+    }
+  }
+
+  // 切割道（十字线）
+  g.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-9, Y, 0),
+      new THREE.Vector3( 9, Y, 0)
+    ]),
+    lineMat(COL.amber, 0.24)
+  ));
+  g.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, Y, -9),
+      new THREE.Vector3(0, Y,  9)
+    ]),
+    lineMat(COL.amber, 0.24)
+  ));
+
+  return g;
+}
+
+/* ---------- 2.10 浮尘 ---------- */
+function buildDust(){
+  const n = isMobile ? 130 : 230;
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++){
+    pos[i * 3]     = (Math.random() - 0.5) * 48;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 24;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 48;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0x9fdcff,
+    size: 0.13,
+    map: makeDotTexture(),
+    transparent: true,
+    opacity: 0.42,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+    toneMapped: false
+  });
+  const p = new THREE.Points(geo, mat);
+  p.frustumCulled = false;
+  return p;
+}
+
+/* ============================================================
+   3. 组装
+============================================================ */
+const traceData = buildTraces();
+const flowData  = buildFlow(traceData.paths);
+const waveData  = buildWave();
+
+const groups = {
+  dust:   buildDust(),
+  grid:   buildGrid(),
+  arrows: buildArrows(),
+  traces: traceData.group,
+  flow:   flowData.points,
+  chip:   buildChip(),
+  core:   buildCore(),
+  nodes:  buildNodes(),
+  wave:   waveData.group,
+  wafer:  buildWafer()
+};
+
+Object.values(groups).forEach(g => {
+  registerFade(g, 1);
+  scene.add(g);
+});
+
+updateWave(waveData, 0);
+
+/* ============================================================
+   4. 模式数据（更新热点位置，删除文字后重算）
+============================================================ */
+const MODES = {
+  core: {
+    tag: '01 / CORE',
+    title: '芯片核心',
+    hint: '点击场景中闪烁的节点，探索芯片内部的构造与原理。',
+    camera: { phi: 1.12, radius: 16.5, target: [0, 0.7, 0] },
+    show: { chip: 1, core: 1, traces: 1, flow: 1, nodes: 0, wave: 0, wafer: 0, arrows: 1, grid: 1 },
+    hotspots: [
+      { pos: [-1.1, 0.9, -1.15], title: 'ALU · 算术逻辑单元',
+        detail: '负责加减乘除与位运算。它是芯片中运算最密集的部分，也是发热的主要来源。现代 ALU 通常包含超前进位加法器、桶形移位器和乘法器阵列。' },
+      { pos: [1.1, 0.9, -1.15], title: 'Cache · 高速缓存',
+        detail: '介于核心与主存之间的高速缓冲。L1 缓存访问延迟约 1 纳秒，L3 约 10 纳秒，而主存高达 60 纳秒。多级缓存是弥合算力与存储速度差距的关键。' },
+      { pos: [0, 0.9, 0.35], title: 'I/O · 输入输出总线',
+        detail: '芯片与外部世界交换数据的通道。PCIe、USB、以太网等协议在此完成物理层与链路层的编解码。SerDes 电路负责高速串行化与时钟恢复。' },
+      { pos: [0, 3.9, 0], title: 'Core · 计算核心',
+        detail: '指令在这里取指、译码、执行、写回。现代处理器通过流水线让多条指令同时处于不同阶段，并借助乱序执行与分支预测提升吞吐。' }
+    ]
+  },
+
+  trace: {
+    tag: '02 / TRACE',
+    title: '数据走线',
+    hint: '点击走线端点的闪烁节点，理解高速信号的传输之道。',
+    camera: { phi: 1.42, radius: 21, target: [0, -0.4, 0] },
+    show: { chip: 1, core: 0, traces: 1, flow: 1, nodes: 0, wave: 0, wafer: 0, arrows: 1, grid: 1 },
+    hotspots: [
+      { pos: [7.2, 0.2, 3.7], title: 'TX · 发送链路',
+        detail: '发送端把并行数据串行化，经驱动器推入信道。预加重技术用于补偿高频损耗——有意放大信号跳变沿，让接收端仍能辨认。' },
+      { pos: [6.8, 0.2, -4.5], title: 'CLK · 时钟走线',
+        detail: '时钟对时序最敏感。走线需要等长匹配、远离干扰源、做好端接，把偏斜控制在皮秒级。差分时钟还可抑制共模噪声。',
+        formula: 'skew < 5 ps' },
+      { pos: [-7.2, 0.2, -3.7], title: 'RX · 接收链路',
+        detail: '接收端用判决反馈均衡器（DFE）恢复被信道损伤的信号，再由时钟数据恢复电路（CDR）提取时钟并采样。',
+        formula: 'BER < 1e-15' },
+      { pos: [-6.8, 0.2, 4.5], title: 'DATA · 数据总线',
+        detail: '并行数据总线需要严格等长，否则各比特到达时间不一致，会造成眼图闭合与采样错误。走线间距也需足够，以控制串扰。' }
+    ]
+  },
+
+  logic: {
+    tag: '03 / LOGIC',
+    title: '逻辑单元',
+    hint: '点击每一个发光的逻辑门节点，查看它的真值表和功能。',
+    camera: { phi: 1.18, radius: 23, target: [0, 0.6, 0] },
+    show: { chip: 1, core: 1, traces: 0, flow: 0, nodes: 1, wave: 0, wafer: 0, arrows: 1, grid: 1 },
+    hotspots: [
+      { pos: [6.74, 0.5, 3.02], title: 'AND · 与门',
+        detail: '所有输入均为 1 时输出才为 1。它是所有算术电路的基础，加法器的进位链就由一串与门与或门构成。',
+        table: [['A','B','Y'],['0','0','0'],['0','1','0'],['1','0','0'],['1','1','1']] },
+      { pos: [0.77, 1.45, 7.36], title: 'OR · 或门',
+        detail: '任一输入为 1 时输出即为 1。与与门配对，可以构成半加器的和位。',
+        table: [['A','B','Y'],['0','0','0'],['0','1','1'],['1','0','1'],['1','1','1']] },
+      { pos: [-5.98, -0.11, 4.35], title: 'NOT · 非门',
+        detail: '输出与输入相反，是最简单的逻辑门。CMOS 非门仅需一对互补的 MOS 管，几乎不消耗静态功耗。',
+        table: [['A','Y'],['0','1'],['1','0']] },
+      { pos: [-6.78, -0.05, -2.96], title: 'XOR · 异或门',
+        detail: '两个输入不同时输出为 1。常用于奇偶校验、半加器和伪随机序列生成。',
+        table: [['A','B','Y'],['0','0','0'],['0','1','1'],['1','0','1'],['1','1','0']] },
+      { pos: [-0.84, 1.47, -7.35], title: 'NAND · 与非门',
+        detail: '与门后接非门。它是通用门——任何布尔逻辑都可以仅用 NAND 门构成，这是 CMOS 工艺最偏爱的门型。',
+        table: [['A','B','Y'],['0','0','1'],['0','1','1'],['1','0','1'],['1','1','0']] },
+      { pos: [5.70, 0.43, -4.43], title: 'NOR · 或非门',
+        detail: '或门后接非门，同样具有通用性。NOR 门在早期 NMOS 工艺中更为常见。',
+        table: [['A','B','Y'],['0','0','1'],['0','1','0'],['1','0','0'],['1','1','0']] }
+    ]
+  },
+
+  wave: {
+    tag: '04 / WAVE',
+    title: '时钟波形',
+    hint: '点击波形上的闪烁节点，理解时钟如何为电路排序。',
+    camera: { phi: 1.34, radius: 19, target: [0, 2.2, 0] },
+    show: { chip: 1, core: 0, traces: 0, flow: 0, nodes: 0, wave: 1, wafer: 0, arrows: 1, grid: 1 },
+    hotspots: [
+      { pos: [-6.5, 5.0, 0], title: 'CLK · 时钟信号',
+        detail: '时钟是同步电路的时间基准。每一个上升沿，触发器都会采样一次输入。时钟树需要仔细平衡，让到达每个触发器的延迟尽量一致。',
+        formula: 'f = 1 / T' },
+      { pos: [-6.5, 1.4, 0.9], title: 'DATA · 数据信号',
+        detail: '数据必须在时钟沿前后保持稳定，满足建立与保持时间要求。违反任一条，触发器都可能进入亚稳态，输出不可预测。',
+        formula: 'T ≥ t_su + t_h + t_pd' },
+      { pos: [3.5, 5.6, 0], title: '周期 T · 一次完整高低变化',
+        detail: '5.2 GHz 的时钟，周期约为 192 皮秒——光在这段时间里只能传播约 5.8 厘米。这就是为什么高频电路必须把互连当作传输线来处理。',
+        formula: 'T = 192 ps @ 5.2 GHz' }
+    ]
+  },
+
+  matrix: {
+    tag: '05 / MATRIX',
+    title: '晶格矩阵',
+    hint: '点击晶圆上的闪烁节点，了解芯片制造与封装的秩序。',
+    camera: { phi: 0.62, radius: 27, target: [0, 0, 0] },
+    show: { chip: 1, core: 0, traces: 0, flow: 0, nodes: 0, wave: 0, wafer: 1, arrows: 1, grid: 1 },
+    hotspots: [
+      { pos: [0, -2.3, 0], title: '晶圆中心 · 核心芯片区',
+        detail: '晶圆中央通常用于制造良率要求最高的大芯片，如 GPU 与高端 CPU。因为边缘区域更容易出现工艺偏差，中心区的良率最高。' },
+      { pos: [6.5, -2.3, 0], title: '边缘区 · 成熟制程芯片',
+        detail: '靠近边缘的区域通常分配给面积较小、对良率要求相对宽松的芯片，如电源管理 IC、传感器控制芯片等。' },
+      { pos: [0, -2.3, 7.0], title: '300 mm · 主流晶圆尺寸',
+        detail: '12 英寸（300mm）晶圆是当前主流。晶圆面积越大，单次可制造的芯片越多，单位成本越低。下一代 450mm 晶圆仍在探索中。' },
+      { pos: [-6.5, -2.3, 0], title: 'CP 测试 · 切割前的筛选',
+        detail: '晶圆制造完成后，探针台逐颗测试每个芯片。不合格的芯片在切割前就被标记剔除，避免后续封装成本的浪费。',
+        formula: '良率 = 合格芯片 / 总芯片数' }
+    ]
+  }
+};
+
+let currentMode = 'core';
+
+/* ============================================================
+   5. 热点系统（含已探索变金色反馈）
+============================================================ */
+const hotspotGroup = new THREE.Group();
+scene.add(hotspotGroup);
+let activeHotspots = [];
+
+const discovered = {
+  core: new Set(),
+  trace: new Set(),
+  logic: new Set(),
+  wave: new Set(),
+  matrix: new Set()
+};
+
+function rebuildHotspots(){
+  while (hotspotGroup.children.length){
+    const c = hotspotGroup.children[0];
+    hotspotGroup.remove(c);
+    if (c.material) c.material.dispose();
+  }
+  activeHotspots = [];
+
+  const list = MODES[currentMode].hotspots || [];
+  const tex = getHotspotTex();
+
+  list.forEach((h, i) => {
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      color: 0xffffff,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      opacity: 0,
+      toneMapped: false
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.position.set(h.pos[0], h.pos[1], h.pos[2]);
+    sprite.scale.set(0.55, 0.55, 1);
+    sprite.userData = {
+      index: i,
+      data: h,
+      baseScale: 0.72,
+      phase: i * 1.1,
+      targetOpacity: 0.95
+    };
+
+    // 已探索的节点显示金色
+    if (discovered[currentMode].has(i)){
+      mat.color.setHex(COL.amber);
+    }
+
+    hotspotGroup.add(sprite);
+    activeHotspots.push(sprite);
+  });
+}
+
+/* ============================================================
+   6. 相机轨道控制
+============================================================ */
+let curTheta = 0.78, wantTheta = 0.78;
+let curPhi   = 1.12, wantPhi   = 1.12;
+let curRadius = 26,  wantRadius = 26;
+const curTarget  = new THREE.Vector3(0, 0.7, 0);
+const wantTarget = new THREE.Vector3(0, 0.7, 0);
+
+const pointers = new Map();
+let dragging = false;
+let lastX = 0, lastY = 0;
+let pinchDist = 0;
+let pointerDownPos = null;
+let pointerMoved = false;
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function raycastAt(clientX, clientY){
+  if (activeHotspots.length === 0) return null;
+  const rect = canvas.getBoundingClientRect();
+  ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObjects(activeHotspots, false);
+  return hits.length ? hits[0].object : null;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  pointerDownPos = { x: e.clientX, y: e.clientY };
+  pointerMoved = false;
+
+  if (pointers.size === 1){
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  } else if (pointers.size === 2){
+    const [a, b] = [...pointers.values()];
+    pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+  }
+  try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointerDownPos){
+    const dx = e.clientX - pointerDownPos.x;
+    const dy = e.clientY - pointerDownPos.y;
+    if (Math.hypot(dx, dy) > 6) pointerMoved = true;
+  }
+
+  if (!dragging && e.pointerType === 'mouse'){
+    const hit = raycastAt(e.clientX, e.clientY);
+    canvas.style.cursor = hit ? 'pointer' : 'grab';
+  }
+
+  if (pointers.size === 2){
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinchDist > 0 && d > 0){
+      const s = pinchDist / d;
+      wantRadius = clamp(wantRadius * s, 7, 48);
+      curRadius  = clamp(curRadius  * s, 7, 48);
+    }
+    pinchDist = d;
+    return;
+  }
+
+  if (!dragging) return;
+
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+
+  const k = 0.0056;
+  wantTheta -= dx * k;
+  curTheta  -= dx * k;
+
+  wantPhi = clamp(wantPhi - dy * k, 0.22, 1.5);
+  curPhi  = clamp(curPhi  - dy * k, 0.22, 1.5);
+});
+
+canvas.addEventListener('pointerup', e => {
+  if (!pointerMoved && pointerDownPos){
+    const hit = raycastAt(e.clientX, e.clientY);
+    if (hit) showHotspotInfo(hit.userData);
+    else     showModeInfo();
+  }
+  pointerDownPos = null;
+
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinchDist = 0;
+  if (pointers.size === 0) dragging = false;
+});
+
+canvas.addEventListener('pointercancel', e => {
+  pointerDownPos = null;
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinchDist = 0;
+  if (pointers.size === 0) dragging = false;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const s = Math.exp(e.deltaY * 0.0011);
+  wantRadius = clamp(wantRadius * s, 7, 48);
+}, { passive: false });
+
+/* ============================================================
+   7. UI 绑定
+============================================================ */
+const readoutMode = document.getElementById('readoutMode');
+const readoutFps  = document.getElementById('readoutFps');
+const dockBtns    = document.querySelectorAll('.dock-btn');
+const infoCard    = document.getElementById('infoCard');
+const icTag       = document.getElementById('icTag');
+const icTitle     = document.getElementById('icTitle');
+const icBody      = document.getElementById('icBody');
+const icExtra     = document.getElementById('icExtra');
+const icClose     = document.getElementById('icClose');
+const progFill    = document.getElementById('progFill');
+const progText    = document.getElementById('progText');
+const hintEl      = document.getElementById('hint');
+
+let hintHidden = false;
+function hideHint(){
+  if (!hintHidden){
+    hintHidden = true;
+    hintEl.classList.add('hide');
+  }
+}
+
+function renderExtra(data){
+  let html = '';
+  if (data.formula){
+    html += `<div class="ic-formula">${data.formula}</div>`;
+  }
+  if (data.table){
+    html += '<table class="ic-table">';
+    html += '<tr>' + data.table[0].map(c => `<th>${c}</th>`).join('') + '</tr>';
+    for (let i = 1; i < data.table.length; i++){
+      html += '<tr>' + data.table[i].map(c => `<td>${c}</td>`).join('') + '</tr>';
+    }
+    html += '</table>';
+  }
+  return html;
+}
+
+function showHotspotInfo(userData){
+  const { data, index } = userData;
+  const isFirst = !discovered[currentMode].has(index);
+
+  icTag.textContent = isFirst ? '探索发现' : '已探索';
+  icTag.classList.remove('gold');
+  icTag.classList.add('hot');
+  icTitle.textContent = data.title;
+  icBody.textContent = data.detail;
+
+  icExtra.innerHTML = renderExtra(data);
+
+  discovered[currentMode].add(index);
+
+  // 更新该热点颜色为金色
+  const sprite = activeHotspots.find(s => s.userData.index === index);
+  if (sprite) sprite.material.color.setHex(COL.amber);
+
+  updateProgress();
+
+  // 卡片边框闪烁反馈
+  infoCard.style.borderColor = 'rgba(255,190,92,.5)';
+  setTimeout(() => { infoCard.style.borderColor = ''; }, 500);
+
+  hideHint();
+}
+
+function showModeInfo(){
+  const m = MODES[currentMode];
+  icTag.textContent = m.tag;
+  icTag.classList.remove('hot', 'gold');
+  icTitle.textContent = m.title;
+  icBody.textContent = m.hint;
+  icExtra.innerHTML = '';
+}
+
+function updateProgress(){
+  const list = MODES[currentMode].hotspots || [];
+  const total = list.length;
+  const done = discovered[currentMode].size;
+
+  progText.textContent = `${done} / ${total}`;
+  progFill.style.width = total ? `${(done / total) * 100}%` : '0%';
+
+  if (total > 0 && done === total){
+    progFill.style.background = 'linear-gradient(90deg, #ffbe5c, #ffe0a0)';
+    progFill.style.boxShadow = '0 0 10px rgba(255,190,92,.8)';
+    progText.style.color = '#ffbe5c';
+    progText.style.textShadow = '0 0 10px rgba(255,190,92,.6)';
+  } else {
+    progFill.style.background = '';
+    progFill.style.boxShadow = '';
+    progText.style.color = '';
+    progText.style.textShadow = '';
+  }
+}
+
+icClose.addEventListener('click', showModeInfo);
+
+/* 模式切换 */
+function applyMode(key){
+  const m = MODES[key];
+  if (!m) return;
+  currentMode = key;
+
+  Object.keys(groups).forEach(name => {
+    if (name === 'dust') return;
+    groups[name].userData._targetFade = m.show[name] ?? 0;
+  });
+
+  wantPhi    = m.camera.phi;
+  wantRadius = m.camera.radius;
+  wantTarget.set(m.camera.target[0], m.camera.target[1], m.camera.target[2]);
+
+  readoutMode.textContent = key.toUpperCase();
+
+  rebuildHotspots();
+  showModeInfo();
+  updateProgress();
+
+  dockBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === key));
+}
+
+dockBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.mode !== currentMode) applyMode(btn.dataset.mode);
+  });
+});
+
+window.addEventListener('keydown', e => {
+  const keys = ['core', 'trace', 'logic', 'wave', 'matrix'];
+  const i = parseInt(e.key, 10) - 1;
+  if (i >= 0 && i < keys.length) applyMode(keys[i]);
+});
+
+/* ============================================================
+   8. 主循环
+============================================================ */
+const clock = new THREE.Clock();
+let elapsed = 0;
+let fpsAccum = 0, fpsFrames = 0;
+
+const chipGroup  = groups.chip;
+const coreGroup  = groups.core;
+const nodesGroup = groups.nodes;
+const dustGroup  = groups.dust;
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+
+  /* 相机缓动 */
+  if (!dragging) wantTheta += dt * 0.055;
+
+  curTheta  += (wantTheta  - curTheta ) * 0.055;
+  curPhi    += (wantPhi    - curPhi   ) * 0.055;
+  curRadius += (wantRadius - curRadius) * 0.055;
+  curTarget.lerp(wantTarget, 0.055);
+
+  const sinPhi = Math.sin(curPhi);
+  camera.position.set(
+    curTarget.x + curRadius * sinPhi * Math.sin(curTheta),
+    curTarget.y + curRadius * Math.cos(curPhi),
+    curTarget.z + curRadius * sinPhi * Math.cos(curTheta)
+  );
+  camera.lookAt(curTarget);
+
+  /* 组淡入淡出 */
+  Object.values(groups).forEach(updateFade);
+
+  /* 细节动画 */
+  chipGroup.position.y = Math.sin(elapsed * 0.75) * 0.07;
+
+  coreGroup.rotation.y += dt * 0.5;
+  coreGroup.rotation.x += dt * 0.17;
+
+  // 内核能量环反向旋转（索引 3、4 为两根环）
+  if (coreGroup.children[3]) coreGroup.children[3].rotation.z += dt * 0.4;
+  if (coreGroup.children[4]) coreGroup.children[4].rotation.z -= dt * 0.6;
+
+  nodesGroup.rotation.y += dt * 0.09;
+  dustGroup.rotation.y += dt * 0.012;
+
+  /* 热点脉冲 */
+  for (const s of activeHotspots){
+    const u = s.userData;
+    u.phase += dt * 2.4;
+    const pulse = 1 + Math.sin(u.phase) * 0.18;
+    const sc = u.baseScale * pulse;
+    s.scale.set(sc, sc, 1);
+    s.material.opacity += (u.targetOpacity - s.material.opacity) * 0.08;
+  }
+
+  /* 流动粒子 */
+  if (groups.flow.visible){
+    const { data, pos, geo } = flowData;
+    for (let i = 0; i < data.length; i++){
+      const p = data[i];
+      p.t += p.speed * dt;
+      const s = sampleAlong(p.segs, p.totalLen, p.t);
+      pos[p.idx * 3]     = s.x;
+      pos[p.idx * 3 + 1] = s.y + 0.08;
+      pos[p.idx * 3 + 2] = s.z;
+    }
+    geo.attributes.position.needsUpdate = true;
+  }
+
+  /* 波形刷新 */
+  if (groups.wave.visible){
+    updateWave(waveData, elapsed);
+  }
+
+  composer.render();
+
+  /* FPS */
+  fpsAccum += dt;
+  fpsFrames++;
+  if (fpsAccum >= 0.5){
+    readoutFps.textContent = Math.round(fpsFrames / fpsAccum) + ' FPS';
+    fpsAccum = 0;
+    fpsFrames = 0;
+  }
+}
+
+/* ============================================================
+   9. 自适应
+============================================================ */
+function onResize(){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+  bloomPass.setSize(w, h);
+}
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(onResize, 120);
+});
+window.addEventListener('orientationchange', () => setTimeout(onResize, 240));
+
+/* ============================================================
+   10. 启动
+============================================================ */
+applyMode('core');
+animate();
+</script>
+</body>
+</html>
