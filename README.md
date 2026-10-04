@@ -11,6 +11,7 @@
 - [二进制绘制](/bitpaint.html)
 - [线性代数之美](/beauty-of-linear-algebra.html)
 - [数字电路之美](/digital-circuit-aesthetics.html)
+- [AI简史](/ai-brief-history.html)
 
 设计网页
 - [设计网页0](/page_0.html)

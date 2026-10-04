@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08090c">
+<title>AI 简史 · 从一颗神经元到万亿参数</title>
+<style>
+:root{
+  --bg:#08090c;
+  --line:rgba(255,255,255,.075);
+  --line-2:rgba(255,255,255,.16);
+  --text:#e9edf3;
+  --text-2:#a3adbc;
+  --text-3:#6b7688;
+  --accent:#7ee0d0;
+  --accent-live:#7ee0d0;
+  --maxw:1180px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:110px}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",Roboto,sans-serif;
+  line-height:1.75;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+::selection{background:rgba(126,224,208,.25);color:#fff}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+  background-size:68px 68px;
+  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 20%,transparent 78%);
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 20%,transparent 78%);
+}
+#bg{position:fixed;inset:0;z-index:0;opacity:.7;pointer-events:none}
+.cursor-glow{
+  position:fixed;left:0;top:0;width:560px;height:560px;border-radius:50%;
+  background:radial-gradient(circle,rgba(126,224,208,.06),rgba(138,166,255,.035) 42%,transparent 70%);
+  pointer-events:none;z-index:1;will-change:transform;
+}
+@media (pointer:coarse){.cursor-glow{display:none}}
+.progress{
+  position:fixed;top:0;left:0;z-index:70;height:2px;width:100%;
+  transform-origin:0 50%;transform:scaleX(0);
+  background:linear-gradient(90deg,#7ee0d0,#8aa6ff 60%,#e6b980);
+  opacity:.85;will-change:transform;
+}
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:60;
+  display:flex;align-items:center;justify-content:space-between;
+  height:54px;padding:0 26px;
+  background:rgba(8,9,12,.72);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.05);
+  font-size:12px;letter-spacing:.1em;
+}
+.topbar .brand{
+  display:inline-flex;align-items:center;gap:9px;
+  color:var(--text-2);text-decoration:none;font-weight:500;letter-spacing:.12em;
+  transition:color .3s;
+}
+.topbar .brand:hover{color:var(--text)}
+.brand-dot{
+  width:6px;height:6px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 10px rgba(126,224,208,.9);animation:pulse 3s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.5;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
+.topbar-sub{
+  font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  color:var(--accent-live);
+  transition:color .6s ease;
+}
+.era-chips{
+  position:sticky;top:54px;z-index:50;
+  display:flex;gap:8px;overflow-x:auto;padding:12px 26px;
+  background:linear-gradient(180deg,rgba(8,9,12,.92),rgba(8,9,12,.55) 70%,transparent);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  scrollbar-width:none;
+}
+.era-chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;padding:6px 15px;border-radius:999px;
+  border:1px solid var(--line);background:transparent;
+  color:var(--text-3);font-size:12px;letter-spacing:.06em;
+  cursor:pointer;transition:all .35s cubic-bezier(.22,1,.36,1);
+  white-space:nowrap;font-family:inherit;
+}
+.chip:hover{color:var(--text);border-color:var(--line-2);transform:translateY(-1px)}
+.chip.on{
+  color:var(--cc);border-color:color-mix(in srgb,var(--cc) 45%,transparent);
+  background:color-mix(in srgb,var(--cc) 12%,transparent);
+}
+.hero{
+  position:relative;z-index:2;
+  min-height:100vh;min-height:100svh;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:100px 26px 120px;
+}
+.hero-inner{width:100%;max-width:var(--maxw);margin:0 auto}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.3em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:32px;
+  opacity:0;animation:fadeUp .9s cubic-bezier(.22,1,.36,1) .1s forwards;
+}
+.hero-title{display:flex;flex-direction:column;margin-bottom:34px;line-height:.86}
+.hero-title .t1{
+  font-size:clamp(76px,19vw,200px);font-weight:700;letter-spacing:-.055em;
+  background:linear-gradient(135deg,#f2fbfa 0%,#7ee0d0 46%,#8aa6ff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  opacity:0;animation:fadeUp 1s cubic-bezier(.22,1,.36,1) .2s forwards;
+}
+.hero-title .t2{
+  font-size:clamp(38px,9vw,92px);font-weight:200;letter-spacing:.06em;color:#8b95a5;
+  opacity:0;animation:fadeUp 1s cubic-bezier(.22,1,.36,1) .34s forwards;
+}
+.lede{
+  font-size:clamp(14px,1.6vw,16.5px);line-height:2;color:var(--text-2);max-width:560px;
+  opacity:0;animation:fadeUp 1s cubic-bezier(.22,1,.36,1) .48s forwards;
+}
+.hero-stats{
+  display:flex;gap:54px;margin-top:60px;
+  opacity:0;animation:fadeUp 1s cubic-bezier(.22,1,.36,1) .62s forwards;
+}
+.stat strong{
+  display:block;font-family:var(--mono);
+  font-size:clamp(24px,3.6vw,34px);font-weight:500;letter-spacing:-.02em;line-height:1.2;
+  background:linear-gradient(180deg,#fff,#8fa0b5);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.stat span{font-size:11px;letter-spacing:.16em;color:var(--text-3)}
+.hero-tip{
+  margin-top:40px;
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.14em;
+  color:var(--text-3);
+  opacity:0;
+  animation:fadeUp 1s ease 1.05s forwards;
+}
+.hero-tip kbd{
+  display:inline-block;
+  padding:1px 7px;margin:0 3px;
+  border:1px solid var(--line-2);
+  border-radius:4px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text-2);
+  background:rgba(255,255,255,.03);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+.scroll-cue{
+  position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  font-size:10px;letter-spacing:.28em;color:var(--text-3);
+  text-decoration:none;cursor:pointer;
+  opacity:0;animation:fadeUp 1s ease 1.2s forwards;transition:color .3s;
+}
+.scroll-cue:hover{color:var(--text-2)}
+.scroll-cue i{
+  display:block;width:1px;height:46px;
+  background:linear-gradient(180deg,rgba(255,255,255,.4),transparent);
+  transform-origin:top;animation:cue 2.4s ease-in-out infinite;
+}
+@keyframes cue{0%,100%{opacity:.25;transform:scaleY(.55)}50%{opacity:1;transform:scaleY(1)}}
+.timeline{position:relative;z-index:2;padding-bottom:40px}
+.tl-group{max-width:var(--maxw);margin:0 auto;padding:0 26px}
+.era{text-align:center;padding:96px 0 52px;position:relative}
+.era::after{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:520px;height:260px;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--era) 9%,transparent),transparent 70%);
+  opacity:.9;
+}
+.era-range{
+  display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.26em;
+  color:color-mix(in srgb,var(--era) 82%,#fff);margin-bottom:16px;opacity:.9;position:relative;
+}
+.era h2{
+  font-size:clamp(23px,3.4vw,34px);font-weight:500;letter-spacing:-.015em;
+  line-height:1.35;color:#dfe6ee;margin-bottom:14px;position:relative;
+}
+.era p{
+  font-size:14px;color:var(--text-3);max-width:460px;margin:0 auto;line-height:1.9;position:relative;
+}
+.tl-item{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  column-gap:36px;
+  align-items:start;
+  scroll-margin-top:130px;
+}
+.tl-card{
+  position:relative;margin:14px 0;border-radius:18px;overflow:hidden;
+  border:1px solid var(--line);
+  background:linear-gradient(158deg,rgba(255,255,255,.04),rgba(255,255,255,.01));
+  cursor:pointer;
+  opacity:0;
+  transition:
+    opacity .85s cubic-bezier(.22,1,.36,1) var(--d,0s),
+    transform .85s cubic-bezier(.22,1,.36,1) var(--d,0s),
+    border-color .4s ease,box-shadow .4s ease,background .4s ease;
+}
+.tl-item.left .tl-card{transform:translateY(26px) translateX(-18px)}
+.tl-item.right .tl-card{transform:translateY(26px) translateX(18px)}
+.tl-item.in-view .tl-card{opacity:1;transform:translateY(0) translateX(0)}
+.tl-item.in-view .tl-card:hover{
+  border-color:color-mix(in srgb,var(--era) 40%,transparent);
+  box-shadow:0 22px 60px -34px color-mix(in srgb,var(--era) 85%,transparent);
+}
+.tl-card:focus-visible{outline:1px solid color-mix(in srgb,var(--era) 55%,transparent);outline-offset:3px}
+.tl-item.active .tl-card{
+  border-color:color-mix(in srgb,var(--era) 32%,transparent);
+  box-shadow:0 20px 56px -40px color-mix(in srgb,var(--era) 90%,transparent);
+}
+.tl-item.left .tl-card{grid-column:1;grid-row:1}
+.tl-item.right .tl-card{grid-column:2;grid-row:1}
+.tl-visual{
+  position:relative;
+  padding-bottom:50%;
+  overflow:hidden;
+  background:#0b0d11;
+  border-bottom:1px solid var(--line);
+}
+.tl-visual svg{
+  position:absolute;top:0;left:0;width:100%;height:100%;display:block;
+}
+.tl-visual::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 50% 45%,transparent 48%,rgba(0,0,0,.42)),
+    linear-gradient(180deg,rgba(255,255,255,.04),transparent 26%);
+}
+.tl-media-tag{
+  position:absolute;top:10px;left:10px;z-index:3;
+  font-size:9px;letter-spacing:.14em;
+  padding:3px 8px;border-radius:4px;
+  background:rgba(10,12,16,.7);
+  color:rgba(233,237,243,.82);
+  border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  font-family:var(--mono);
+}
+.tl-main{padding:20px 24px 50px;position:relative}
+.tl-year{
+  font-family:var(--mono);font-size:12.5px;letter-spacing:.18em;
+  color:color-mix(in srgb,var(--era) 72%,#fff);margin-bottom:8px;opacity:.92;
+}
+.tl-card h3{
+  font-size:18.5px;font-weight:600;letter-spacing:-.01em;
+  color:#eef2f7;margin-bottom:12px;line-height:1.45;
+}
+
+/* === 题记：每张卡片的一句话 === */
+.tl-quote{
+  position:relative;
+  padding:2px 0 2px 14px;
+  margin-bottom:16px;
+  border-left:2px solid color-mix(in srgb,var(--era) 55%,transparent);
+  font-size:13.5px;
+  line-height:1.7;
+  letter-spacing:.01em;
+  color:color-mix(in srgb,var(--era) 68%,#dfe6ee);
+  font-weight:400;
+  transition:border-color .3s, color .3s;
+}
+.tl-item.active .tl-quote{
+  border-left-color:var(--era);
+  color:color-mix(in srgb,var(--era) 82%,#fff);
+}
+
+.tl-card > .tl-main > p{font-size:14.5px;line-height:1.88;color:var(--text-2)}
+.tl-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tl-tags span{
+  font-size:11px;letter-spacing:.06em;padding:3px 10px;border-radius:999px;
+  color:color-mix(in srgb,var(--era) 78%,#fff);
+  background:color-mix(in srgb,var(--era) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--era) 20%,transparent);
+  white-space:nowrap;
+}
+.tl-detail{
+  max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .65s cubic-bezier(.22,1,.36,1),opacity .45s ease,margin-top .45s ease;
+}
+.tl-card.open .tl-detail{max-height:720px;opacity:1;margin-top:20px}
+.tl-detail-inner{padding-top:18px;border-top:1px solid var(--line)}
+.tl-detail-text{font-size:13.5px;line-height:1.95;color:var(--text-2)}
+.tl-facts{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.tl-facts > div{display:grid;grid-template-columns:66px 1fr;gap:12px}
+.tl-facts dt{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--text-3);padding-top:2px;
+}
+.tl-facts dd{font-size:12.5px;color:var(--text-2);line-height:1.7}
+.tl-toggle{
+  position:absolute;right:20px;bottom:16px;
+  width:16px;height:16px;
+  display:grid;place-items:center;
+  opacity:.4;
+  transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .3s;
+}
+.tl-toggle::before{
+  content:'';display:block;
+  width:7px;height:7px;
+  border-right:1.5px solid var(--text-2);
+  border-bottom:1.5px solid var(--text-2);
+  transform:rotate(45deg) translate(-2px,-2px);
+  transition:border-color .3s;
+}
+.tl-card:hover .tl-toggle{opacity:.9}
+.tl-card.open .tl-toggle{transform:rotate(180deg);opacity:1}
+.tl-card.open .tl-toggle::before{border-color:var(--era)}
+.rail{
+  position:fixed;right:24px;top:50%;transform:translateY(-50%);
+  z-index:40;display:flex;flex-direction:column;gap:14px;
+}
+.rail a{
+  position:relative;width:6px;height:6px;border-radius:50%;
+  background:rgba(255,255,255,.14);
+  transition:background .35s,transform .35s,box-shadow .35s;
+}
+.rail a:hover{background:rgba(255,255,255,.45)}
+.rail a.on{
+  background:var(--accent);transform:scale(1.5);
+  box-shadow:0 0 12px rgba(126,224,208,.85);
+}
+.rail a::after{
+  content:attr(data-label);position:absolute;right:20px;top:50%;
+  transform:translateY(-50%) translateX(6px);
+  white-space:nowrap;font-size:11px;letter-spacing:.1em;color:var(--text-2);
+  opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;
+}
+.rail a:hover::after{opacity:1;transform:translateY(-50%) translateX(0)}
+@media (max-width:1100px){.rail{display:none}}
+.outro{
+  position:relative;z-index:2;text-align:center;padding:140px 26px 120px;
+  background:radial-gradient(ellipse 70% 65% at 50% 45%,rgba(126,224,208,.065),transparent 72%);
+}
+.outro-eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--text-3);margin-bottom:26px;
+}
+.outro h2{
+  font-size:clamp(28px,5.2vw,54px);font-weight:200;line-height:1.32;
+  letter-spacing:-.02em;color:#e9edf3;margin-bottom:26px;
+}
+.outro h2 em{
+  font-style:normal;
+  background:linear-gradient(120deg,#7ee0d0,#8aa6ff);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.outro p{font-size:14.5px;line-height:2;color:var(--text-2);max-width:560px;margin:0 auto 42px}
+.to-top{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:12px 26px;border-radius:999px;border:1px solid var(--line-2);
+  color:var(--text-2);text-decoration:none;font-size:13px;letter-spacing:.08em;
+  transition:border-color .35s,color .35s,background .35s,transform .35s;
+}
+.to-top:hover{border-color:rgba(126,224,208,.5);color:#d9fbf5;background:rgba(126,224,208,.06);transform:translateY(-2px)}
+footer{
+  position:relative;z-index:2;max-width:var(--maxw);margin:0 auto;
+  padding:32px 26px 56px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-size:12px;letter-spacing:.05em;color:var(--text-3);
+}
+@media (max-width:820px){
+  .topbar{padding:0 18px;height:50px}
+  .era-chips{top:50px;padding:11px 18px}
+  .hero{padding:96px 20px 110px}
+  .hero-stats{gap:32px;margin-top:46px}
+  .hero-tip{display:none}
+  .lede br{display:none}
+  .tl-group{padding:0 18px}
+  .era{padding:70px 0 40px}
+  .era::after{width:340px;height:200px}
+  .tl-item{grid-template-columns:minmax(0,1fr);column-gap:0}
+  .tl-item.left .tl-card,
+  .tl-item.right .tl-card{grid-column:1;grid-row:1}
+  .tl-item.left .tl-card{transform:translateY(26px)}
+  .tl-item.right .tl-card{transform:translateY(26px)}
+  .tl-card{margin:9px 0;border-radius:14px}
+  .tl-main{padding:17px 18px 46px}
+  .tl-card h3{font-size:17px}
+  .tl-quote{font-size:12.8px;padding-left:12px;margin-bottom:13px}
+  .tl-card > .tl-main > p{font-size:13.6px;line-height:1.85}
+  .tl-year{font-size:11.5px;letter-spacing:.14em}
+  .tl-toggle{right:15px;bottom:14px}
+  .tl-facts > div{grid-template-columns:60px 1fr;gap:10px}
+  .tl-card.open .tl-detail{max-height:900px}
+  .tl-media-tag{font-size:8.5px;padding:2px 7px;top:8px;left:8px}
+  .outro{padding:100px 20px 90px}
+}
+@media (max-width:380px){
+  .hero-stats{gap:20px}
+  .stat span{letter-spacing:.1em}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important}
+  .tl-card{opacity:1;transform:none !important}
+  .hero-title .t1,.hero-title .t2,.eyebrow,.lede,.hero-stats,.hero-tip,.scroll-cue{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+<canvas id="bg"></canvas>
+
+<header class="topbar">
+  <a href="#top" class="brand"><span class="brand-dot"></span>AI 简史</a>
+  <span class="topbar-sub" id="yearReadout">1943</span>
+</header>
+
+<nav class="rail" id="rail" aria-label="时代导航"></nav>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Artificial Intelligence · A Brief History</p>
+      <h1 class="hero-title">
+        <span class="t1">AI</span>
+        <span class="t2">简史</span>
+      </h1>
+      <p class="lede">
+        1943 年，两个人在论文里画下第一颗人工神经元。<br>
+        八十年后，机器开始与我们对话。
+      </p>
+      <div class="hero-stats">
+        <div class="stat"><strong data-count="82">0</strong><span>年历程</span></div>
+        <div class="stat"><strong data-count="29">0</strong><span>个里程碑</span></div>
+        <div class="stat"><strong data-count="6">0</strong><span>次浪潮</span></div>
+      </div>
+      <p class="hero-tip">
+        用 <kbd>J</kbd> / <kbd>K</kbd> 或 <kbd>↑</kbd> <kbd>↓</kbd> 逐条浏览 · <kbd>Enter</kbd> 展开细节
+      </p>
+    </div>
+    <a class="scroll-cue" href="#era-1" aria-label="向下滚动"><span>SCROLL</span><i></i></a>
+  </section>
+
+  <div class="era-chips" id="eraChips"></div>
+
+  <div class="timeline" id="timeline"></div>
+
+  <section class="outro">
+    <p class="outro-eyebrow">2025 — ?</p>
+    <h2>下一个八十年，<br><em>由谁书写？</em></h2>
+    <p>
+      从真空管到 GPU，从符号到向量，从手写规则到万亿参数。<br>
+      AI 的历史从来不是一条直线——它是几次被放弃、又被重新捡起的信念。
+    </p>
+    <a class="to-top" href="#top">回到开头 ↑</a>
+  </section>
+
+</main>
+
+<footer>
+  <span>AI 简史 · 一个关于「思考如何被复刻」的故事</span>
+  <span>1943 — 2025</span>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ==================================================
+     数据：每个事件都有一句「题记」
+     ================================================== */
+  const ERAS = [
+    { id:'era-1', label:'思想的奠基', range:'1943 — 1956', color:'#7ee0d0',
+      sub:'在计算机刚刚诞生的年代，人们已经开始追问：思维，能否被复刻？' },
+    { id:'era-2', label:'乐观与幻灭', range:'1957 — 1969', color:'#8fb2f5',
+      sub:'一个被过度承诺的年代。希望升得很快，落得也很快。' },
+    { id:'era-3', label:'寒冬与专家系统', range:'1974 — 1993', color:'#a89cf0',
+      sub:'两次资金退潮之间，知识被编码成规则，神经网络在角落里悄悄生长。' },
+    { id:'era-4', label:'静默的积累', range:'1997 — 2011', color:'#7fc9e8',
+      sub:'没有聚光灯的十四年：算力在增长，数据在堆积，算法在等待。' },
+    { id:'era-5', label:'深度学习爆发', range:'2012 — 2017', color:'#6fe0b0',
+      sub:'GPU、数据与算法终于对齐。五年时间，AI 从学术名词变成头条新闻。' },
+    { id:'era-6', label:'大模型时代', range:'2018 — 2025', color:'#e6b980',
+      sub:'规模本身成了一种新的智能形式。而这一次，所有人都身处其中。' }
+  ];
+
+  const EVENTS = [
+    /* ---------- 1943 – 1956 ---------- */
+    { era:0, year:'1943', visual:'neuron', media:'论文插图',
+      quote:'逻辑，可以用网络表达。',
+      title:'一颗人工神经元',
+      desc:'神经生理学家麦卡洛克与逻辑学家皮茨提出 M-P 模型——用简单的阈值逻辑模拟神经元。他们证明：这样的网络可以计算任何逻辑函数。',
+      detail:'他们把神经元抽象成一个二值开关：多个输入加权求和，超过阈值就输出 1，否则输出 0。这个模型完全忽略了生物神经元的复杂电化学过程，却证明了「逻辑可以用网络表达」。罗森布拉特后来回忆，正是这篇论文让他相信，机器可以学会思考。',
+      facts:[['人物','沃伦·麦卡洛克 · 沃尔特·皮茨'],['发表','《数学生物物理学通报》'],['关键词','阈值逻辑']],
+      tags:['理论','神经科学'] },
+
+    { era:0, year:'1950', visual:'chat', media:'期刊论文',
+      quote:'机器能思考吗？',
+      title:'图灵测试',
+      desc:'图灵在《计算机器与智能》中把「机器能思考吗」换成一个可操作的实验：隔着屏幕的对话，如果让人分不清对方是人是机器，我们就该承认它拥有智能。',
+      detail:'图灵预言，到 2000 年，计算机将有 30% 的概率在五分钟对话中骗过人类。他同时逐一反驳了几种常见的反对意见：数学上的不完备性、意识问题、以及「唯有人类才能思考」的偏见。这篇文章至今仍是 AI 哲学的起点。',
+      facts:[['人物','艾伦·图灵'],['发表','《Mind》期刊 1950'],['关键词','模仿游戏']],
+      tags:['哲学','图灵'] },
+
+    { era:0, year:'1951', visual:'maze', media:'实验装置',
+      quote:'一只电路里的老鼠，学会了走迷宫。',
+      title:'SNARC：会走迷宫的老鼠',
+      desc:'明斯基与埃德蒙兹用 40 个模拟突触、300 个真空管搭建出 SNARC，模拟一只老鼠寻找迷宫的出路。',
+      detail:'SNARC 通过「强化」来调整权重——走对了就加强连接，走错了就削弱。这是最早的强化学习硬件实现之一。有趣的是，它其实从未真正跑完过完整的迷宫，只演示了部分电路的行为。',
+      facts:[['人物','明斯基 · 埃德蒙兹'],['硬件','300 个真空管 · 40 个模拟突触'],['关键词','强化学习']],
+      tags:['硬件','强化学习'] },
+
+    { era:0, year:'1956', visual:'meeting', media:'会议提案',
+      quote:'学习的每个方面，都可以被精确描述。',
+      title:'达特茅斯会议',
+      desc:'麦卡锡、明斯基、香农、罗切斯特等人相聚达特茅斯学院。会议提案中第一次写下 "Artificial Intelligence"。',
+      detail:'他们向洛克菲勒基金会申请了 13500 美元，最终获批 7500 美元。会议为期约两个月，参与者最多时约 20 人。虽然会议并未产生具体突破性成果，但「人工智能」这个词从此固定下来，成为一个学科的名字。',
+      facts:[['发起人','麦卡锡 · 明斯基 · 香农 · 罗切斯特'],['地点','达特茅斯学院'],['关键词','AI 命名 · 1956 年夏']],
+      tags:['起点','命名'] },
+
+    /* ---------- 1957 – 1969 ---------- */
+    { era:1, year:'1957', visual:'weights', media:'实验装置',
+      quote:'它自己学会了分辨。',
+      title:'感知机',
+      desc:'罗森布拉特造出感知机——它不靠人写规则，而是通过调整权重，自己学会区分图案。',
+      detail:'感知机用可调权重做分类，并给出了学习算法：错了就调整。它能在 IBM 704 上运行，学会区分左侧和右侧的图案。海军和空军都资助了这项研究，媒体则把它描述成「会思考的机器」。《纽约时报》报道说：这台机器未来会走路、说话、看东西。',
+      facts:[['人物','弗兰克·罗森布拉特'],['硬件','IBM 704'],['关键词','权重学习']],
+      tags:['学习','权重'] },
+
+    { era:1, year:'1958', visual:'lisp', media:'终端记录',
+      quote:'代码即数据，数据即代码。',
+      title:'LISP：AI 的语言',
+      desc:'麦卡锡设计出 LISP。此后三十年，它成为 AI 研究的通用语言——符号、列表、递归，用最优雅的方式表达「推理」。',
+      detail:'LISP 用 S-表达式统一了代码与数据，天生适合处理符号推理。它孕育了垃圾回收、递归、REPL 等今天随处可见的概念。在长达三十年的时间里，几乎每一篇 AI 论文都附带着 LISP 代码。',
+      facts:[['人物','约翰·麦卡锡'],['关键词','符号计算'],['影响','AI 通用语言']],
+      tags:['编程语言','符号主义'] },
+
+    { era:1, year:'1966', visual:'terminal', media:'终端会话',
+      quote:'它没有理解，却令人信服。',
+      title:'ELIZA：第一个聊天机器人',
+      desc:'魏泽鲍姆写出 ELIZA，它只是把用户的话做模式替换，扮演一位罗杰斯式心理治疗师。',
+      detail:'ELIZA 只有约 200 行代码，靠关键词匹配和句式替换来回应。魏泽鲍姆惊讶地发现，秘书们会要求他离开房间，好单独和 ELIZA 说话。他为此感到不安，后来成为 AI 伦理最早的批评者之一——「ELIZA 效应」成为人机关系的第一则寓言。',
+      facts:[['人物','约瑟夫·魏泽鲍姆'],['规模','约 200 行代码'],['影响','ELIZA 效应']],
+      tags:['对话','人机关系'] },
+
+    { era:1, year:'1969', visual:'xor', media:'论文插图',
+      quote:'一条直线，画不出异或。',
+      title:'《感知机》与第一次质疑',
+      desc:'明斯基与帕佩特出版《Perceptron》，证明单层感知机无法解决 XOR 问题。资助迅速冷却，神经网络研究进入低谷。',
+      detail:'他们用数学证明：单层感知机连 XOR（异或）都无法表示，因为它只能划一条直线。这个结论被广泛误读为「神经网络没有前途」，直接导致了资金撤离。事实上书中也讨论了多层网络的可能性，但几乎没有人读到那一部分。',
+      facts:[['人物','明斯基 · 帕佩特'],['结论','无法表示 XOR'],['影响','资金撤离']],
+      tags:['转折','寒冬前夜'] },
+
+    /* ---------- 1974 – 1993 ---------- */
+    { era:2, year:'1974', visual:'decline', media:'报纸剪报',
+      quote:'承诺太多，兑现太少。',
+      title:'第一次 AI 寒冬',
+      desc:'英国《莱特希尔报告》与美国 DARPA 的削减让资金枯竭。研究者发现：机器翻译、通用问题求解都比想象中难得多。',
+      detail:'莱特希尔报告指出，AI 在机器翻译等领域的进展远低于承诺，建议英国政府停止支持。次年 DARPA 也大幅削减预算。研究者开始把论文标题里的「AI」换成「模式识别」或「信息处理」，只为让项目活下来。',
+      facts:[['报告','莱特希尔报告 1973'],['结果','预算削减'],['影响','十年低谷']],
+      tags:['寒冬','退潮'] },
+
+    { era:2, year:'1980', visual:'rules', media:'系统界面',
+      quote:'知识可以被编码，但维护成本高昂。',
+      title:'XCON 与专家系统',
+      desc:'卡内基梅隆为 DEC 开发 XCON，用数千条 IF-THEN 规则配置计算机订单，为企业带来可观的成本节约。',
+      detail:'XCON 的初始版本包含约 750 条规则，后来扩展至约 2500 至 3000 条。截至 1986 年，系统累计处理约 8 万份订单，准确率达 95% 至 98%。据 DEC 估计，它每年为公司节省约 2500 万美元。但规则库越加越大，维护成本也随之飙升——每一条新规则都可能与旧规则冲突。',
+      facts:[['机构','卡内基梅隆 · DEC'],['规模','初始 750 条，最终约 2500 条'],['收益','据估计每年约 2500 万美元']],
+      tags:['知识工程','商用'] },
+
+    { era:2, year:'1982', visual:'energy', media:'论文插图',
+      quote:'记忆，是能量地形中的低谷。',
+      title:'Hopfield 网络',
+      desc:'物理学家霍普菲尔德把自旋玻璃模型引入神经网络，用「能量函数」解释联想记忆。',
+      detail:'霍普菲尔德把网络状态类比为物理系统的能量，记忆则是能量地形中的低谷。系统会自发向低谷演化——这就是「联想记忆」。物理学家的加入，让神经网络重新获得了严肃学术界的注意。',
+      facts:[['人物','约翰·霍普菲尔德'],['关键词','能量函数'],['影响','神经网络复兴']],
+      tags:['物理','记忆'] },
+
+    { era:2, year:'1986', visual:'backprop', media:'期刊论文',
+      quote:'误差，可以反向传播。',
+      title:'反向传播复兴',
+      desc:'鲁梅尔哈特、辛顿与威廉姆斯在《自然》发表论文，让多层网络的训练变得可行。',
+      detail:'论文《通过反向传播误差学习表征》证明，多层网络可以通过链式法则逐层计算梯度并更新权重。它解决了 1969 年以来的核心障碍：隐藏层无法训练。深度学习的理论大门就此打开，尽管真正爆发还要再等二十六年。',
+      facts:[['人物','鲁梅尔哈特 · 辛顿 · 威廉姆斯'],['发表','《Nature》1986'],['关键词','梯度下降']],
+      tags:['梯度下降','深度学习前史'] },
+
+    { era:2, year:'1989', visual:'digits', media:'实验截图',
+      quote:'它读懂了手写的数字。',
+      title:'LeNet 与卷积网络',
+      desc:'杨立昆在贝尔实验室用卷积神经网络识别手写邮编，后来发展为 LeNet-5，被银行用于读取数百万张支票。',
+      detail:'杨立昆把卷积、池化和反向传播组合起来，构建出能识别手写数字的网络。它被部署到银行支票阅读系统中，峰值时期处理了全美约 10% 至 20% 的纸质支票。它是今天所有视觉模型的祖先。',
+      facts:[['人物','杨立昆'],['应用','银行支票识别 · 约 10%—20%'],['关键词','卷积网络']],
+      tags:['计算机视觉','CNN'] },
+
+    { era:2, year:'1993', visual:'decline2', media:'报纸剪报',
+      quote:'第二次，AI 成了贬义词。',
+      title:'第二次 AI 寒冬',
+      desc:'专用 AI 硬件市场崩塌，专家系统维护成本高昂、难以扩展。LISP 机器公司接连倒闭，AI 再次退潮。',
+      detail:'专用 LISP 机器被通用工作站取代，专家系统因难以维护、无法自主学习而失去市场。日本第五代计算机计划未能兑现承诺。AI 再次成为贬义词——但这一次，有人在悄悄收集数据。',
+      facts:[['原因','市场崩塌'],['事件','LISP 公司倒闭'],['影响','第二次寒冬']],
+      tags:['寒冬','退潮'] },
+
+    /* ---------- 1997 – 2011 ---------- */
+    { era:3, year:'1997', visual:'chess', media:'比赛照片',
+      quote:'机器赢下了棋盘。',
+      title:'深蓝战胜卡斯帕罗夫',
+      desc:'IBM 深蓝以 3.5 : 2.5 击败国际象棋世界冠军。它靠的是每秒两亿步的暴力搜索与人类棋谱，而不是「理解」。',
+      detail:'深蓝拥有 480 个专用芯片，每秒可评估 2 亿个棋局。第六局中，卡斯帕罗夫在 19 步后认输——他以为电脑走出了一步有长期战略意图的棋，后来发现那其实是程序缺陷导致的随机走法。',
+      facts:[['机构','IBM'],['算力','每秒 2 亿棋局 · 480 芯片'],['比分','3.5 : 2.5']],
+      tags:['博弈','里程碑'] },
+
+    { era:3, year:'2006', visual:'layers', media:'论文插图',
+      quote:'深度学习，有了名字。',
+      title:'深度学习之名',
+      desc:'辛顿等人提出深度信念网络与逐层预训练，"Deep Learning" 正式成为一个流派的名字。',
+      detail:'辛顿提出用无监督预训练初始化深层网络，缓解了梯度消失问题。同年《Nature》与《Science》分别刊文讨论「深度学习」。被冷落二十年的方向，开始重新集结人手。',
+      facts:[['人物','杰弗里·辛顿'],['关键词','深度信念网络'],['影响','深度学习得名']],
+      tags:['复兴','预训练'] },
+
+    { era:3, year:'2009', visual:'imagegrid', media:'数据集截图',
+      quote:'数据，比算法更重要。',
+      title:'ImageNet',
+      desc:'李飞飞团队发布 ImageNet：1400 万张人工标注的图像，覆盖 2 万多个类别。',
+      detail:'他们用众包方式完成标注。李飞飞后来回忆：「我们决定要做的是数据，而不是算法。」三年后，正是这个数据集让 AlexNet 有了用武之地——算法再好，也需要「数据」这个世界的样本。',
+      facts:[['人物','李飞飞'],['规模','1400 万张图像 · 2 万+ 类别'],['关键词','众包标注']],
+      tags:['数据','基准'] },
+
+    { era:3, year:'2011', visual:'buzz', media:'节目截图',
+      quote:'它读了两亿页，答对了一个问题。',
+      title:'Watson 赢得《危险边缘》',
+      desc:'IBM Watson 在电视问答节目中击败人类冠军。自然语言理解第一次在公众面前亮相。',
+      detail:'Watson 并行运行上百个算法，对每个候选答案给出置信度。比赛期间它并不联网——所有知识都存储在本地，相当于读了两亿页文档。它击败了节目历史上连胜纪录最长的两位人类选手。',
+      facts:[['机构','IBM'],['对手','《危险边缘》冠军'],['关键词','自然语言问答']],
+      tags:['NLP','问答'] },
+
+    /* ---------- 2012 – 2017 ---------- */
+    { era:4, year:'2012', visual:'errorbar', media:'竞赛结果',
+      quote:'一夜之间，所有人转向了深度学习。',
+      title:'AlexNet',
+      desc:'辛顿与学生克里热夫斯基的 AlexNet 在 ImageNet 竞赛中把错误率从 26% 降到 15%。',
+      detail:'AlexNet 的 top-5 错误率为 15.3%，第二名用的是传统方法，错误率 26.2%。辛顿的团队用了两块 GTX 580 训练一周。此后，几乎所有的计算机视觉论文都转向了深度学习。',
+      facts:[['人物','辛顿 · 克里热夫斯基'],['错误率','26.2% → 15.3%'],['硬件','2 块 GTX 580']],
+      tags:['GPU','转折点'] },
+
+    { era:4, year:'2014', visual:'gan', media:'论文插图',
+      quote:'造假者与鉴假者，共同进步。',
+      title:'生成对抗网络 GAN',
+      desc:'古德费洛提出 GAN：让生成器与判别器互相博弈。机器第一次学会了「想象」。',
+      detail:'古德费洛在蒙特利尔的一家酒吧里想出这个点子。生成器负责造假，判别器负责鉴假，两者在博弈中共同进步。Yann LeCun 称 GAN 是「过去十年机器学习领域最有趣的想法」。',
+      facts:[['人物','伊恩·古德费洛'],['关键词','生成对抗'],['影响','生成模型爆发']],
+      tags:['生成','博弈'] },
+
+    { era:4, year:'2016', visual:'goban', media:'对局棋谱',
+      quote:'第 37 手，天外飞仙。',
+      title:'AlphaGo 击败李世石',
+      desc:'DeepMind 的 AlphaGo 以 4:1 战胜围棋世界冠军李世石。第二局的第 37 手，让所有职业棋手沉默了很久。',
+      detail:'AlphaGo 结合了深度神经网络与蒙特卡洛树搜索。第二局第 37 手，它下在了人类棋谱中几乎不会出现的位置（五路肩冲）。李世石用了十几分钟才落子。赛后他说：「我从未见过这样的下法，但我承认它很美。」',
+      facts:[['机构','DeepMind'],['比分','4 : 1'],['名局','第 37 手 · 天外飞仙']],
+      tags:['强化学习','围棋'] },
+
+    { era:4, year:'2017', visual:'attention', media:'论文首页',
+      quote:'Attention is all you need.',
+      title:'Transformer',
+      desc:'谷歌团队发表《Attention Is All You Need》，提出完全基于注意力机制的架构。',
+      detail:'论文提出完全用自注意力机制替代循环和卷积，让训练可以充分并行。八位作者中，后来有七位离开谷歌创业，另一位去了 OpenAI。今天几乎所有大语言模型，都是它的后代。',
+      facts:[['机构','Google Brain'],['关键词','自注意力'],['影响','大模型基座 · 作者七人创业']],
+      tags:['架构','注意力'] },
+
+    /* ---------- 2018 – 2025 ---------- */
+    { era:5, year:'2018', visual:'context', media:'模型对比',
+      quote:'先预训练，再微调。',
+      title:'BERT 与 GPT',
+      desc:'谷歌 BERT 与 OpenAI GPT 相继问世，「预训练 + 微调」成为新范式。',
+      detail:'BERT 用双向掩码语言建模，GPT 用单向自回归预测。前者擅长理解，后者擅长生成。这一年，「预训练 + 微调」取代了从零训练，成为 NLP 的标准流程。',
+      facts:[['机构','Google · OpenAI'],['关键词','预训练'],['范式','预训练 + 微调']],
+      tags:['预训练','语言模型'] },
+
+    { era:5, year:'2020', visual:'scaling', media:'数据图表',
+      quote:'给几个例子，它就会了。',
+      title:'GPT-3',
+      desc:'1750 亿参数的 GPT-3 展现出惊人的少样本学习能力：不用重新训练，给几个例子就能完成任务。',
+      detail:'只需在提示里给几个例子，模型就能完成翻译、写作、编程等任务，无需更新任何权重。它也让「提示工程」成为一门新技能。规模本身，成了一种新的智能形式。',
+      facts:[['机构','OpenAI'],['参数','1750 亿'],['关键词','少样本学习']],
+      tags:['规模','涌现'] },
+
+    { era:5, year:'2021', visual:'protein', media:'结构预测',
+      quote:'五十年的生物学难题，被一个模型解开。',
+      title:'AlphaFold 2',
+      desc:'DeepMind 的 AlphaFold 2 在 CASP14 中把蛋白质结构预测精度推到实验级别，解决了生物学五十年的难题。',
+      detail:'在 CASP14 中，AlphaFold 2 的预测精度中位数达到 92.4 GDT_TS，接近实验测定水平。2022 年，DeepMind 开放了超过 2 亿个蛋白质结构预测，覆盖了地球上几乎所有已知蛋白质。',
+      facts:[['机构','DeepMind'],['精度','92.4 GDT_TS'],['开放','2 亿+ 结构']],
+      tags:['科学','蛋白质'] },
+
+    { era:5, year:'2022', visual:'diffusion', media:'产品界面',
+      quote:'五天，一百万人开始与机器对话。',
+      title:'扩散模型与 ChatGPT',
+      desc:'Stable Diffusion 让图像生成走向大众；同年 11 月 30 日，ChatGPT 上线，五天用户破百万。',
+      detail:'人类第一次用自然语言与机器对话，并且得到了有用的回答。两个月后用户破亿——成为历史上增长最快的消费级应用。它上线时只是一个「研究预览」。',
+      facts:[['事件','ChatGPT 上线 2022.11.30'],['增长','5 天百万 · 2 个月破亿'],['关键词','对话式 AI']],
+      tags:['对话','全民化'] },
+
+    { era:5, year:'2023', visual:'multimodal', media:'能力示意',
+      quote:'它通过了律师资格考试。',
+      title:'GPT-4 与多模态',
+      desc:'GPT-4 通过律师资格考试，能看懂图表与照片。多模态模型开始同时理解文字、图像与声音。',
+      detail:'GPT-4 在模拟律师资格考试中进入前 10%，在 SAT 阅读中排名前 7%，数学排名前 11%。它能读图、写代码、解释笑话。OpenAI 称其为「多模态模型」。AI 从一个工具，变成了一种界面。',
+      facts:[['机构','OpenAI'],['能力','多模态'],['成绩','律师资格前 10%']],
+      tags:['多模态','能力跃迁'] },
+
+    { era:5, year:'2024', visual:'video', media:'生成帧序列',
+      quote:'一分钟的视频，从一行文字生长出来。',
+      title:'视频生成与推理模型',
+      desc:'OpenAI 发布 Sora，用文字生成一分钟连贯视频；o1 系列把「思考时间」引入推理。',
+      detail:'Sora 能生成最长 60 秒、镜头连贯的视频。o1 系列则在回答前先生成一条长链推理——「测试时计算」成为继预训练之后新的扩展维度。推理能力开始被显式地「训练」出来。',
+      facts:[['机构','OpenAI'],['关键词','视频生成 · 推理'],['新维度','测试时计算']],
+      tags:['视频','推理'] },
+
+    { era:5, year:'2025', visual:'agent', media:'工作流程',
+      quote:'它不再只是回答，开始做事。',
+      title:'Agent 元年',
+      desc:'能自主规划、调用工具、长时间执行任务的智能体成为主流方向。模型不再只是回答问题，而是开始「做事」。',
+      detail:'智能体能够自己拆解任务、调用浏览器和代码执行器、在出错后重试，并持续工作数小时。从「回答问题」到「完成任务」，AI 正在从工具变成同事。而关于它的边界，仍在争论之中。故事，还在写。',
+      facts:[['关键词','智能体'],['能力','规划 · 工具调用'],['状态','进行中']],
+      tags:['智能体','现在'] }
+  ];
+
+  /* ==================================================
+     视觉 SVG
+     ================================================== */
+  const VIS = {
+    neuron: () => `
+      <rect width="320" height="160" fill="#ddd4c2"/>
+      <rect x="6" y="6" width="308" height="148" fill="none" stroke="rgba(60,50,40,.16)" stroke-width="1"/>
+      <g stroke="#2c2720" stroke-width="1.1" fill="none" stroke-linecap="round">
+        <line x1="48" y1="46" x2="124" y2="72"/>
+        <line x1="48" y1="80" x2="124" y2="80"/>
+        <line x1="48" y1="114" x2="124" y2="88"/>
+        <circle cx="150" cy="80" r="22"/>
+        <line x1="172" y1="80" x2="264" y2="80"/>
+      </g>
+      <circle cx="48" cy="46" r="3.5" fill="#2c2720"/>
+      <circle cx="48" cy="80" r="3.5" fill="#2c2720"/>
+      <circle cx="48" cy="114" r="3.5" fill="#2c2720"/>
+      <circle cx="274" cy="80" r="4" fill="#2c2720"/>
+      <text x="150" y="85" text-anchor="middle" font-size="12" fill="#2c2720" font-family="Georgia,serif" font-style="italic">θ</text>
+      <text x="26" y="42" font-size="8" fill="#2c2720" font-family="monospace">x₁</text>
+      <text x="26" y="76" font-size="8" fill="#2c2720" font-family="monospace">x₂</text>
+      <text x="26" y="110" font-size="8" fill="#2c2720" font-family="monospace">x₃</text>
+      <text x="284" y="76" font-size="8" fill="#2c2720" font-family="monospace">y</text>
+      <text x="16" y="148" font-size="7" fill="rgba(44,39,32,.5)" font-family="monospace" letter-spacing=".1em">McCULLOCH &amp; PITTS · 1943</text>
+    `,
+    chat: () => `
+      <rect width="320" height="160" fill="#ded5c3"/>
+      <rect x="6" y="6" width="308" height="148" fill="none" stroke="rgba(60,50,40,.16)" stroke-width="1"/>
+      <text x="20" y="28" font-size="9.5" fill="#2c2720" font-family="Georgia,serif" font-weight="bold">COMPUTING MACHINERY AND</text>
+      <text x="20" y="42" font-size="9.5" fill="#2c2720" font-family="Georgia,serif" font-weight="bold">INTELLIGENCE</text>
+      <line x1="20" y1="50" x2="300" y2="50" stroke="#2c2720" stroke-width=".6"/>
+      <text x="20" y="62" font-size="7" fill="#5c5548" font-family="monospace">A. M. TURING · MIND · VOL LIX · 1950</text>
+      <rect x="24" y="76" width="118" height="24" rx="12" fill="none" stroke="#2c2720" stroke-width=".8"/>
+      <text x="38" y="92" font-size="7.5" fill="#2c2720" font-family="monospace">Are you human?</text>
+      <rect x="178" y="110" width="118" height="24" rx="12" fill="none" stroke="#2c2720" stroke-width=".8"/>
+      <text x="192" y="126" font-size="7.5" fill="#2c2720" font-family="monospace">Cannot tell.</text>
+      <path d="M144 88 L176 122" stroke="#2c2720" stroke-width=".6" fill="none" stroke-dasharray="3 3"/>
+    `,
+    maze: () => {
+      let tubes = '';
+      for(let i=0;i<8;i++){
+        const x = 34 + i*34;
+        tubes += '<rect x="' + x + '" y="52" width="15" height="48" rx="7.5" fill="none" stroke="#b8b2a4" stroke-width=".9" opacity=".85"/>';
+        tubes += '<circle cx="' + (x+7.5) + '" cy="52" r="7.5" fill="none" stroke="#b8b2a4" stroke-width=".9" opacity=".85"/>';
+        tubes += '<line x1="' + (x+7.5) + '" y1="76" x2="' + (x+7.5) + '" y2="88" stroke="#b8b2a4" stroke-width=".6" opacity=".5"/>';
+      }
+      return `
+        <rect width="320" height="160" fill="#1b1a18"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(220,214,200,.07)" stroke-width="1"/>
+        ${tubes}
+        <rect x="22" y="100" width="276" height="10" rx="2" fill="none" stroke="#b8b2a4" stroke-width=".8" opacity=".7"/>
+        <text x="20" y="140" font-size="7" fill="rgba(200,194,180,.5)" font-family="monospace" letter-spacing=".1em">SNARC · 40 SYNAPSES · 300 VACUUM TUBES</text>
+      `;
+    },
+    meeting: () => `
+      <rect width="320" height="160" fill="#ded5c3"/>
+      <rect x="6" y="6" width="308" height="148" fill="none" stroke="rgba(60,50,40,.16)" stroke-width="1"/>
+      <text x="160" y="44" text-anchor="middle" font-size="11" fill="#2c2720" font-family="Georgia,serif" font-weight="bold">Dartmouth Summer Research</text>
+      <text x="160" y="60" text-anchor="middle" font-size="11" fill="#2c2720" font-family="Georgia,serif" font-weight="bold">Project on Artificial Intelligence</text>
+      <line x1="56" y1="72" x2="264" y2="72" stroke="#2c2720" stroke-width=".5"/>
+      <text x="160" y="90" text-anchor="middle" font-size="7.5" fill="#5c5548" font-family="monospace">SUMMER 1956 · HANOVER, N.H.</text>
+      <text x="160" y="114" text-anchor="middle" font-size="7.5" fill="#2c2720" font-family="monospace">J. McCarthy · M. Minsky · C. Shannon</text>
+      <text x="160" y="130" text-anchor="middle" font-size="7.5" fill="#2c2720" font-family="monospace">N. Rochester</text>
+    `,
+    weights: () => {
+      let knobs = '';
+      for(let i=0;i<8;i++){
+        const x = 50 + i*30;
+        knobs += '<circle cx="' + x + '" cy="70" r="12" fill="none" stroke="#b8b2a4" stroke-width=".9" opacity=".85"/>';
+        knobs += '<line x1="' + x + '" y1="70" x2="' + x + '" y2="61" stroke="#b8b2a4" stroke-width=".9" opacity=".85"/>';
+      }
+      return `
+        <rect width="320" height="160" fill="#1b1a18"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(220,214,200,.07)" stroke-width="1"/>
+        ${knobs}
+        <rect x="30" y="92" width="260" height="9" rx="2" fill="none" stroke="#b8b2a4" stroke-width=".8" opacity=".7"/>
+        <text x="20" y="140" font-size="7" fill="rgba(200,194,180,.5)" font-family="monospace" letter-spacing=".1em">MARK I PERCEPTRON · 1957</text>
+      `;
+    },
+    lisp: () => `
+      <rect width="320" height="160" fill="#101410"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(140,220,160,.08)" stroke-width="1"/>
+      <text x="22" y="30" font-size="7" fill="rgba(140,220,160,.5)" font-family="monospace">LISP · IBM 704</text>
+      <line x1="22" y1="38" x2="298" y2="38" stroke="rgba(140,220,160,.15)" stroke-width=".5"/>
+      <text x="22" y="60" font-size="9" fill="#8fe0a0" font-family="monospace">(defun fact (n)</text>
+      <text x="22" y="80" font-size="9" fill="#8fe0a0" font-family="monospace">&#160;&#160;(if (= n 0) 1</text>
+      <text x="22" y="100" font-size="9" fill="#8fe0a0" font-family="monospace">&#160;&#160;&#160;&#160;(* n (fact (- n 1)))))</text>
+      <text x="22" y="126" font-size="9" fill="#4a6a52" font-family="monospace">&gt; (fact 5)</text>
+      <text x="22" y="144" font-size="9" fill="#8fe0a0" font-family="monospace">120</text>
+    `,
+    terminal: () => `
+      <rect width="320" height="160" fill="#0d120e"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(120,224,140,.1)" stroke-width="1"/>
+      <text x="20" y="28" font-size="7" fill="rgba(120,224,140,.5)" font-family="monospace">ELIZA — DOCTOR SCRIPT · MIT</text>
+      <line x1="20" y1="36" x2="300" y2="36" stroke="rgba(120,224,140,.16)" stroke-width=".5"/>
+      <text x="20" y="60" font-size="9" fill="#7ce08c" font-family="monospace">ELIZA&gt; HOW DO YOU FEEL TODAY?</text>
+      <text x="20" y="84" font-size="9" fill="#4a7a52" font-family="monospace">&gt; I am sad.</text>
+      <text x="20" y="108" font-size="9" fill="#7ce08c" font-family="monospace">ELIZA&gt; WHY DO YOU FEEL SAD?</text>
+      <text x="20" y="132" font-size="9" fill="#4a7a52" font-family="monospace">&gt; I don't know.</text>
+    `,
+    xor: () => `
+      <rect width="320" height="160" fill="#ded5c3"/>
+      <rect x="6" y="6" width="308" height="148" fill="none" stroke="rgba(60,50,40,.16)" stroke-width="1"/>
+      <line x1="62" y1="128" x2="278" y2="128" stroke="#2c2720" stroke-width=".8"/>
+      <line x1="62" y1="128" x2="62" y2="24" stroke="#2c2720" stroke-width=".8"/>
+      <circle cx="112" cy="46" r="7" fill="#2c2720"/>
+      <circle cx="228" cy="112" r="7" fill="#2c2720"/>
+      <circle cx="112" cy="112" r="7" fill="none" stroke="#2c2720" stroke-width="1.3"/>
+      <circle cx="228" cy="46" r="7" fill="none" stroke="#2c2720" stroke-width="1.3"/>
+      <line x1="72" y1="118" x2="268" y2="38" stroke="#2c2720" stroke-width=".7" stroke-dasharray="4 3" opacity=".7"/>
+      <text x="170" y="148" text-anchor="middle" font-size="7" fill="rgba(44,39,32,.55)" font-family="monospace" letter-spacing=".08em">XOR IS NOT LINEARLY SEPARABLE</text>
+    `,
+    decline: () => {
+      let lines = '';
+      for(let i=0;i<5;i++){
+        const w = i%2 ? 272 : 158;
+        lines += '<line x1="20" y1="' + (84+i*12) + '" x2="' + (20+w) + '" y2="' + (84+i*12) + '" stroke="rgba(28,26,22,.42)" stroke-width=".7"/>';
+      }
+      return `
+        <rect width="320" height="160" fill="#d8d1c0"/>
+        <rect x="6" y="6" width="308" height="148" fill="none" stroke="rgba(60,50,40,.16)" stroke-width="1"/>
+        <text x="20" y="32" font-size="14" fill="#1c1a16" font-family="Georgia,serif" font-weight="bold">AI RESEARCH</text>
+        <text x="20" y="52" font-size="14" fill="#1c1a16" font-family="Georgia,serif" font-weight="bold">FUNDING CUT</text>
+        <line x1="20" y1="60" x2="300" y2="60" stroke="#1c1a16" stroke-width="1"/>
+        <line x1="20" y1="66" x2="300" y2="66" stroke="#1c1a16" stroke-width=".4"/>
+        ${lines}
+        <text x="20" y="148" font-size="7" fill="rgba(28,26,22,.55)" font-family="monospace" letter-spacing=".06em">THE LIGHTHILL REPORT · 1973</text>
+      `;
+    },
+    rules: () => {
+      const rows = ['cabinet-type = VAX','slot ≠ empty','power ≥ 200W','board-ok = true','cable-len &lt; 3m'];
+      let r = '';
+      rows.forEach(function(t,i){
+        const y = 56 + i*19;
+        r += '<text x="20" y="' + y + '" font-size="8" fill="#8aa6ff" font-family="monospace">IF</text>';
+        r += '<text x="44" y="' + y + '" font-size="8" fill="#9aa8c0" font-family="monospace">' + t + '</text>';
+      });
+      return `
+        <rect width="320" height="160" fill="#12141a"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(138,166,255,.1)" stroke-width="1"/>
+        <text x="20" y="30" font-size="8" fill="#8aa6ff" font-family="monospace">XCON · RULE BASE</text>
+        <line x1="20" y1="38" x2="300" y2="38" stroke="rgba(138,166,255,.18)" stroke-width=".5"/>
+        ${r}
+        <text x="20" y="148" font-size="7" fill="rgba(138,166,255,.5)" font-family="monospace" letter-spacing=".06em">~2500 RULES · EST. $25M / YEAR</text>
+      `;
+    },
+    energy: () => `
+      <rect width="320" height="160" fill="#12141c"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(138,166,255,.08)" stroke-width="1"/>
+      <path d="M30 118 C 68 118, 78 40, 118 40 S 168 128, 208 128 S 258 52, 290 60 L 290 150 L 30 150 Z"
+            fill="#8aa6ff" opacity=".07"/>
+      <path d="M30 118 C 68 118, 78 40, 118 40 S 168 128, 208 128 S 258 52, 290 60"
+            fill="none" stroke="#8aa6ff" stroke-width="1.4" opacity=".85"/>
+      <circle cx="118" cy="40" r="5" fill="#8aa6ff"/>
+      <circle cx="208" cy="128" r="5" fill="#8aa6ff"/>
+      <text x="118" y="28" text-anchor="middle" font-size="7" fill="rgba(138,166,255,.75)" font-family="monospace">memory A</text>
+      <text x="208" y="144" text-anchor="middle" font-size="7" fill="rgba(138,166,255,.75)" font-family="monospace">memory B</text>
+      <text x="20" y="24" font-size="7" fill="rgba(138,166,255,.5)" font-family="monospace" letter-spacing=".08em">ENERGY LANDSCAPE · 1982</text>
+    `,
+    backprop: () => {
+      const cols = [82, 160, 238];
+      const rows = [98, 116, 134];
+      let links = '';
+      for(let i=0;i<2;i++){
+        rows.forEach(function(y1){
+          rows.forEach(function(y2){
+            links += '<line x1="' + (cols[i]+6) + '" y1="' + y1 + '" x2="' + (cols[i+1]-6) + '" y2="' + y2 + '" stroke="rgba(28,26,22,.22)" stroke-width=".4"/>';
+          });
+        });
+      }
+      let nodes = '';
+      cols.forEach(function(x){
+        rows.forEach(function(y){
+          nodes += '<circle cx="' + x + '" cy="' + y + '" r="5" fill="none" stroke="#1c1a16" stroke-width=".7"/>';
+        });
+      });
+      return `
+        <rect width="320" height="160" fill="#e3ddd0"/>
+        <rect x="6" y="6" width="308" height="148" fill="none" stroke="rgba(60,50,40,.16)" stroke-width="1"/>
+        <text x="20" y="28" font-size="10" fill="#1c1a16" font-family="Georgia,serif" font-weight="bold">Learning representations</text>
+        <text x="20" y="44" font-size="10" fill="#1c1a16" font-family="Georgia,serif" font-weight="bold">by back-propagating errors</text>
+        <line x1="20" y1="52" x2="300" y2="52" stroke="#1c1a16" stroke-width=".6"/>
+        <text x="20" y="66" font-size="7" fill="#4a453c" font-family="monospace">RUMELHART · HINTON · WILLIAMS</text>
+        <text x="20" y="78" font-size="7" fill="#4a453c" font-family="monospace">NATURE · VOL 323 · 1986</text>
+        ${links}${nodes}
+      `;
+    },
+    digits: () => {
+      const nums = ['3','7','2','9'];
+      let cards = '';
+      nums.forEach(function(n,i){
+        const x = 26 + i*68;
+        cards += '<rect x="' + x + '" y="40" width="54" height="60" rx="4" fill="none" stroke="#8aa6ff" stroke-width=".9" opacity=".75"/>';
+        cards += '<text x="' + (x+27) + '" y="86" text-anchor="middle" font-size="38" fill="#c8d4e8" font-family="Georgia,serif" opacity=".85">' + n + '</text>';
+      });
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(138,166,255,.08)" stroke-width="1"/>
+        <text x="20" y="26" font-size="7" fill="rgba(138,166,255,.55)" font-family="monospace" letter-spacing=".08em">LeNet · HANDWRITTEN DIGITS · 1989</text>
+        ${cards}
+        <text x="20" y="146" font-size="7" fill="rgba(200,210,230,.45)" font-family="monospace">CONV · POOL · FC</text>
+      `;
+    },
+    decline2: () => `
+      <rect width="320" height="160" fill="#d8d1c0"/>
+      <rect x="6" y="6" width="308" height="148" fill="none" stroke="rgba(60,50,40,.16)" stroke-width="1"/>
+      <text x="20" y="32" font-size="13" fill="#1c1a16" font-family="Georgia,serif" font-weight="bold">AI MARKET COLLAPSE</text>
+      <line x1="20" y1="40" x2="300" y2="40" stroke="#1c1a16" stroke-width=".8"/>
+      <line x1="36" y1="126" x2="292" y2="126" stroke="rgba(28,26,22,.35)" stroke-width=".6"/>
+      <line x1="36" y1="54" x2="36" y2="126" stroke="rgba(28,26,22,.35)" stroke-width=".6"/>
+      <path d="M38 60 L84 70 L132 66 L182 92 L232 112 L290 124"
+            fill="none" stroke="#1c1a16" stroke-width="1.3"/>
+      <circle cx="290" cy="124" r="3.5" fill="#1c1a16"/>
+      <text x="20" y="148" font-size="7" fill="rgba(28,26,22,.55)" font-family="monospace">LISP MACHINE REVENUE · 1987 — 1993</text>
+    `,
+    chess: () => {
+      let board = '';
+      const N=8, c=15, x0=30, y0=24;
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+        if((i+j)%2===0){
+          board += '<rect x="' + (x0+i*c) + '" y="' + (y0+j*c) + '" width="' + c + '" height="' + c + '" fill="rgba(200,210,230,.09)"/>';
+        }
+      }
+      board += '<rect x="' + x0 + '" y="' + y0 + '" width="' + (N*c) + '" height="' + (N*c) + '" fill="none" stroke="#5a7aaa" stroke-width=".8"/>';
+      board += '<circle cx="' + (x0+2.5*c) + '" cy="' + (y0+2.5*c) + '" r="5" fill="#e6e0d2"/>';
+      board += '<circle cx="' + (x0+5.5*c) + '" cy="' + (y0+5.5*c) + '" r="5" fill="#14161c" stroke="#e6e0d2" stroke-width=".8"/>';
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(138,166,255,.08)" stroke-width="1"/>
+        ${board}
+        <text x="180" y="52" font-size="9" fill="#8aa6ff" font-family="monospace">DEEP BLUE</text>
+        <text x="180" y="66" font-size="7" fill="rgba(138,166,255,.6)" font-family="monospace">200M POSITIONS/SEC</text>
+        <text x="180" y="100" font-size="16" fill="#e6e0d2" font-family="monospace">3.5 : 2.5</text>
+        <text x="180" y="118" font-size="7" fill="rgba(230,224,210,.5)" font-family="monospace">KASPAROV vs MACHINE</text>
+      `;
+    },
+    layers: () => {
+      let l = '';
+      for(let i=0;i<4;i++){
+        l += '<rect x="' + (36+i*64) + '" y="42" width="42" height="76" rx="5" fill="none" stroke="#6fe0b0" stroke-width=".9" opacity="' + (0.4+i*0.17) + '"/>';
+        for(let j=0;j<3;j++){
+          l += '<circle cx="' + (57+i*64) + '" cy="' + (60+j*22) + '" r="3.5" fill="#6fe0b0" opacity="' + (0.35+i*0.18) + '"/>';
+        }
+      }
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(111,224,176,.08)" stroke-width="1"/>
+        <text x="20" y="26" font-size="7" fill="rgba(111,224,176,.55)" font-family="monospace" letter-spacing=".08em">DEEP BELIEF NETWORK · 2006</text>
+        ${l}
+        <text x="20" y="148" font-size="7" fill="rgba(111,224,176,.45)" font-family="monospace">LAYER-WISE PRE-TRAINING</text>
+      `;
+    },
+    imagegrid: () => {
+      const colors = ['#6fe0b0','#8aa6ff','#e6b980','#7ee0d0','#b58ae6','#e68aa6'];
+      let g = '';
+      for(let i=0;i<6;i++) for(let j=0;j<2;j++){
+        const idx = i*2+j;
+        const cc = colors[idx%6];
+        const op = (0.12 + ((idx*7)%5)*0.07).toFixed(2);
+        g += '<rect x="' + (22+i*48) + '" y="' + (40+j*54) + '" width="42" height="46" rx="3" fill="' + cc + '" opacity="' + op + '"/>';
+        g += '<rect x="' + (22+i*48) + '" y="' + (40+j*54) + '" width="42" height="46" rx="3" fill="none" stroke="' + cc + '" stroke-width=".6" opacity=".5"/>';
+      }
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(200,210,230,.08)" stroke-width="1"/>
+        <text x="20" y="26" font-size="7" fill="rgba(200,210,230,.6)" font-family="monospace" letter-spacing=".08em">IMAGENET · 14M IMAGES · 20K CLASSES</text>
+        ${g}
+      `;
+    },
+    buzz: () => {
+      const answers = ['WHAT IS WATSON?','WHAT IS DEEP BLUE?','WHAT IS SIRI?'];
+      let rows = '';
+      answers.forEach(function(a,i){
+        const y = 72 + i*24;
+        rows += '<rect x="20" y="' + y + '" width="182" height="18" rx="3" fill="rgba(126,200,232,.08)" stroke="rgba(126,200,232,.25)" stroke-width=".6"/>';
+        rows += '<text x="28" y="' + (y+13) + '" font-size="7.5" fill="#7ec8e8" font-family="monospace">' + a + '</text>';
+      });
+      return `
+        <rect width="320" height="160" fill="#0c1420"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(126,200,232,.1)" stroke-width="1"/>
+        <text x="20" y="28" font-size="9" fill="#7ec8e8" font-family="monospace" letter-spacing=".1em">JEOPARDY!</text>
+        <line x1="20" y1="36" x2="300" y2="36" stroke="rgba(126,200,232,.2)" stroke-width=".5"/>
+        <text x="20" y="58" font-size="9" fill="#dfe6ee" font-family="Georgia,serif">"This computer won in 2011."</text>
+        ${rows}
+        <text x="222" y="130" font-size="11" fill="#7ec8e8" font-family="monospace" text-anchor="middle">WATSON</text>
+      `;
+    },
+    errorbar: () => `
+      <rect width="320" height="160" fill="#12141c"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(111,224,176,.08)" stroke-width="1"/>
+      <line x1="40" y1="128" x2="290" y2="128" stroke="rgba(255,255,255,.14)" stroke-width=".8"/>
+      <rect x="70" y="32" width="58" height="96" rx="4" fill="rgba(230,224,210,.1)" stroke="rgba(230,224,210,.35)" stroke-width=".8"/>
+      <text x="99" y="26" text-anchor="middle" font-size="9" fill="rgba(230,224,210,.8)" font-family="monospace">26.2%</text>
+      <text x="99" y="144" text-anchor="middle" font-size="7" fill="rgba(230,224,210,.5)" font-family="monospace">传统方法</text>
+      <rect x="192" y="76" width="58" height="52" rx="4" fill="rgba(111,224,176,.2)" stroke="#6fe0b0" stroke-width=".9"/>
+      <text x="221" y="70" text-anchor="middle" font-size="9" fill="#6fe0b0" font-family="monospace">15.3%</text>
+      <text x="221" y="144" text-anchor="middle" font-size="7" fill="rgba(111,224,176,.7)" font-family="monospace">AlexNet</text>
+      <text x="20" y="24" font-size="7" fill="rgba(200,210,230,.5)" font-family="monospace" letter-spacing=".08em">IMAGENET · TOP-5 ERROR</text>
+    `,
+    gan: () => `
+      <rect width="320" height="160" fill="#12141c"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(111,224,176,.08)" stroke-width="1"/>
+      <circle cx="80" cy="84" r="27" fill="none" stroke="#6fe0b0" stroke-width="1.2"/>
+      <text x="80" y="90" text-anchor="middle" font-size="14" fill="#6fe0b0" font-family="monospace">G</text>
+      <circle cx="240" cy="84" r="27" fill="none" stroke="#e68aa6" stroke-width="1.2"/>
+      <text x="240" y="90" text-anchor="middle" font-size="14" fill="#e68aa6" font-family="monospace">D</text>
+      <path d="M112 72 H 204" stroke="#6fe0b0" stroke-width="1" fill="none" opacity=".8"/>
+      <path d="M192 66 L204 72 L192 78" stroke="#6fe0b0" stroke-width="1" fill="none" opacity=".8"/>
+      <path d="M208 100 H 116" stroke="#e68aa6" stroke-width="1" fill="none" opacity=".8"/>
+      <path d="M128 94 L116 100 L128 106" stroke="#e68aa6" stroke-width="1" fill="none" opacity=".8"/>
+      <text x="160" y="26" text-anchor="middle" font-size="7" fill="rgba(200,210,230,.5)" font-family="monospace" letter-spacing=".06em">GENERATOR vs DISCRIMINATOR</text>
+      <text x="20" y="148" font-size="7" fill="rgba(200,210,230,.4)" font-family="monospace">GAN · 2014</text>
+    `,
+    goban: () => {
+      const N=7, c=16, x0=104, y0=26;
+      let g = '';
+      for(let i=0;i<=N;i++){
+        g += '<line x1="' + (x0+i*c) + '" y1="' + y0 + '" x2="' + (x0+i*c) + '" y2="' + (y0+N*c) + '" stroke="rgba(230,224,210,.16)" stroke-width=".6"/>';
+        g += '<line x1="' + x0 + '" y1="' + (y0+i*c) + '" x2="' + (x0+N*c) + '" y2="' + (y0+i*c) + '" stroke="rgba(230,224,210,.16)" stroke-width=".6"/>';
+      }
+      const stones = [[2,2,'b'],[4,4,'w'],[3,4,'b'],[4,3,'w'],[5,2,'b'],[1,5,'w'],[5,5,'b']];
+      stones.forEach(function(p){
+        const isB = p[2]==='b';
+        g += '<circle cx="' + (x0+p[0]*c) + '" cy="' + (y0+p[1]*c) + '" r="6" fill="' + (isB?'#14161c':'#e6e0d2') + '" stroke="' + (isB?'rgba(230,224,210,.35)':'rgba(20,22,28,.4)') + '" stroke-width=".7"/>';
+      });
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(230,185,128,.08)" stroke-width="1"/>
+        ${g}
+        <circle cx="${x0+3*c}" cy="${y0+2*c}" r="11" fill="none" stroke="#e6b980" stroke-width="1.3"/>
+        <circle cx="${x0+3*c}" cy="${y0+2*c}" r="6" fill="#e6e0d2" stroke="rgba(20,22,28,.4)" stroke-width=".7"/>
+        <text x="20" y="30" font-size="8" fill="#e6b980" font-family="monospace">MOVE 37</text>
+        <text x="20" y="46" font-size="7" fill="rgba(230,185,128,.6)" font-family="monospace">"IT'S BEAUTIFUL"</text>
+        <text x="20" y="148" font-size="7" fill="rgba(200,210,230,.45)" font-family="monospace">ALPHAGO vs LEE SEDOL · 4:1</text>
+      `;
+    },
+    attention: () => {
+      const N=7, c=12, x0=190, y0=34;
+      let m = '';
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+        const v = Math.abs(Math.sin(i*1.7 + j*1.1));
+        m += '<rect x="' + (x0+i*c) + '" y="' + (y0+j*c) + '" width="' + (c-1) + '" height="' + (c-1) + '" fill="#8aa6ff" opacity="' + (0.07+v*0.72).toFixed(2) + '"/>';
+      }
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(138,166,255,.08)" stroke-width="1"/>
+        <text x="20" y="30" font-size="8" fill="#8aa6ff" font-family="monospace">ATTENTION</text>
+        <text x="20" y="44" font-size="8" fill="#8aa6ff" font-family="monospace">IS ALL YOU NEED</text>
+        <text x="20" y="60" font-size="7" fill="rgba(138,166,255,.5)" font-family="monospace">VASWANI ET AL · 2017</text>
+        <text x="20" y="94" font-size="26" fill="#dfe6ee" font-family="Georgia,serif">T</text>
+        <text x="20" y="116" font-size="7" fill="rgba(200,210,230,.55)" font-family="monospace">SELF-ATTENTION</text>
+        ${m}
+      `;
+    },
+    context: () => `
+      <rect width="320" height="160" fill="#12141c"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(138,166,255,.08)" stroke-width="1"/>
+      <text x="70" y="34" font-size="9" fill="#8aa6ff" font-family="monospace">BERT</text>
+      <text x="70" y="48" font-size="7" fill="rgba(138,166,255,.55)" font-family="monospace">双向 · 理解</text>
+      <line x1="34" y1="66" x2="146" y2="66" stroke="#8aa6ff" stroke-width=".9" opacity=".7"/>
+      <path d="M46 60 L34 66 L46 72" stroke="#8aa6ff" stroke-width=".9" fill="none" opacity=".7"/>
+      <path d="M134 60 L146 66 L134 72" stroke="#8aa6ff" stroke-width=".9" fill="none" opacity=".7"/>
+      <text x="90" y="102" text-anchor="middle" font-size="18" fill="#c8d4e8" font-family="Georgia,serif">BERT</text>
+      <line x1="180" y1="20" x2="180" y2="140" stroke="rgba(255,255,255,.06)" stroke-width=".6"/>
+      <text x="228" y="34" font-size="9" fill="#6fe0b0" font-family="monospace">GPT</text>
+      <text x="228" y="48" font-size="7" fill="rgba(111,224,176,.55)" font-family="monospace">单向 · 生成</text>
+      <line x1="192" y1="66" x2="300" y2="66" stroke="#6fe0b0" stroke-width=".9" opacity=".7"/>
+      <path d="M288 60 L300 66 L288 72" stroke="#6fe0b0" stroke-width=".9" fill="none" opacity=".7"/>
+      <text x="246" y="102" text-anchor="middle" font-size="18" fill="#c8d4e8" font-family="Georgia,serif">GPT</text>
+      <text x="160" y="146" text-anchor="middle" font-size="7" fill="rgba(200,210,230,.45)" font-family="monospace" letter-spacing=".06em">PRE-TRAIN + FINE-TUNE</text>
+    `,
+    scaling: () => {
+      const hs = [14, 22, 42, 74, 92];
+      const cols = ['rgba(230,224,210,.18)','rgba(230,224,210,.24)','#e6b980','#8aa6ff','rgba(138,166,255,.32)'];
+      let bars = '';
+      hs.forEach(function(h,i){
+        const x = 60 + i*46;
+        bars += '<rect x="' + x + '" y="' + (128-h) + '" width="30" height="' + h + '" rx="3" fill="' + cols[i] + '" opacity="' + (i===2?0.95:0.6) + '"/>';
+      });
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(230,185,128,.08)" stroke-width="1"/>
+        <line x1="40" y1="128" x2="290" y2="128" stroke="rgba(255,255,255,.14)" stroke-width=".8"/>
+        ${bars}
+        <text x="152" y="42" text-anchor="middle" font-size="18" fill="#e6b980" font-family="monospace">175B</text>
+        <text x="152" y="58" text-anchor="middle" font-size="7" fill="rgba(230,185,128,.7)" font-family="monospace" letter-spacing=".1em">PARAMETERS</text>
+        <text x="20" y="150" font-size="7" fill="rgba(200,210,230,.45)" font-family="monospace">FEW-SHOT LEARNING · 2020</text>
+      `;
+    },
+    protein: () => `
+      <rect width="320" height="160" fill="#12141c"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(111,224,176,.08)" stroke-width="1"/>
+      <path d="M40 122 C 40 58, 104 46, 126 90 S 176 132, 208 90 S 262 28, 284 58"
+            fill="none" stroke="#6fe0b0" stroke-width="6" stroke-linecap="round" opacity=".14"/>
+      <path d="M40 122 C 40 58, 104 46, 126 90 S 176 132, 208 90 S 262 28, 284 58"
+            fill="none" stroke="#6fe0b0" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+      <circle cx="40" cy="122" r="4" fill="#6fe0b0"/>
+      <circle cx="126" cy="90" r="4" fill="#6fe0b0"/>
+      <circle cx="208" cy="90" r="4" fill="#6fe0b0"/>
+      <circle cx="284" cy="58" r="4" fill="#6fe0b0"/>
+      <text x="20" y="28" font-size="8" fill="#6fe0b0" font-family="monospace">ALPHAFOLD 2</text>
+      <text x="20" y="44" font-size="7" fill="rgba(111,224,176,.55)" font-family="monospace">92.4 GDT · CASP14 · 2021</text>
+      <text x="20" y="148" font-size="7" fill="rgba(200,210,230,.45)" font-family="monospace">200M+ PROTEIN STRUCTURES</text>
+    `,
+    diffusion: () => `
+      <rect width="320" height="160" fill="#0e1117"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(230,185,128,.08)" stroke-width="1"/>
+      <rect x="20" y="18" width="280" height="124" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.07)" stroke-width=".7"/>
+      <circle cx="36" cy="34" r="3" fill="rgba(230,185,128,.8)"/>
+      <text x="46" y="38" font-size="8" fill="#e6b980" font-family="monospace">ChatGPT</text>
+      <line x1="20" y1="48" x2="300" y2="48" stroke="rgba(255,255,255,.06)" stroke-width=".6"/>
+      <rect x="178" y="60" width="114" height="22" rx="11" fill="rgba(138,166,255,.13)"/>
+      <text x="188" y="74" font-size="7.5" fill="#c8d4e8" font-family="monospace">写一首关于 AI 的诗</text>
+      <rect x="32" y="92" width="184" height="34" rx="4" fill="rgba(230,185,128,.07)" stroke="rgba(230,185,128,.18)" stroke-width=".6"/>
+      <text x="40" y="106" font-size="7.5" fill="#e6e0d2" font-family="monospace">在硅的森林里，我学习</text>
+      <text x="40" y="120" font-size="7.5" fill="#e6e0d2" font-family="monospace">如何梦见你的问题…</text>
+      <text x="20" y="152" font-size="7" fill="rgba(230,185,128,.5)" font-family="monospace" letter-spacing=".06em">NOV 30, 2022 · 1M USERS IN 5 DAYS</text>
+    `,
+    multimodal: () => `
+      <rect width="320" height="160" fill="#12141c"/>
+      <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(230,185,128,.08)" stroke-width="1"/>
+      <rect x="20" y="42" width="118" height="80" rx="6" fill="rgba(138,166,255,.07)" stroke="rgba(138,166,255,.25)" stroke-width=".7"/>
+      <line x1="34" y1="62" x2="124" y2="62" stroke="rgba(200,210,230,.4)" stroke-width=".7"/>
+      <line x1="34" y1="80" x2="106" y2="80" stroke="rgba(200,210,230,.4)" stroke-width=".7"/>
+      <line x1="34" y1="98" x2="116" y2="98" stroke="rgba(200,210,230,.4)" stroke-width=".7"/>
+      <path d="M146 82 H 174" stroke="#e6b980" stroke-width="1" fill="none"/>
+      <path d="M164 76 L174 82 L164 88" stroke="#e6b980" stroke-width="1" fill="none"/>
+      <rect x="182" y="42" width="118" height="80" rx="6" fill="rgba(230,185,128,.07)" stroke="rgba(230,185,128,.25)" stroke-width=".7"/>
+      <circle cx="212" cy="66" r="8" fill="none" stroke="#e6b980" stroke-width=".8"/>
+      <path d="M192 112 L212 88 L228 106 L242 94 L254 112 Z" fill="#e6b980" opacity=".28"/>
+      <text x="160" y="28" text-anchor="middle" font-size="8" fill="rgba(200,210,230,.6)" font-family="monospace">TEXT + IMAGE → ANSWER</text>
+      <text x="160" y="146" text-anchor="middle" font-size="7" fill="rgba(230,185,128,.5)" font-family="monospace">GPT-4 · 2023</text>
+    `,
+    video: () => {
+      let frames = '';
+      for(let i=0;i<5;i++){
+        const x = 20 + i*58;
+        frames += '<rect x="' + x + '" y="48" width="52" height="62" rx="4" fill="#b58ae6" opacity="' + (0.03+i*0.022) + '"/>';
+        frames += '<rect x="' + x + '" y="48" width="52" height="62" rx="4" fill="none" stroke="#b58ae6" stroke-width=".8" opacity="' + (0.25+i*0.13) + '"/>';
+        if(i>0){
+          frames += '<path d="M' + (x-6) + ' 79 L' + (x-1) + ' 79" stroke="rgba(181,138,230,.5)" stroke-width="1"/>';
+        }
+      }
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(181,138,230,.08)" stroke-width="1"/>
+        <text x="160" y="30" text-anchor="middle" font-size="8" fill="#b58ae6" font-family="monospace" letter-spacing=".06em">TEXT → 60s VIDEO</text>
+        ${frames}
+        <text x="160" y="140" text-anchor="middle" font-size="7" fill="rgba(181,138,230,.55)" font-family="monospace">SORA · 2024</text>
+      `;
+    },
+    agent: () => {
+      const nodes = [[60,44,'search'],[260,44,'browser'],[60,120,'code'],[260,120,'api']];
+      let g = '';
+      nodes.forEach(function(n){
+        g += '<line x1="160" y1="82" x2="' + n[0] + '" y2="' + n[1] + '" stroke="rgba(230,185,128,.3)" stroke-width=".8"/>';
+        g += '<circle cx="' + n[0] + '" cy="' + n[1] + '" r="14" fill="rgba(230,185,128,.06)" stroke="rgba(230,185,128,.35)" stroke-width=".8"/>';
+        g += '<text x="' + n[0] + '" y="' + (n[1]+3) + '" text-anchor="middle" font-size="5.5" fill="rgba(230,185,128,.8)" font-family="monospace">' + n[2] + '</text>';
+      });
+      return `
+        <rect width="320" height="160" fill="#12141c"/>
+        <rect x="0" y="0" width="320" height="160" fill="none" stroke="rgba(230,185,128,.08)" stroke-width="1"/>
+        ${g}
+        <circle cx="160" cy="82" r="22" fill="rgba(230,185,128,.06)" stroke="#e6b980" stroke-width="1.2"/>
+        <text x="160" y="87" text-anchor="middle" font-size="10" fill="#e6b980" font-family="monospace">AI</text>
+        <path d="M110 44 Q 160 14 210 44" fill="none" stroke="rgba(230,185,128,.28)" stroke-width=".7" stroke-dasharray="3 3"/>
+        <path d="M110 120 Q 160 150 210 120" fill="none" stroke="rgba(230,185,128,.28)" stroke-width=".7" stroke-dasharray="3 3"/>
+        <text x="20" y="28" font-size="8" fill="#e6b980" font-family="monospace">AUTONOMOUS AGENT</text>
+        <text x="20" y="148" font-size="7" fill="rgba(230,185,128,.5)" font-family="monospace">PLAN · ACT · OBSERVE · REPEAT</text>
+      `;
+    }
+  };
+
+  function visualSVG(type){
+    const fn = VIS[type] || VIS.neuron;
+    return '<svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' + fn() + '</svg>';
+  }
+
+  /* ==================================================
+     渲染
+     ================================================== */
+  const timelineEl = document.getElementById('timeline');
+  const chipsEl = document.getElementById('eraChips');
+  const railEl = document.getElementById('rail');
+  const yearReadout = document.getElementById('yearReadout');
+
+  let html = '';
+  let chipsHtml = '';
+  let railHtml = '';
+  let itemIndex = 0;
+
+  ERAS.forEach(function(era, ei){
+    const evs = EVENTS.filter(function(e){ return e.era === ei; });
+
+    html += '<section class="tl-group" id="' + era.id + '" data-label="' + era.label + '" data-color="' + era.color + '" style="--era:' + era.color + '">';
+    html +=   '<header class="era">';
+    html +=     '<span class="era-range">' + era.range + '</span>';
+    html +=     '<h2>' + era.label + '</h2>';
+    html +=     '<p>' + era.sub + '</p>';
+    html +=   '</header>';
+
+    evs.forEach(function(ev){
+      const side = (itemIndex % 2 === 0) ? 'right' : 'left';
+      itemIndex++;
+
+      html += '<article class="tl-item ' + side + '" id="ev-' + ev.year + '" data-year="' + ev.year + '">';
+      html +=   '<div class="tl-card" tabindex="0" role="button" aria-expanded="false" aria-label="' + ev.title + '，点击展开细节">';
+      html +=     '<div class="tl-visual">';
+      html +=       '<span class="tl-media-tag">' + ev.media + '</span>';
+      html +=       visualSVG(ev.visual);
+      html +=     '</div>';
+      html +=     '<div class="tl-main">';
+      html +=       '<div class="tl-year">' + ev.year + '</div>';
+      html +=       '<h3>' + ev.title + '</h3>';
+      html +=       '<blockquote class="tl-quote">' + ev.quote + '</blockquote>';
+      html +=       '<p>' + ev.desc + '</p>';
+      html +=       '<div class="tl-tags">' + ev.tags.map(function(t){ return '<span>' + t + '</span>'; }).join('') + '</div>';
+      html +=       '<div class="tl-detail"><div class="tl-detail-inner">';
+      html +=         '<p class="tl-detail-text">' + ev.detail + '</p>';
+      html +=         '<dl class="tl-facts">' + ev.facts.map(function(f){
+                          return '<div><dt>' + f[0] + '</dt><dd>' + f[1] + '</dd></div>';
+                        }).join('') + '</dl>';
+      html +=       '</div></div>';
+      html +=       '<span class="tl-toggle" aria-hidden="true"></span>';
+      html +=     '</div>';
+      html +=   '</div>';
+      html += '</article>';
+    });
+
+    html += '</section>';
+
+    chipsHtml += '<button class="chip" data-target="' + era.id + '" style="--cc:' + era.color + '">' + era.label + '</button>';
+    railHtml += '<a href="#' + era.id + '" data-label="' + era.label + '" data-target="' + era.id + '"></a>';
+  });
+
+  timelineEl.innerHTML = html;
+  chipsEl.innerHTML = chipsHtml;
+  railEl.innerHTML = railHtml;
+
+  const chips = Array.prototype.slice.call(chipsEl.querySelectorAll('.chip'));
+  const railLinks = Array.prototype.slice.call(railEl.querySelectorAll('a'));
+  const groupEls = Array.prototype.slice.call(document.querySelectorAll('.tl-group'));
+  const items = Array.prototype.slice.call(document.querySelectorAll('.tl-item'));
+
+  /* ==================================================
+     URL hash：打开 / 关闭卡片时同步地址
+     ================================================== */
+  function setHash(hash){
+    if(!history.replaceState) return;
+    const url = hash
+      ? window.location.pathname + window.location.search + '#' + hash
+      : window.location.pathname + window.location.search;
+    history.replaceState(null, '', url);
+  }
+
+  document.querySelectorAll('.tl-card').forEach(function(card){
+    card.addEventListener('click', function(){
+      const wasOpen = card.classList.contains('open');
+      const open = !wasOpen;
+      card.classList.toggle('open', open);
+      card.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+      // 点击展开时同步到 URL hash，方便分享
+      const item = card.closest('.tl-item');
+      if(open && item){
+        setHash(item.id);
+      } else {
+        // 收起时保留当前项，但不清空 hash
+      }
+    });
+    card.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        card.click();
+      }
+    });
+  });
+
+  // 首屏如果有 hash，滚动到对应事件
+  if(window.location.hash && window.location.hash.indexOf('#ev-') === 0){
+    const target = document.querySelector(window.location.hash);
+    if(target){
+      window.addEventListener('load', function(){
+        setTimeout(function(){
+          target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+          const card = target.querySelector('.tl-card');
+          if(card && !card.classList.contains('open')){
+            card.classList.add('open');
+            card.setAttribute('aria-expanded', 'true');
+          }
+        }, 300);
+      });
+    }
+  }
+
+  /* ==================================================
+     出场 + 高亮 + 动态主题色
+     ================================================== */
+  groupEls.forEach(function(group){
+    const groupItems = Array.prototype.slice.call(group.querySelectorAll('.tl-item'));
+    groupItems.forEach(function(el, i){
+      el.style.setProperty('--d', Math.min(i, 2) * 80 + 'ms');
+    });
+  });
+
+  if('IntersectionObserver' in window){
+    const revealObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('in-view');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.06, rootMargin: '0px 0px -4% 0px' });
+
+    items.forEach(function(el){ revealObserver.observe(el); });
+
+    // 当前项高亮：更新顶部年份读数 + 页面强调色
+    const activeObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('active');
+          const y = entry.target.dataset.year;
+          if(y && yearReadout.textContent !== y){
+            yearReadout.textContent = y;
+          }
+          // 找到所在时代，取色更新强调色
+          const group = entry.target.closest('.tl-group');
+          if(group){
+            const color = group.dataset.color;
+            if(color){
+              document.documentElement.style.setProperty('--accent-live', color);
+            }
+          }
+        } else {
+          entry.target.classList.remove('active');
+        }
+      });
+    }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
+
+    items.forEach(function(el){ activeObserver.observe(el); });
+
+    const eraObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          const idx = groupEls.indexOf(entry.target);
+          chips.forEach(function(c, i){ c.classList.toggle('on', i === idx); });
+          railLinks.forEach(function(l, i){ l.classList.toggle('on', i === idx); });
+        }
+      });
+    }, { rootMargin: '-42% 0px -50% 0px', threshold: 0 });
+
+    groupEls.forEach(function(g){ eraObserver.observe(g); });
+  } else {
+    items.forEach(function(el){ el.classList.add('in-view'); });
+  }
+
+  chips.concat(railLinks).forEach(function(el){
+    el.addEventListener('click', function(e){
+      const target = document.getElementById(el.dataset.target);
+      if(target){
+        e.preventDefault();
+        target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  /* ==================================================
+     键盘翻页：J/K 或 ↑/↓ 逐条浏览，Esc 收起全部
+     ================================================== */
+  let currentIndex = -1;
+
+  function focusEvent(index, opts){
+    if(index < 0 || index >= items.length) return;
+    currentIndex = index;
+    const el = items[index];
+    const target = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.35;
+    window.scrollTo({
+      top: target,
+      behavior: (opts && opts.instant) ? 'auto' : (reduceMotion ? 'auto' : 'smooth')
+    });
+    // 给一个短暂的高亮类，让卡片自己闪一下
+    el.classList.add('active');
+    setTimeout(function(){ el.classList.remove('active'); }, 600);
+  }
+
+  document.addEventListener('keydown', function(e){
+    // 不拦截带修饰键的按键
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+
+    const key = e.key;
+    const isNext = key === 'j' || key === 'J' || key === 'ArrowDown';
+    const isPrev = key === 'k' || key === 'K' || key === 'ArrowUp';
+    const isEsc = key === 'Escape';
+
+    if(isNext){
+      // 已展开时，方向键下先跳到下一个
+      const nextIdx = currentIndex < 0 ? 0 : Math.min(items.length - 1, currentIndex + 1);
+      e.preventDefault();
+      focusEvent(nextIdx);
+      return;
+    }
+    if(isPrev){
+      const prevIdx = currentIndex <= 0 ? 0 : currentIndex - 1;
+      e.preventDefault();
+      focusEvent(prevIdx);
+      return;
+    }
+    if(isEsc){
+      document.querySelectorAll('.tl-card.open').forEach(function(c){
+        c.classList.remove('open');
+        c.setAttribute('aria-expanded', 'false');
+      });
+    }
+  });
+
+  /* ==================================================
+     进度条
+     ================================================== */
+  const progressEl = document.getElementById('progress');
+  let rafScroll = false;
+
+  function updateProgress(){
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const p = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
+    progressEl.style.transform = 'scaleX(' + p + ')';
+    rafScroll = false;
+  }
+
+  window.addEventListener('scroll', function(){
+    if(!rafScroll){
+      rafScroll = true;
+      requestAnimationFrame(updateProgress);
+    }
+  }, { passive: true });
+  updateProgress();
+
+  /* ==================================================
+     数字滚动
+     ================================================== */
+  function countUp(el){
+    const target = parseInt(el.dataset.count, 10) || 0;
+    if(reduceMotion){ el.textContent = target; return; }
+    const duration = 1500;
+    const start = performance.now();
+    function tick(now){
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(target * eased);
+      if(t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  const counters = Array.prototype.slice.call(document.querySelectorAll('[data-count]'));
+  if('IntersectionObserver' in window){
+    const counterObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          countUp(entry.target);
+          counterObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    counters.forEach(function(el){ counterObserver.observe(el); });
+  } else {
+    counters.forEach(function(el){ el.textContent = el.dataset.count; });
+  }
+
+  /* ==================================================
+     Canvas 背景
+     ================================================== */
+  const canvas = document.getElementById('bg');
+  const ctx = canvas.getContext('2d');
+
+  let W = 0, H = 0, dpr = 1;
+  let points = [];
+  let running = true;
+
+  const COLORS = [[126,224,208],[138,166,255],[180,200,230]];
+
+  function buildPoints(){
+    const count = W < 720 ? 16 : (W < 1200 ? 30 : 42);
+    points = [];
+    for(let i = 0; i < count; i++){
+      points.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.14,
+        vy: (Math.random() - 0.5) * 0.14,
+        r: Math.random() * 1.2 + 0.6,
+        c: COLORS[Math.floor(Math.random() * COLORS.length)],
+        a: Math.random() * 0.38 + 0.2
+      });
+    }
+  }
+
+  function resizeCanvas(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildPoints();
+  }
+
+  const MAX_DIST = window.innerWidth < 720 ? 106 : 148;
+  const MAX_D2 = MAX_DIST * MAX_DIST;
+
+  function drawFrame(){
+    ctx.clearRect(0, 0, W, H);
+    for(let i = 0; i < points.length; i++){
+      const p = points[i];
+      for(let j = i + 1; j < points.length; j++){
+        const q = points[j];
+        const dx = p.x - q.x, dy = p.y - q.y;
+        const d2 = dx*dx + dy*dy;
+        if(d2 < MAX_D2){
+          const d = Math.sqrt(d2);
+          const alpha = (1 - d / MAX_DIST) * 0.12;
+          ctx.strokeStyle = 'rgba(' + p.c[0] + ',' + p.c[1] + ',' + p.c[2] + ',' + alpha + ')';
+          ctx.lineWidth = 0.6;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(q.x, q.y);
+          ctx.stroke();
+        }
+      }
+    }
+    for(let i = 0; i < points.length; i++){
+      const p = points[i];
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < -30) p.x = W + 30;
+      if(p.x > W + 30) p.x = -30;
+      if(p.y < -30) p.y = H + 30;
+      if(p.y > H + 30) p.y = -30;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + p.c[0] + ',' + p.c[1] + ',' + p.c[2] + ',' + p.a + ')';
+      ctx.fill();
+    }
+  }
+
+  let lastTime = 0;
+  const FRAME_INTERVAL = 1000 / 40;
+
+  function loop(now){
+    if(!running) return;
+    if(now - lastTime >= FRAME_INTERVAL){
+      drawFrame();
+      lastTime = now;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  resizeCanvas();
+  if(reduceMotion){ drawFrame(); } else { requestAnimationFrame(loop); }
+
+  let resizeTimer = null;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      resizeCanvas();
+      if(reduceMotion) drawFrame();
+    }, 180);
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){ running = false; }
+    else if(!reduceMotion){ running = true; lastTime = 0; requestAnimationFrame(loop); }
+  });
+
+  /* ==================================================
+     光标柔光
+     ================================================== */
+  const glow = document.getElementById('cursorGlow');
+  const finePointer = window.matchMedia('(pointer: fine)').matches;
+
+  if(finePointer && !reduceMotion){
+    let tx = window.innerWidth / 2, ty = window.innerHeight / 2;
+    let cx = tx, cy = ty;
+    window.addEventListener('pointermove', function(e){
+      tx = e.clientX; ty = e.clientY;
+    }, { passive: true });
+    (function glowLoop(){
+      cx += (tx - cx) * 0.07;
+      cy += (ty - cy) * 0.07;
+      glow.style.transform = 'translate3d(' + cx + 'px,' + cy + 'px,0) translate(-50%,-50%)';
+      requestAnimationFrame(glowLoop);
+    })();
+  } else {
+    glow.style.display = 'none';
+  }
+
+})();
+</script>
+</body>
+</html>
