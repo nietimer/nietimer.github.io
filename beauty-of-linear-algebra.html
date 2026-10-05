@@ -254,12 +254,19 @@
   .ctrl-head .sym{font-weight:600;font-size:14px}
   .ctrl-head .val{color:#fff;font-variant-numeric:tabular-nums}
 
+  /* ===== 拖动条：保持原有细轨样式，仅修复移动端手势 ===== */
   input[type=range]{
     -webkit-appearance:none;appearance:none;
     width:100%;height:5px;border-radius:3px;
     background:rgba(255,255,255,.08);
     outline:none;cursor:pointer;
     transition:filter .2s;
+    /* 关键修复：让水平拖动留在滑块上，不被页面滚动抢走手势 */
+    touch-action:none;
+    /* 防止长按选中 / 弹出菜单，影响拖动体验 */
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
   }
   input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none;

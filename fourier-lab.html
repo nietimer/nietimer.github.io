@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04060b">
+<title>傅里叶变换 · FOURIER LAB</title>
+<style>
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+:root{
+  --bg: #04060b;
+  --cyan: #22d3ee;
+  --pink: #ff3d9a;
+  --violet: #a78bfa;
+  --green: #34d399;
+  --line: rgba(110,170,210,0.14);
+  --txt: #b9c9db;
+  --dim: #5a6b7f;
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+html{ scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+body{
+  margin: 0;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body::before{
+  content: '';
+  position: fixed; inset: 0;
+  z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(70,150,190,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(70,150,190,0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 15%, #000 5%, transparent 78%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 15%, #000 5%, transparent 78%);
+}
+body::after{
+  content: '';
+  position: fixed; inset: 0;
+  z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(720px 520px at 10% -8%, rgba(34,211,238,0.10), transparent 70%),
+    radial-gradient(620px 520px at 98% 100%, rgba(255,61,154,0.07), transparent 70%);
+}
+
+.wrap{
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px 90px;
+}
+
+/* ---------- 顶栏 ---------- */
+.top{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  border-bottom: 1px solid var(--line);
+  text-transform: uppercase;
+}
+.brand{
+  display: flex; align-items: center; gap: 9px;
+  color: #8fa8c0;
+}
+.pulse{
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{ opacity: 1; transform: scale(1); }
+  50%{ opacity: .3; transform: scale(.7); }
+}
+.top-meta{ white-space: nowrap; }
+
+/* ---------- Hero ---------- */
+.hero{ padding: 68px 0 48px; }
+.hero h1{
+  font-size: clamp(40px, 9.5vw, 78px);
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 22px;
+  color: #eaf4ff;
+  text-shadow: 0 0 46px rgba(34,211,238,0.22);
+}
+.hero h1 em{
+  font-style: normal;
+  color: var(--cyan);
+  text-shadow: 0 0 34px rgba(34,211,238,0.7);
+}
+.hero .sub{
+  font-size: clamp(15px, 3.8vw, 19px);
+  color: #7f93a8;
+  max-width: 580px;
+  line-height: 1.75;
+  margin: 0 0 28px;
+}
+.chips{
+  display: flex; flex-wrap: wrap; gap: 9px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.chips span{
+  padding: 6px 12px;
+  border: 1px solid rgba(34,211,238,0.22);
+  border-radius: 999px;
+  color: #6f8ba3;
+  background: rgba(34,211,238,0.035);
+}
+
+/* ---------- 章节 ---------- */
+.sec{ margin-top: 76px; }
+.sec-head{
+  display: flex; align-items: baseline; gap: 13px;
+  margin-bottom: 12px;
+}
+.sec-head .idx{
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--cyan);
+  opacity: .85;
+}
+.sec-head h2{
+  font-size: clamp(20px, 4.8vw, 26px);
+  font-weight: 600;
+  margin: 0;
+  color: #e2eefa;
+  letter-spacing: -0.01em;
+}
+.sec .desc{
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: #6e8093;
+  max-width: 660px;
+  margin: 0 0 22px;
+}
+.sec .desc b{ color: #93b4cd; font-weight: 500; }
+
+/* ---------- 面板 ---------- */
+.panel{
+  position: relative;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(10,17,28,0.86), rgba(6,10,17,0.92));
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 0 70px rgba(34,211,238,0.03);
+}
+.panel canvas{
+  display: block;
+  width: 100%;
+  touch-action: none;
+}
+.panel::before,
+.panel::after{
+  content: '';
+  position: absolute;
+  width: 13px; height: 13px;
+  pointer-events: none;
+  z-index: 3;
+}
+.panel::before{
+  top: 5px; left: 5px;
+  border-top: 1px solid rgba(34,211,238,0.55);
+  border-left: 1px solid rgba(34,211,238,0.55);
+}
+.panel::after{
+  bottom: 5px; right: 5px;
+  border-bottom: 1px solid rgba(34,211,238,0.55);
+  border-right: 1px solid rgba(34,211,238,0.55);
+}
+
+#cv-epi{ height: 380px; }
+#cv-draw{ height: 240px; cursor: crosshair; }
+#cv-spec{ height: 150px; }
+#cv-harm{ height: 330px; }
+#cv-phase{ height: 300px; }
+#cv-filter{ height: 330px; }
+#cv-image{ height: 420px; }
+#cv-unc{ height: 340px; }
+
+.panel + .panel{ margin-top: 14px; }
+
+/* ---------- 控制区 ---------- */
+.controls{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px 30px;
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(8,13,22,0.5);
+}
+.controls.tight{
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 22px;
+}
+.ctrl label{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 0;
+}
+.ctrl label b{
+  color: var(--cyan);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  text-shadow: 0 0 12px rgba(34,211,238,0.6);
+}
+
+/* ===== 移动端可拖动的滑条 ===== */
+input[type=range]{
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* WebKit / Blink */
+input[type=range]::-webkit-slider-runnable-track{
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(34,211,238,0.2);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #04060b;
+  border: 2px solid var(--cyan);
+  box-shadow: 0 0 12px rgba(34,211,238,0.85);
+  transition: transform .12s ease;
+}
+input[type=range]:active::-webkit-slider-thumb{ transform: scale(1.18); }
+
+/* Firefox */
+input[type=range]::-moz-range-track{
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(34,211,238,0.2);
+  border: none;
+}
+input[type=range]::-moz-range-thumb{
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #04060b;
+  border: 2px solid var(--cyan);
+  box-shadow: 0 0 12px rgba(34,211,238,0.85);
+  transition: transform .12s ease;
+  box-sizing: border-box;
+}
+input[type=range]:active::-moz-range-thumb{ transform: scale(1.18); }
+
+/* ---------- 按钮 ---------- */
+.btn-row{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.btn{
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  background: rgba(34,211,238,0.06);
+  border: 1px solid rgba(34,211,238,0.3);
+  border-radius: 4px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background .2s, box-shadow .2s, transform .1s, color .2s, border-color .2s;
+  white-space: nowrap;
+}
+.btn:hover{
+  background: rgba(34,211,238,0.14);
+  box-shadow: 0 0 20px rgba(34,211,238,0.25);
+}
+.btn:active{ transform: scale(.97); }
+.btn.sm{ padding: 7px 13px; font-size: 10px; letter-spacing: 0.1em; }
+.btn.pink{
+  color: var(--pink);
+  border-color: rgba(255,61,154,0.35);
+  background: rgba(255,61,154,0.06);
+}
+.btn.pink:hover{
+  background: rgba(255,61,154,0.14);
+  box-shadow: 0 0 20px rgba(255,61,154,0.25);
+}
+.btn.active{
+  color: #eaf4ff;
+  background: rgba(34,211,238,0.2);
+  border-color: rgba(34,211,238,0.65);
+  box-shadow: 0 0 22px rgba(34,211,238,0.35);
+}
+
+/* ---------- 读数条 ---------- */
+.readout{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin-top: 14px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(8,13,22,0.45);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+}
+.readout i{
+  font-style: normal;
+  color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(34,211,238,0.5);
+}
+.readout .pk i{ color: var(--pink); text-shadow: 0 0 10px rgba(255,61,154,0.5); }
+
+/* ---------- 知识卡片 ---------- */
+.cards{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+.card{
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 18px 18px 20px;
+  background: linear-gradient(160deg, rgba(10,17,28,0.75), rgba(6,10,17,0.55));
+  overflow: hidden;
+  transition: border-color .3s, box-shadow .3s, transform .3s;
+}
+.card::before{
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34,211,238,0.55), transparent);
+  opacity: .6;
+}
+.card:hover{
+  border-color: rgba(34,211,238,0.32);
+  box-shadow: 0 0 34px rgba(34,211,238,0.08);
+  transform: translateY(-2px);
+}
+.card h3{
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 0 0 13px;
+  font-weight: 500;
+  text-shadow: 0 0 16px rgba(34,211,238,0.45);
+}
+.card .formula{
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: #d7e6f5;
+  margin: 0 0 11px;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  letter-spacing: 0.01em;
+}
+.card .formula::-webkit-scrollbar{ display: none; }
+.card p{
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: #6e8093;
+  margin: 0;
+}
+.card.pink h3{ color: var(--pink); text-shadow: 0 0 16px rgba(255,61,154,0.45); }
+.card.pink::before{ background: linear-gradient(90deg, transparent, rgba(255,61,154,0.55), transparent); }
+.card.violet h3{ color: var(--violet); text-shadow: 0 0 16px rgba(167,139,250,0.45); }
+.card.violet::before{ background: linear-gradient(90deg, transparent, rgba(167,139,250,0.55), transparent); }
+.card.green h3{ color: var(--green); text-shadow: 0 0 16px rgba(52,211,153,0.45); }
+.card.green::before{ background: linear-gradient(90deg, transparent, rgba(52,211,153,0.55), transparent); }
+
+/* ---------- 页脚 ---------- */
+.foot{
+  margin-top: 90px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #3f4e5e;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 720px){
+  .wrap{ padding: 0 15px 70px; }
+  .hero{ padding: 48px 0 36px; }
+  .sec{ margin-top: 56px; }
+  #cv-epi{ height: 258px; }
+  #cv-draw{ height: 200px; }
+  #cv-spec{ height: 122px; }
+  #cv-harm{ height: 292px; }
+  #cv-phase{ height: 252px; }
+  #cv-filter{ height: 292px; }
+  #cv-image{ height: 320px; }
+  #cv-unc{ height: 280px; }
+  .controls{ padding: 14px 16px; gap: 10px 18px; grid-template-columns: 1fr; }
+  .controls.tight{ grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 2px 14px; }
+  .readout{ gap: 8px 18px; font-size: 10px; padding: 12px 14px; }
+  .top-meta{ display: none; }
+  .btn{ padding: 11px 16px; }
+  .btn.sm{ padding: 9px 13px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand"><span class="pulse"></span>FOURIER&nbsp;LAB</div>
+    <div class="top-meta">Δt · Δf ≥ 1 / 4π</div>
+  </header>
+
+  <section class="hero">
+    <h1>傅里叶<em>变换</em></h1>
+    <p class="sub">任何复杂的波形，都可以拆解成一圈圈旋转的圆。<br>反过来，把足够多的圆叠起来，就能拼回原来的形状。</p>
+    <div class="chips">
+      <span>时域 ⇄ 频域</span>
+      <span>谐波分解</span>
+      <span>相位 / 幅度</span>
+      <span>图像轮廓</span>
+    </div>
+  </section>
+
+  <!-- 01 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">01</span>
+      <h2>旋转的圆，画出方波</h2>
+    </div>
+    <p class="desc">
+      每个圆以 <b>奇数倍</b> 的角速度旋转，半径按 <b>1/n</b> 衰减。把圆心首尾相连，
+      最末端那个笔尖画出的轨迹，就是方波的傅里叶级数逼近——圆越多，棱角越锋利。
+    </p>
+    <div class="panel">
+      <canvas id="cv-epi"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>谐波数量 <b id="epi-n-val">8</b></label>
+        <input type="range" id="epi-n" min="1" max="40" value="8" step="1">
+      </div>
+      <div class="ctrl">
+        <label>旋转速度 <b id="epi-s-val">1.0×</b></label>
+        <input type="range" id="epi-s" min="20" max="220" value="100" step="1">
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">02</span>
+      <h2>画出你的波形</h2>
+    </div>
+    <p class="desc">
+      在下面直接 <b>拖动绘制</b> 一条任意曲线，它会立刻被分解成频率分量。
+      再拖动滑块，只用前 N 个谐波重新合成——看看能还原出多少。
+    </p>
+    <div class="panel">
+      <canvas id="cv-draw"></canvas>
+    </div>
+    <div class="panel">
+      <canvas id="cv-spec"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>重建谐波数 <b id="dr-m-val">16</b></label>
+        <input type="range" id="dr-m" min="1" max="48" value="16" step="1">
+      </div>
+      <div class="ctrl">
+        <label>画笔平滑 <b id="dr-b-val">0.55</b></label>
+        <input type="range" id="dr-b" min="0" max="100" value="55" step="1">
+      </div>
+    </div>
+    <div class="readout">
+      <span>频谱峰值 <i id="ro-peak">—</i></span>
+      <span class="pk">重建误差 <i id="ro-err">—</i></span>
+      <span>能量占比 <i id="ro-energy">—</i></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="dr-reset">重置波形</button>
+      <button class="btn pink" id="dr-clear">清空画布</button>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">03</span>
+      <h2>谐波合成器</h2>
+    </div>
+    <p class="desc">
+      每个滑块控制一个谐波的振幅。把它们叠加起来，就能拼出方波、锯齿波、三角波——
+      这正是傅里叶级数在做的事：<b>用简单的正弦波叠加出任意周期波形</b>。
+    </p>
+    <div class="panel">
+      <canvas id="cv-harm"></canvas>
+    </div>
+    <div class="controls tight">
+      <div class="ctrl">
+        <label>1 次谐波 <b id="hm-1-val">1.00</b></label>
+        <input type="range" id="hm-1" min="-1" max="1" value="1" step="0.01">
+      </div>
+      <div class="ctrl">
+        <label>2 次谐波 <b id="hm-2-val">0.00</b></label>
+        <input type="range" id="hm-2" min="-1" max="1" value="0" step="0.01">
+      </div>
+      <div class="ctrl">
+        <label>3 次谐波 <b id="hm-3-val">0.33</b></label>
+        <input type="range" id="hm-3" min="-1" max="1" value="0.33" step="0.01">
+      </div>
+      <div class="ctrl">
+        <label>4 次谐波 <b id="hm-4-val">0.00</b></label>
+        <input type="range" id="hm-4" min="-1" max="1" value="0" step="0.01">
+      </div>
+      <div class="ctrl">
+        <label>5 次谐波 <b id="hm-5-val">0.20</b></label>
+        <input type="range" id="hm-5" min="-1" max="1" value="0.20" step="0.01">
+      </div>
+    </div>
+    <div class="btn-row" id="harm-presets">
+      <button class="btn sm" data-preset="square">方波</button>
+      <button class="btn sm" data-preset="saw">锯齿波</button>
+      <button class="btn sm" data-preset="tri">三角波</button>
+      <button class="btn sm" data-preset="sine">纯正弦</button>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">04</span>
+      <h2>相位实验</h2>
+    </div>
+    <p class="desc">
+      幅度谱完全一样，只改变各次谐波的相位，波形就会整体移动甚至完全变样。
+      <b>幅度谱负责"有什么频率"，相位谱负责"它们在哪里"</b>——两者缺一不可。
+    </p>
+    <div class="panel">
+      <canvas id="cv-phase"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>相位偏移 φ <b id="ph-phi-val">90°</b></label>
+        <input type="range" id="ph-phi" min="0" max="100" value="25" step="1">
+      </div>
+    </div>
+    <div class="readout">
+      <span>幅度谱 <i>保持不变</i></span>
+      <span class="pk">相位谱 <i>φₖ = k · φ</i></span>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">05</span>
+      <h2>滤波器</h2>
+    </div>
+    <p class="desc">
+      在频域里"砍掉"一部分频率，回到时域就是滤波。低通保留低频让波形变平滑，
+      高通保留高频突出细节和跳变——<b>滤波就是在频域做减法</b>。
+    </p>
+    <div class="panel">
+      <canvas id="cv-filter"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>截止谐波 <b id="fl-cut-val">3</b></label>
+        <input type="range" id="fl-cut" min="1" max="7" value="3" step="1">
+      </div>
+    </div>
+    <div class="btn-row" id="fl-mode">
+      <button class="btn sm active" data-mode="low">低通</button>
+      <button class="btn sm" data-mode="high">高通</button>
+    </div>
+  </section>
+
+  <!-- 06 新模块 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">06</span>
+      <h2>用傅里叶画图</h2>
+    </div>
+    <p class="desc">
+      上传一张 PNG 图片，程序会提取它的轮廓，把它变成一串复数，做一次 DFT，
+      然后用旋转的圆把它 <b>一笔画出来</b>。圆越多，轮廓越精确——这就是傅里叶级数对二维路径的作用。
+    </p>
+    <div class="panel">
+      <canvas id="cv-image"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>谐波数量 <b id="img-m-val">120</b></label>
+        <input type="range" id="img-m" min="10" max="256" value="120" step="1">
+      </div>
+      <div class="ctrl">
+        <label>绘制速度 <b id="img-s-val">1.0×</b></label>
+        <input type="range" id="img-s" min="30" max="300" value="100" step="1">
+      </div>
+    </div>
+    <div class="readout">
+      <span>数据源 <i id="img-source">HEART</i></span>
+      <span class="pk">状态 <i id="img-status">默认形状</i></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="img-upload">上传 PNG</button>
+      <button class="btn pink" id="img-reset">重置为心形</button>
+      <input type="file" id="img-file" accept="image/*" style="display:none">
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">07</span>
+      <h2>不确定性</h2>
+    </div>
+    <p class="desc">
+      一个脉冲越短，它的频谱就越宽；脉冲越长，频谱就越集中。
+      时间分辨率和频率分辨率，永远无法同时达到极致。
+    </p>
+    <div class="panel">
+      <canvas id="cv-unc"></canvas>
+    </div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>脉冲宽度 σ<sub>t</sub> <b id="un-s-val">0.50</b></label>
+        <input type="range" id="un-s" min="25" max="100" value="50" step="1">
+      </div>
+    </div>
+    <div class="readout">
+      <span>时间宽度 σ<sub>t</sub> <i id="ro-st">—</i></span>
+      <span>频率宽度 σ<sub>f</sub> <i id="ro-sf">—</i></span>
+      <span class="pk">乘积 σ<sub>t</sub>·σ<sub>f</sub> <i id="ro-prod">—</i></span>
+    </div>
+  </section>
+
+  <!-- 08 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="idx">08</span>
+      <h2>知识卡片</h2>
+    </div>
+    <p class="desc">几个核心公式，收好。</p>
+    <div class="cards">
+      <div class="card">
+        <h3>傅里叶级数</h3>
+        <div class="formula">f(t) = a₀/2 + Σ [aₙcos(nω₀t) + bₙsin(nω₀t)]</div>
+        <p>任何周期信号，都能写成一组正弦和余弦的叠加。aₙ、bₙ 是各项的权重，也就是频域里的"振幅"。</p>
+      </div>
+      <div class="card violet">
+        <h3>傅里叶变换</h3>
+        <div class="formula">F(ω) = ∫ f(t) · e^(−iωt) dt</div>
+        <p>把非周期信号从时域搬到频域。e^(−iωt) 是旋转的复指数，积分相当于"与每个频率做匹配度检测"。</p>
+      </div>
+      <div class="card pink">
+        <h3>逆变换</h3>
+        <div class="formula">f(t) = (1/2π) ∫ F(ω) · e^(iωt) dω</div>
+        <p>把频域信息还原回时域——就是把所有频率分量按各自的振幅和相位重新叠加起来。</p>
+      </div>
+      <div class="card green">
+        <h3>卷积定理</h3>
+        <div class="formula">f * g ⟷ F(ω) · G(ω)</div>
+        <p>时域里的卷积，等于频域里的乘法。滤波器、模糊、混响，背后都是这条定理在起作用。</p>
+      </div>
+      <div class="card">
+        <h3>帕塞瓦尔定理</h3>
+        <div class="formula">∫|f(t)|² dt = (1/2π) ∫|F(ω)|² dω</div>
+        <p>能量守恒：时域里算出来的总能量，和频域里算出来的完全一致。变换不改变能量。</p>
+      </div>
+      <div class="card violet">
+        <h3>采样定理</h3>
+        <div class="formula">fₛ &gt; 2 · f_max</div>
+        <p>采样率必须高于信号最高频率的两倍，才能无失真地重建。否则高频会"折叠"成低频，产生混叠。</p>
+      </div>
+      <div class="card pink">
+        <h3>不确定性原理</h3>
+        <div class="formula">Δt · Δf ≥ 1 / 4π</div>
+        <p>时间和频率的分辨率此消彼长。想要看清"什么时候"，就必然模糊"是什么频率"，反之亦然。</p>
+      </div>
+      <div class="card green">
+        <h3>欧拉公式</h3>
+        <div class="formula">e^(iθ) = cos θ + i · sin θ</div>
+        <p>傅里叶变换的基石。一个复指数，就是复平面上一个旋转的圆——这正是 01 节里那些圆的数学本质。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>FOURIER LAB / 傅里叶变换可视化</span>
+    <span>∇ · 用旋转的圆描述世界</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const $ = id => document.getElementById(id);
+
+function fitCanvas(canvas, ctx){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const r = canvas.getBoundingClientRect();
+  const w = Math.max(1, r.width);
+  const h = Math.max(1, r.height);
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { w, h };
+}
+
+const resizeHandlers = [];
+window.addEventListener('resize', function(){
+  clearTimeout(window.__rt);
+  window.__rt = setTimeout(function(){
+    resizeHandlers.forEach(function(f){ f(); });
+  }, 130);
+});
+window.addEventListener('orientationchange', function(){
+  setTimeout(function(){ resizeHandlers.forEach(function(f){ f(); }); }, 260);
+});
+
+function drawGrid(ctx, W, H, step){
+  step = step || 44;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(90,160,200,0.055)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(let x = 0; x <= W; x += step){ ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, H); }
+  for(let y = 0; y <= H; y += step){ ctx.moveTo(0, y + .5); ctx.lineTo(W, y + .5); }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAxis(ctx, y, W){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(110,170,210,0.13)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, y + .5);
+  ctx.lineTo(W, y + .5);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function fillArea(ctx, W, midY, ampPx, N, valFn, colorTop, colorMid){
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, midY);
+  for(let i = 0; i <= N; i++){
+    ctx.lineTo((i / N) * W, midY - valFn(i / N) * ampPx);
+  }
+  ctx.lineTo(W, midY);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, midY - ampPx, 0, midY + ampPx);
+  g.addColorStop(0, colorTop);
+  g.addColorStop(0.5, colorMid);
+  g.addColorStop(1, colorTop);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.restore();
+}
+
+
+/* ==================== 01 旋转的圆 ==================== */
+function initEpicycles(){
+  const cv  = $('cv-epi');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, N = 8, speed = 1, theta = 0;
+  let samples = [];
+  const STEP = 1.25;
+
+  function resize(){
+    const s = fitCanvas(cv, ctx);
+    W = s.w; H = s.h;
+    samples = [];
+  }
+
+  function draw(){
+    if(W < 2) return;
+    ctx.clearRect(0, 0, W, H);
+    drawGrid(ctx, W, H, 44);
+
+    const cx = W * 0.24, cy = H * 0.5;
+    const baseR = Math.min(H * 0.28, W * 0.17);
+    let px = cx, py = cy;
+    const rings = [];
+    for(let i = 0; i < N; i++){
+      const n = 2 * i + 1;
+      const r = baseR * (4 / (Math.PI * n));
+      const nx = px + r * Math.cos(n * theta);
+      const ny = py - r * Math.sin(n * theta);
+      rings.push({ px, py, r, nx, ny });
+      px = nx; py = ny;
+    }
+
+    for(let i = 0; i < rings.length; i++){
+      const c = rings[i];
+      ctx.beginPath();
+      ctx.arc(c.px, c.py, c.r, 0, TAU);
+      ctx.strokeStyle = 'rgba(34,211,238,0.15)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    for(let i = 0; i < rings.length; i++){
+      const c = rings[i];
+      const a = Math.max(0.1, 0.5 - i * 0.4 / Math.max(1, rings.length));
+      ctx.beginPath();
+      ctx.moveTo(c.px, c.py);
+      ctx.lineTo(c.nx, c.ny);
+      ctx.strokeStyle = 'rgba(34,211,238,' + a.toFixed(3) + ')';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(34,211,238,0.5)';
+    for(let i = 0; i < rings.length; i++){
+      ctx.beginPath();
+      ctx.arc(rings[i].px, rings[i].py, 1.4, 0, TAU);
+      ctx.fill();
+    }
+
+    const waveX = W * 0.5;
+    const maxSamples = Math.max(4, Math.floor((W - 14 - waveX) / STEP));
+    samples.unshift(py - cy);
+    if(samples.length > maxSamples) samples.length = maxSamples;
+
+    if(samples.length > 1){
+      ctx.save();
+      ctx.beginPath();
+      for(let i = 0; i < samples.length; i++){
+        const x = waveX + i * STEP, y = cy + samples[i];
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#22d3ee';
+      ctx.shadowColor = '#22d3ee';
+      ctx.shadowBlur = 14;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(waveX, cy);
+      for(let i = 0; i < samples.length; i++) ctx.lineTo(waveX + i * STEP, cy + samples[i]);
+      ctx.lineTo(waveX + (samples.length - 1) * STEP, cy);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, cy - baseR, 0, cy + baseR);
+      g.addColorStop(0, 'rgba(34,211,238,0.10)');
+      g.addColorStop(0.5, 'rgba(34,211,238,0.015)');
+      g.addColorStop(1, 'rgba(34,211,238,0.10)');
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.setLineDash([3, 7]);
+    ctx.strokeStyle = 'rgba(34,211,238,0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(waveX, cy);
+    ctx.lineTo(W - 8, cy);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(px, py, 3.6, 0, TAU);
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 20;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.setLineDash([2, 5]);
+    ctx.strokeStyle = 'rgba(34,211,238,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(waveX, cy + (samples[0] || 0));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function update(dt){
+    theta += dt * 0.0024 * speed;
+    draw();
+  }
+
+  $('epi-n').addEventListener('input', function(){
+    N = parseInt(this.value, 10);
+    $('epi-n-val').textContent = N;
+  });
+  $('epi-s').addEventListener('input', function(){
+    speed = parseInt(this.value, 10) / 100;
+    $('epi-s-val').textContent = speed.toFixed(1) + '×';
+  });
+
+  resize();
+  resizeHandlers.push(resize);
+  return { update };
+}
+
+
+/* ==================== 02 绘制波形 ==================== */
+function initDraw(){
+  const cvT  = $('cv-draw');
+  const ctxT = cvT.getContext('2d');
+  const cvF  = $('cv-spec');
+  const ctxF = cvF.getContext('2d');
+
+  const N = 256, HARM = 48;
+  let Wt = 0, Ht = 0, Wf = 0, Hf = 0;
+
+  const signal = new Float64Array(N);
+  const re = new Float64Array(N);
+  const im = new Float64Array(N);
+  const mags = new Float64Array(HARM + 1);
+  const recon = new Float64Array(N);
+
+  let M = 16, smooth = 0.55, dirty = true, needsRender = true;
+
+  const cosT = new Float64Array(N), sinT = new Float64Array(N);
+  for(let i = 0; i < N; i++){
+    cosT[i] = Math.cos(TAU * i / N);
+    sinT[i] = Math.sin(TAU * i / N);
+  }
+
+  function defaultSignal(){
+    for(let i = 0; i < N; i++){
+      const u = i / N;
+      signal[i] = 0.55 * Math.sin(TAU * u) + 0.28 * Math.sin(TAU * 3 * u)
+                + 0.14 * Math.sin(TAU * 5 * u) + 0.07 * Math.sin(TAU * 7 * u);
+    }
+    dirty = true; needsRender = true;
+  }
+
+  function clearSignal(){
+    signal.fill(0);
+    dirty = true; needsRender = true;
+  }
+
+  function computeDFT(){
+    for(let k = 0; k < N; k++){
+      let sr = 0, si = 0;
+      for(let n = 0; n < N; n++){
+        const idx = ((-k * n) % N + N) % N;
+        sr += signal[n] * cosT[idx];
+        si += signal[n] * sinT[idx];
+      }
+      re[k] = sr / N; im[k] = si / N;
+    }
+    for(let k = 1; k <= HARM; k++){
+      mags[k] = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
+    }
+  }
+
+  function reconstruct(){
+    for(let n = 0; n < N; n++){
+      let v = re[0];
+      for(let k = 1; k <= M && k < N / 2; k++){
+        const idx = (k * n) % N;
+        v += 2 * (re[k] * cosT[idx] - im[k] * sinT[idx]);
+      }
+      recon[n] = v;
+    }
+  }
+
+  function resize(){
+    let s = fitCanvas(cvT, ctxT);
+    Wt = s.w; Ht = s.h;
+    s = fitCanvas(cvF, ctxF);
+    Wf = s.w; Hf = s.h;
+    needsRender = true;
+  }
+
+  function renderTime(){
+    ctxT.clearRect(0, 0, Wt, Ht);
+    drawGrid(ctxT, Wt, Ht, 38);
+    const midY = Ht / 2, amp = Ht * 0.40;
+    drawAxis(ctxT, midY, Wt);
+
+    ctxT.save();
+    ctxT.beginPath();
+    for(let i = 0; i < N; i++){
+      const x = (i / (N - 1)) * Wt, y = midY - signal[i] * amp;
+      i === 0 ? ctxT.moveTo(x, y) : ctxT.lineTo(x, y);
+    }
+    ctxT.lineWidth = 1.6;
+    ctxT.strokeStyle = 'rgba(34,211,238,0.35)';
+    ctxT.stroke();
+    ctxT.restore();
+
+    ctxT.save();
+    ctxT.beginPath();
+    for(let i = 0; i < N; i++){
+      const x = (i / (N - 1)) * Wt, y = midY - recon[i] * amp;
+      i === 0 ? ctxT.moveTo(x, y) : ctxT.lineTo(x, y);
+    }
+    ctxT.lineWidth = 2;
+    ctxT.strokeStyle = '#ff3d9a';
+    ctxT.shadowColor = '#ff3d9a';
+    ctxT.shadowBlur = 12;
+    ctxT.lineJoin = 'round';
+    ctxT.stroke();
+    ctxT.restore();
+
+    ctxT.save();
+    ctxT.font = '10px ui-monospace, monospace';
+    ctxT.fillStyle = 'rgba(34,211,238,0.5)';
+    ctxT.fillText('TIME DOMAIN', 14, 20);
+    ctxT.fillStyle = 'rgba(255,61,154,0.6)';
+    ctxT.fillText('RECONSTRUCT ×' + M, 14, 36);
+    ctxT.restore();
+  }
+
+  function renderFreq(){
+    ctxF.clearRect(0, 0, Wf, Hf);
+    const padX = 10, baseY = Hf - 16, topY = 14, usable = baseY - topY;
+
+    ctxF.save();
+    ctxF.strokeStyle = 'rgba(110,170,210,0.18)';
+    ctxF.lineWidth = 1;
+    ctxF.beginPath();
+    ctxF.moveTo(padX, baseY + .5);
+    ctxF.lineTo(Wf - padX, baseY + .5);
+    ctxF.stroke();
+    ctxF.restore();
+
+    let mx = 1e-9;
+    for(let k = 1; k <= HARM; k++) if(mags[k] > mx) mx = mags[k];
+
+    const gap = 2;
+    const barW = Math.max(1.2, (Wf - padX * 2 - gap * (HARM - 1)) / HARM);
+
+    for(let k = 1; k <= HARM; k++){
+      const x = padX + (k - 1) * (barW + gap);
+      const bh = Math.max(1, (mags[k] / mx) * usable);
+      const y = baseY - bh;
+      const active = k <= M;
+      let color;
+      if(active){
+        const t = k / HARM;
+        color = 'rgba(' + Math.round(34 + t * 221) + ',' + Math.round(211 - t * 150) + ',' + Math.round(238 - t * 84) + ',0.92)';
+      } else color = 'rgba(90,120,150,0.22)';
+      ctxF.save();
+      if(active){ ctxF.shadowColor = color; ctxF.shadowBlur = 8; }
+      ctxF.fillStyle = color;
+      ctxF.fillRect(x, y, barW, bh);
+      ctxF.restore();
+    }
+
+    ctxF.save();
+    ctxF.font = '10px ui-monospace, monospace';
+    ctxF.fillStyle = 'rgba(110,170,210,0.45)';
+    ctxF.fillText('FREQUENCY DOMAIN', padX, 14);
+    ctxF.fillStyle = 'rgba(34,211,238,0.4)';
+    ctxF.fillText('0', padX, Hf - 3);
+    ctxF.textAlign = 'right';
+    ctxF.fillText('f →', Wf - padX, Hf - 3);
+    ctxF.restore();
+  }
+
+  function updateReadout(){
+    let peakK = 1, peakV = 0;
+    for(let k = 1; k <= HARM; k++) if(mags[k] > peakV){ peakV = mags[k]; peakK = k; }
+    $('ro-peak').textContent = peakK + ' 次谐波';
+
+    let errNum = 0, errDen = 0;
+    for(let i = 0; i < N; i++){
+      const d = signal[i] - recon[i];
+      errNum += d * d; errDen += signal[i] * signal[i];
+    }
+    $('ro-err').textContent = ((errDen > 1e-9 ? Math.sqrt(errNum / errDen) : 0) * 100).toFixed(1) + ' %';
+
+    let e = 0, total = 0;
+    for(let k = 1; k <= M && k < N / 2; k++) e += re[k] * re[k] + im[k] * im[k];
+    for(let k = 1; k < N / 2; k++) total += re[k] * re[k] + im[k] * im[k];
+    $('ro-energy').textContent = (total > 1e-12 ? (e / total * 100) : 0).toFixed(1) + ' %';
+  }
+
+  function render(){
+    if(!needsRender) return;
+    needsRender = false;
+    if(dirty){ computeDFT(); dirty = false; }
+    reconstruct();
+    renderTime();
+    renderFreq();
+    updateReadout();
+  }
+
+  let drawing = false, lastIdx = -1, lastVal = 0;
+
+  function pointerPos(e){
+    const r = cvT.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function paint(e){
+    const p = pointerPos(e);
+    const idx = Math.round(clamp(p.x / Wt, 0, 1) * (N - 1));
+    const midY = Ht / 2, amp = Ht * 0.40;
+    const val = clamp(-(p.y - midY) / amp, -1, 1);
+
+    if(lastIdx < 0) signal[idx] = val;
+    else{
+      const a = Math.min(lastIdx, idx), b = Math.max(lastIdx, idx);
+      const fromVal = (lastIdx <= idx) ? lastVal : val;
+      const toVal   = (lastIdx <= idx) ? val : lastVal;
+      for(let i = a; i <= b; i++){
+        const t = (b === a) ? 1 : (i - a) / (b - a);
+        const v = fromVal + (toVal - fromVal) * t;
+        signal[i] = signal[i] * smooth + v * (1 - smooth);
+      }
+    }
+    lastIdx = idx; lastVal = val;
+    dirty = true; needsRender = true;
+  }
+
+  cvT.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    try{ cvT.setPointerCapture(e.pointerId); }catch(_){}
+    drawing = true; lastIdx = -1;
+    paint(e);
+  });
+  cvT.addEventListener('pointermove', function(e){
+    if(!drawing) return;
+    e.preventDefault();
+    paint(e);
+  });
+  function endDraw(){
+    if(!drawing) return;
+    drawing = false; lastIdx = -1;
+    dirty = true; needsRender = true;
+  }
+  cvT.addEventListener('pointerup', endDraw);
+  cvT.addEventListener('pointercancel', endDraw);
+
+  $('dr-m').addEventListener('input', function(){
+    M = parseInt(this.value, 10);
+    $('dr-m-val').textContent = M;
+    needsRender = true;
+  });
+  $('dr-b').addEventListener('input', function(){
+    smooth = parseInt(this.value, 10) / 100;
+    $('dr-b-val').textContent = smooth.toFixed(2);
+  });
+  $('dr-reset').addEventListener('click', defaultSignal);
+  $('dr-clear').addEventListener('click', clearSignal);
+
+  resize();
+  resizeHandlers.push(resize);
+  defaultSignal();
+  computeDFT();
+  reconstruct();
+  needsRender = true;
+  return { update: render };
+}
+
+
+/* ==================== 03 谐波合成器 ==================== */
+function initHarmonics(){
+  const cv = $('cv-harm');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, needsRender = true;
+  const K = 5, N = 280;
+  const amps = new Float64Array(K);
+  amps[0] = 1; amps[2] = 1/3; amps[4] = 1/5;
+
+  function resize(){
+    const s = fitCanvas(cv, ctx);
+    W = s.w; H = s.h;
+    needsRender = true;
+  }
+
+  function waveValue(t){
+    let v = 0;
+    for(let k = 0; k < K; k++) v += amps[k] * Math.sin(TAU * (k + 1) * t);
+    return v;
+  }
+
+  function render(){
+    if(!needsRender) return;
+    needsRender = false;
+    if(W < 2) return;
+    ctx.clearRect(0, 0, W, H);
+    drawGrid(ctx, W, H, 40);
+
+    const waveH = H * 0.60;
+    const specY = waveH + 16;
+    const specH = Math.max(24, H - specY - 18);
+    const midY = waveH * 0.5, ampPx = waveH * 0.40;
+
+    drawAxis(ctx, midY, W);
+
+    let maxA = 0;
+    for(let i = 0; i < K; i++) maxA += Math.abs(amps[i]);
+    const norm = maxA > 1e-6 ? 1 / maxA : 1;
+
+    fillArea(ctx, W, midY, ampPx, N, t => waveValue(t) * norm,
+             'rgba(34,211,238,0.12)', 'rgba(34,211,238,0.012)');
+
+    ctx.save();
+    ctx.beginPath();
+    for(let i = 0; i <= N; i++){
+      const t = i / N, x = t * W, y = midY - waveValue(t) * norm * ampPx;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#22d3ee';
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 14;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(34,211,238,0.5)';
+    ctx.fillText('SYNTHESIS', 14, 20);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,170,210,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(14, specY + specH + .5);
+    ctx.lineTo(W - 14, specY + specH + .5);
+    ctx.stroke();
+    ctx.restore();
+
+    const gap = 8;
+    const barW = Math.max(6, (W - 28 - gap * (K - 1)) / K);
+    for(let k = 0; k < K; k++){
+      const x = 14 + k * (barW + gap);
+      const bh = Math.max(1.5, Math.abs(amps[k]) * specH);
+      const y = specY + specH - bh;
+      const t = k / (K - 1 || 1);
+      const col = 'rgba(' + Math.round(34 + t * 221) + ',' + Math.round(211 - t * 150) + ',' + Math.round(238 - t * 84) + ',0.9)';
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = 10;
+      ctx.fillStyle = col;
+      ctx.fillRect(x, y, barW, bh);
+      ctx.restore();
+
+      if(amps[k] < -0.02){
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,61,154,0.85)';
+        ctx.shadowColor = '#ff3d9a';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(x + barW / 2, specY + specH - 4, 2.5, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.font = '9px ui-monospace, monospace';
+      ctx.fillStyle = 'rgba(110,170,210,0.5)';
+      ctx.textAlign = 'center';
+      ctx.fillText((k + 1) + 'f', x + barW / 2, specY + specH + 12);
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(167,139,250,0.5)';
+    ctx.fillText('HARMONICS', 14, specY + 12);
+    ctx.restore();
+  }
+
+  for(let i = 0; i < K; i++){
+    (function(i){
+      const s = $('hm-' + (i + 1)), v = $('hm-' + (i + 1) + '-val');
+      s.addEventListener('input', function(){
+        amps[i] = parseFloat(this.value);
+        v.textContent = amps[i].toFixed(2);
+        needsRender = true;
+      });
+    })(i);
+  }
+
+  const presets = {
+    square: [1, 0, 1/3, 0, 1/5],
+    saw: [1, 1/2, 1/3, 1/4, 1/5],
+    tri: [1, 0, -1/9, 0, 1/25],
+    sine: [1, 0, 0, 0, 0]
+  };
+  document.querySelectorAll('#harm-presets .btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      const p = presets[this.dataset.preset];
+      if(!p) return;
+      for(let i = 0; i < K; i++){
+        amps[i] = p[i];
+        $('hm-' + (i + 1)).value = p[i];
+        $('hm-' + (i + 1) + '-val').textContent = p[i].toFixed(2);
+      }
+      needsRender = true;
+    });
+  });
+
+  resize();
+  resizeHandlers.push(resize);
+  return { update: render };
+}
+
+
+/* ==================== 04 相位实验 ==================== */
+function initPhase(){
+  const cv = $('cv-phase');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, needsRender = true;
+  const K = 5, amps = [1, 1/2, 1/3, 1/4, 1/5], N = 280;
+  let phi = 0.25;
+
+  function resize(){
+    const s = fitCanvas(cv, ctx);
+    W = s.w; H = s.h;
+    needsRender = true;
+  }
+
+  function drawWave(y0, h, shifted){
+    const midY = y0 + h / 2, ampPx = h * 0.34;
+    const ph = shifted ? phi * TAU : 0;
+    drawAxis(ctx, midY, W);
+
+    ctx.save();
+    ctx.beginPath();
+    for(let i = 0; i <= N; i++){
+      const t = i / N;
+      let v = 0;
+      for(let k = 0; k < K; k++) v += amps[k] * Math.sin(TAU * (k + 1) * t + (k + 1) * ph);
+      const x = t * W, y = midY - v * ampPx;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    const col = shifted ? '#ff3d9a' : '#22d3ee';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = shifted ? 15 : 7;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    for(let i = 0; i <= N; i++){
+      const t = i / N;
+      let v = 0;
+      for(let k = 0; k < K; k++) v += amps[k] * Math.sin(TAU * (k + 1) * t + (k + 1) * ph);
+      ctx.lineTo(t * W, midY - v * ampPx);
+    }
+    ctx.lineTo(W, midY);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, midY - ampPx, 0, midY + ampPx);
+    if(shifted){
+      g.addColorStop(0, 'rgba(255,61,154,0.10)');
+      g.addColorStop(0.5, 'rgba(255,61,154,0.01)');
+      g.addColorStop(1, 'rgba(255,61,154,0.10)');
+    } else {
+      g.addColorStop(0, 'rgba(34,211,238,0.08)');
+      g.addColorStop(0.5, 'rgba(34,211,238,0.008)');
+      g.addColorStop(1, 'rgba(34,211,238,0.08)');
+    }
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = shifted ? 'rgba(255,61,154,0.6)' : 'rgba(34,211,238,0.5)';
+    ctx.fillText(shifted ? 'PHASE SHIFTED' : 'ORIGINAL', 14, y0 + 15);
+    ctx.restore();
+  }
+
+  function render(){
+    if(!needsRender) return;
+    needsRender = false;
+    if(W < 2) return;
+    ctx.clearRect(0, 0, W, H);
+    drawGrid(ctx, W, H, 40);
+    const halfH = H / 2;
+    drawWave(0, halfH, false);
+    drawWave(halfH, halfH, true);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,170,210,0.12)';
+    ctx.setLineDash([4, 6]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, halfH + .5);
+    ctx.lineTo(W, halfH + .5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  $('ph-phi').addEventListener('input', function(){
+    phi = parseInt(this.value, 10) / 100;
+    $('ph-phi-val').textContent = (phi * 360).toFixed(0) + '°';
+    needsRender = true;
+  });
+  $('ph-phi-val').textContent = (phi * 360).toFixed(0) + '°';
+
+  resize();
+  resizeHandlers.push(resize);
+  return { update: render };
+}
+
+
+/* ==================== 05 滤波器 ==================== */
+function initFilter(){
+  const cv = $('cv-filter');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, needsRender = true;
+  const KH = 7, N = 280;
+  const source = [];
+  for(let k = 1; k <= KH; k++) source.push(1 / k);
+  let cutoff = 3, mode = 'low';
+
+  function resize(){
+    const s = fitCanvas(cv, ctx);
+    W = s.w; H = s.h;
+    needsRender = true;
+  }
+
+  function pass(k){ return mode === 'low' ? (k <= cutoff) : (k > cutoff); }
+
+  function render(){
+    if(!needsRender) return;
+    needsRender = false;
+    if(W < 2) return;
+    ctx.clearRect(0, 0, W, H);
+    drawGrid(ctx, W, H, 40);
+
+    const waveH = H * 0.62;
+    const specY = waveH + 16;
+    const specH = Math.max(22, H - specY - 20);
+    const midY = waveH * 0.5, ampPx = waveH * 0.40;
+
+    let norm = 0;
+    for(let k = 0; k < KH; k++) norm += source[k];
+    norm = norm > 1e-6 ? 1 / norm : 1;
+
+    drawAxis(ctx, midY, W);
+
+    ctx.save();
+    ctx.beginPath();
+    for(let i = 0; i <= N; i++){
+      const t = i / N;
+      let v = 0;
+      for(let k = 0; k < KH; k++) v += source[k] * Math.sin(TAU * (k + 1) * t);
+      const x = t * W, y = midY - v * norm * ampPx;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(34,211,238,0.26)';
+    ctx.stroke();
+    ctx.restore();
+
+    const mainCol = mode === 'low' ? '#22d3ee' : '#ff3d9a';
+
+    fillArea(ctx, W, midY, ampPx, N, function(t){
+      let v = 0;
+      for(let k = 0; k < KH; k++) if(pass(k + 1)) v += source[k] * Math.sin(TAU * (k + 1) * t);
+      return v * norm;
+    }, mode === 'low' ? 'rgba(34,211,238,0.12)' : 'rgba(255,61,154,0.10)', 'rgba(34,211,238,0.01)');
+
+    ctx.save();
+    ctx.beginPath();
+    for(let i = 0; i <= N; i++){
+      const t = i / N;
+      let v = 0;
+      for(let k = 0; k < KH; k++) if(pass(k + 1)) v += source[k] * Math.sin(TAU * (k + 1) * t);
+      const x = t * W, y = midY - v * norm * ampPx;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = mainCol;
+    ctx.shadowColor = mainCol;
+    ctx.shadowBlur = 14;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(34,211,238,0.5)';
+    ctx.fillText('TIME DOMAIN', 14, 20);
+    ctx.fillStyle = mode === 'low' ? 'rgba(34,211,238,0.55)' : 'rgba(255,61,154,0.6)';
+    ctx.fillText(mode === 'low' ? 'LOW-PASS' : 'HIGH-PASS', 14, 36);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,170,210,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(14, specY + specH + .5);
+    ctx.lineTo(W - 14, specY + specH + .5);
+    ctx.stroke();
+    ctx.restore();
+
+    const gap = 5;
+    const barW = Math.max(5, (W - 28 - gap * (KH - 1)) / KH);
+    const maxA = source[0] || 1;
+
+    for(let k = 0; k < KH; k++){
+      const x = 14 + k * (barW + gap);
+      const bh = Math.max(2, (source[k] / maxA) * specH);
+      const y = specY + specH - bh;
+      const isPass = pass(k + 1);
+      ctx.save();
+      if(isPass){
+        ctx.shadowColor = mainCol; ctx.shadowBlur = 9;
+        ctx.fillStyle = mode === 'low' ? 'rgba(34,211,238,0.88)' : 'rgba(255,61,154,0.88)';
+      } else ctx.fillStyle = 'rgba(90,120,150,0.16)';
+      ctx.fillRect(x, y, barW, bh);
+      ctx.restore();
+
+      ctx.save();
+      ctx.font = '9px ui-monospace, monospace';
+      ctx.fillStyle = isPass ? (mode === 'low' ? 'rgba(34,211,238,0.6)' : 'rgba(255,61,154,0.6)') : 'rgba(90,120,150,0.28)';
+      ctx.textAlign = 'center';
+      ctx.fillText((k + 1) + 'f', x + barW / 2, specY + specH + 12);
+      ctx.restore();
+    }
+
+    const markX = 14 + cutoff * (barW + gap) - gap / 2;
+    ctx.save();
+    ctx.setLineDash([2, 5]);
+    ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(markX, specY - 2);
+    ctx.lineTo(markX, specY + specH);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(167,139,250,0.5)';
+    ctx.fillText('SPECTRUM', 14, specY + 12);
+    ctx.restore();
+  }
+
+  $('fl-cut').addEventListener('input', function(){
+    cutoff = parseInt(this.value, 10);
+    $('fl-cut-val').textContent = cutoff;
+    needsRender = true;
+  });
+  document.querySelectorAll('#fl-mode .btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      mode = this.dataset.mode;
+      document.querySelectorAll('#fl-mode .btn').forEach(x => x.classList.toggle('active', x === b));
+      needsRender = true;
+    });
+  });
+
+  resize();
+  resizeHandlers.push(resize);
+  return { update: render };
+}
+
+
+/* ==================== 06 图像傅里叶 ==================== */
+function initImageFourier(){
+  const cv = $('cv-image');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0;
+  const N = 256;
+
+  let coeffs = [];      // 排序后的 DFT 系数
+  let topCoeffs = [];   // 当前使用的系数
+  let pathPts = [];     // 笔尖轨迹
+  let theta = 0;
+  let M = 120;
+  let speed = 1;
+  let label = 'HEART';
+  let needRebuild = true;
+  const MAX_PATH = 600;
+
+  /* ---------- 心形参数方程 ---------- */
+  function makeHeartPoints(){
+    const pts = [];
+    for(let i = 0; i < N; i++){
+      const t = i / N * TAU;
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+      pts.push([x, y]);
+    }
+    return pts;
+  }
+
+  /* ---------- 归一化到单位圆，质心归零 ---------- */
+  function normalize(pts){
+    let cx = 0, cy = 0;
+    for(const p of pts){ cx += p[0]; cy += p[1]; }
+    cx /= pts.length; cy /= pts.length;
+    let maxR = 0;
+    for(const p of pts){
+      const r = Math.hypot(p[0]-cx, p[1]-cy);
+      if(r > maxR) maxR = r;
+    }
+    const s = maxR > 1e-9 ? 1/maxR : 1;
+    return pts.map(p => [(p[0]-cx)*s, (p[1]-cy)*s]);
+  }
+
+  /* ---------- DFT（递推，避免 N² 三角函数） ---------- */
+  function computeDFT(pts){
+    const n = pts.length;
+    const out = new Array(n);
+    for(let k = 0; k < n; k++){
+      const ang0 = -TAU * k / n;
+      const c0 = Math.cos(ang0), s0 = Math.sin(ang0);
+      let cr = 1, sr = 0;
+      let re = 0, im = 0;
+      for(let j = 0; j < n; j++){
+        const x = pts[j][0], y = pts[j][1];
+        re += x * cr - y * sr;
+        im += x * sr + y * cr;
+        const ncr = cr * c0 - sr * s0;
+        const nsr = cr * s0 + sr * c0;
+        cr = ncr; sr = nsr;
+      }
+      re /= n; im /= n;
+      out[k] = {
+        freq: k > n / 2 ? k - n : k,
+        amp: Math.hypot(re, im),
+        phase: Math.atan2(im, re)
+      };
+    }
+    out.sort((a, b) => b.amp - a.amp);
+    return out;
+  }
+
+  /* ---------- 应用轮廓 ---------- */
+  function applyContour(pts){
+    const norm = normalize(pts);
+    coeffs = computeDFT(norm);
+    needRebuild = true;
+    pathPts = [];
+    theta = 0;
+  }
+
+  /* ---------- 从图像提取轮廓（按极角分桶取最远点） ---------- */
+  function extractContour(img){
+    const S = 160;
+    const off = document.createElement('canvas');
+    off.width = S; off.height = S;
+    const octx = off.getContext('2d');
+    const ratio = img.width / img.height;
+    let dw, dh;
+    if(ratio > 1){ dw = S; dh = S / ratio; }
+    else { dh = S; dw = S * ratio; }
+    octx.clearRect(0, 0, S, S);
+    octx.drawImage(img, (S - dw) / 2, (S - dh) / 2, dw, dh);
+
+    const id = octx.getImageData(0, 0, S, S);
+    const data = id.data;
+
+    let cx = 0, cy = 0, cnt = 0;
+    const fg = [];
+    for(let y = 0; y < S; y++){
+      for(let x = 0; x < S; x++){
+        const i = (y * S + x) * 4;
+        const a = data[i+3] / 255;
+        const lum = (data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114) / 255;
+        if(a > 0.5 && lum < 0.85){
+          fg.push([x, y]);
+          cx += x; cy += y; cnt++;
+        }
+      }
+    }
+    if(cnt < 30) return null;
+    cx /= cnt; cy /= cnt;
+
+    const B = 256;
+    const bp = new Array(B).fill(null);
+    const bd = new Float32Array(B).fill(-1);
+    for(const [x, y] of fg){
+      const dx = x - cx, dy = y - cy;
+      const d = dx*dx + dy*dy;
+      let ang = Math.atan2(dy, dx);
+      let bi = Math.floor((ang + Math.PI) / TAU * B) % B;
+      if(bi < 0) bi += B;
+      if(d > bd[bi]){ bd[bi] = d; bp[bi] = [x, y]; }
+    }
+    let last = null;
+    for(let i = 0; i < B; i++){
+      if(bp[i]) last = bp[i];
+      else if(last) bp[i] = last.slice();
+    }
+    last = null;
+    for(let i = B - 1; i >= 0; i--){
+      if(bp[i]) last = bp[i];
+      else if(last) bp[i] = last.slice();
+    }
+
+    /* 重采样到 N 个点 */
+    const out = [];
+    for(let i = 0; i < N; i++){
+      const t = i / N * B;
+      const i0 = Math.floor(t) % B;
+      const i1 = (i0 + 1) % B;
+      const f = t - Math.floor(t);
+      const p0 = bp[i0], p1 = bp[i1];
+      if(!p0 || !p1){ out.push([0, 0]); continue; }
+      out.push([p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f]);
+    }
+    return out;
+  }
+
+  /* ---------- 渲染 ---------- */
+  function render(){
+    if(W < 2) return;
+    ctx.clearRect(0, 0, W, H);
+    drawGrid(ctx, W, H, 40);
+
+    if(!topCoeffs.length){
+      ctx.save();
+      ctx.font = '12px ui-monospace, monospace';
+      ctx.fillStyle = 'rgba(110,170,210,0.4)';
+      ctx.textAlign = 'center';
+      ctx.fillText('NO DATA', W / 2, H / 2);
+      ctx.restore();
+      return;
+    }
+
+    const cx = W * 0.5, cy = H * 0.5;
+    const scale = Math.min(W, H) * 0.36;
+
+    let curX = 0, curY = 0;
+    const drawCircles = Math.min(topCoeffs.length, 26);
+
+    for(let i = 0; i < topCoeffs.length; i++){
+      const c = topCoeffs[i];
+      const ang = c.phase + TAU * c.freq * theta;
+      const nx = curX + c.amp * Math.cos(ang);
+      const ny = curY + c.amp * Math.sin(ang);
+
+      if(i < drawCircles){
+        ctx.beginPath();
+        ctx.arc(cx + curX * scale, cy + curY * scale, c.amp * scale, 0, TAU);
+        ctx.strokeStyle = 'rgba(34,211,238,0.10)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(cx + curX * scale, cy + curY * scale);
+        ctx.lineTo(cx + nx * scale, cy + ny * scale);
+        ctx.strokeStyle = 'rgba(34,211,238,0.22)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      curX = nx; curY = ny;
+    }
+
+    const tipX = cx + curX * scale;
+    const tipY = cy + curY * scale;
+    pathPts.push([tipX, tipY]);
+    if(pathPts.length > MAX_PATH) pathPts.shift();
+
+    if(pathPts.length > 1){
+      ctx.save();
+      ctx.beginPath();
+      for(let i = 0; i < pathPts.length; i++){
+        const p = pathPts[i];
+        i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]);
+      }
+      ctx.strokeStyle = '#ff3d9a';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ff3d9a';
+      ctx.shadowBlur = 12;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 3.5, 0, TAU);
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 18;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(34,211,238,0.5)';
+    ctx.fillText('FOURIER DRAWING · ' + label, 14, 20);
+    ctx.fillStyle = 'rgba(255,61,154,0.55)';
+    ctx.fillText('HARMONICS ×' + topCoeffs.length, 14, 36);
+    ctx.restore();
+  }
+
+  function update(dt){
+    if(needRebuild){
+      topCoeffs = coeffs.slice(0, M).filter(c => c.amp > 1e-7 || c.freq === 0);
+      if(!topCoeffs.length && coeffs.length) topCoeffs = [coeffs[0]];
+      needRebuild = false;
+    }
+    theta += dt * 0.0004 * speed;
+    if(theta >= 1){
+      theta -= 1;
+      pathPts = [];
+    }
+    render();
+  }
+
+  function resize(){
+    const s = fitCanvas(cv, ctx);
+    W = s.w; H = s.h;
+  }
+  resize();
+  resizeHandlers.push(resize);
+
+  /* 初始化默认心形 */
+  applyContour(makeHeartPoints());
+  label = 'HEART';
+  $('img-source').textContent = 'HEART';
+  $('img-status').textContent = '默认形状';
+
+  /* 事件 */
+  $('img-m').addEventListener('input', function(){
+    M = parseInt(this.value, 10);
+    $('img-m-val').textContent = M;
+    needRebuild = true;
+  });
+  $('img-s').addEventListener('input', function(){
+    speed = parseInt(this.value, 10) / 100;
+    $('img-s-val').textContent = speed.toFixed(1) + '×';
+  });
+  $('img-upload').addEventListener('click', function(){
+    $('img-file').click();
+  });
+  $('img-file').addEventListener('change', function(e){
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const img = new Image();
+      img.onload = function(){
+        const pts = extractContour(img);
+        if(pts){
+          applyContour(pts);
+          label = 'IMAGE';
+          $('img-source').textContent = 'IMAGE';
+          $('img-status').textContent = '已加载 ' + (file.name.length > 18 ? file.name.slice(0, 16) + '…' : file.name);
+        } else {
+          $('img-status').textContent = '无法识别轮廓，请换一张';
+        }
+        $('img-file').value = '';
+      };
+      img.onerror = function(){
+        $('img-status').textContent = '图片加载失败';
+        $('img-file').value = '';
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('img-reset').addEventListener('click', function(){
+    applyContour(makeHeartPoints());
+    label = 'HEART';
+    $('img-source').textContent = 'HEART';
+    $('img-status').textContent = '默认形状';
+  });
+
+  return { update };
+}
+
+
+/* ==================== 07 不确定性 ==================== */
+function initUncertainty(){
+  const cv = $('cv-unc');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, needsRender = true;
+  let sigma = 0.5;
+  const F0 = 2.0, TMAX = 3.0, FMAX = 6.0;
+
+  function resize(){
+    const s = fitCanvas(cv, ctx);
+    W = s.w; H = s.h;
+    needsRender = true;
+  }
+
+  function render(){
+    if(!needsRender) return;
+    needsRender = false;
+    if(W < 2) return;
+    ctx.clearRect(0, 0, W, H);
+    drawGrid(ctx, W, H, 40);
+
+    const padTop = 18, padMid = 16;
+    const halfH = (H - padTop * 2 - padMid) / 2;
+    drawTimeDomain(padTop, halfH);
+    drawFreqDomain(padTop + halfH + padMid, halfH);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,170,210,0.14)';
+    ctx.setLineDash([4, 6]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(14, padTop + halfH + padMid / 2);
+    ctx.lineTo(W - 14, padTop + halfH + padMid / 2);
+    ctx.stroke();
+    ctx.restore();
+
+    updateReadout();
+  }
+
+  function drawTimeDomain(y0, h){
+    const midY = y0 + h / 2, amp = h * 0.40;
+    drawAxis(ctx, midY, W);
+
+    ctx.save();
+    ctx.setLineDash([3, 5]);
+    ctx.strokeStyle = 'rgba(167,139,250,0.4)';
+    ctx.lineWidth = 1;
+    for(let s = -1; s <= 1; s += 2){
+      ctx.beginPath();
+      for(let x = 0; x <= W; x += 2){
+        const t = (x / W) * 2 * TMAX - TMAX;
+        const env = Math.exp(-(t * t) / (2 * sigma * sigma));
+        const y = midY - s * env * amp;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    for(let x = 0; x <= W; x++){
+      const t = (x / W) * 2 * TMAX - TMAX;
+      const env = Math.exp(-(t * t) / (2 * sigma * sigma));
+      const y = midY - Math.cos(TAU * F0 * t) * env * amp;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = '#22d3ee';
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 12;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(34,211,238,0.55)';
+    ctx.fillText('TIME DOMAIN', 14, y0 + 13);
+    ctx.restore();
+  }
+
+  function drawFreqDomain(y0, h){
+    const baseY = y0 + h - 8, amp = h - 18;
+    const k = 2 * Math.PI * Math.PI * sigma * sigma;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,170,210,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(0, baseY + .5);
+    ctx.lineTo(W, baseY + .5);
+    ctx.stroke();
+    ctx.restore();
+
+    const grad = ctx.createLinearGradient(0, baseY - amp, 0, baseY);
+    grad.addColorStop(0, 'rgba(255,61,154,0.32)');
+    grad.addColorStop(1, 'rgba(255,61,154,0.02)');
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, baseY);
+    for(let x = 0; x <= W; x++){
+      const f = (x / W) * FMAX;
+      const a = Math.exp(-k * (f - F0) * (f - F0)) + Math.exp(-k * (f + F0) * (f + F0));
+      ctx.lineTo(x, baseY - a * amp);
+    }
+    ctx.lineTo(W, baseY);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    for(let x = 0; x <= W; x++){
+      const f = (x / W) * FMAX;
+      const a = Math.exp(-k * (f - F0) * (f - F0)) + Math.exp(-k * (f + F0) * (f + F0));
+      const y = baseY - a * amp;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = '#ff3d9a';
+    ctx.shadowColor = '#ff3d9a';
+    ctx.shadowBlur = 12;
+    ctx.stroke();
+    ctx.restore();
+
+    const fx = (F0 / FMAX) * W;
+    ctx.save();
+    ctx.setLineDash([2, 6]);
+    ctx.strokeStyle = 'rgba(167,139,250,0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(fx, baseY - amp - 4);
+    ctx.lineTo(fx, baseY);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(255,61,154,0.6)';
+    ctx.fillText('FREQUENCY DOMAIN', 14, y0 + 13);
+    ctx.fillStyle = 'rgba(167,139,250,0.7)';
+    ctx.textAlign = 'center';
+    ctx.fillText('f₀', fx, y0 + 13);
+    ctx.restore();
+  }
+
+  function updateReadout(){
+    const st = sigma, sf = 1 / (2 * Math.PI * sigma);
+    $('ro-st').textContent = st.toFixed(3);
+    $('ro-sf').textContent = sf.toFixed(3);
+    $('ro-prod').textContent = (st * sf).toFixed(3) + '  ( = 1/2π )';
+  }
+
+  $('un-s').addEventListener('input', function(){
+    sigma = parseInt(this.value, 10) / 100;
+    $('un-s-val').textContent = sigma.toFixed(2);
+    needsRender = true;
+  });
+
+  resize();
+  resizeHandlers.push(resize);
+  return { update: render };
+}
+
+
+/* ==================== 启动 ==================== */
+const epi   = initEpicycles();
+const drawM = initDraw();
+const harm  = initHarmonics();
+const phase = initPhase();
+const filt  = initFilter();
+const imgF  = initImageFourier();
+const unc   = initUncertainty();
+
+let lastT = performance.now();
+function tick(t){
+  const dt = Math.min(64, t - lastT);
+  lastT = t;
+  epi.update(dt);
+  drawM.update(dt);
+  harm.update(dt);
+  phase.update(dt);
+  filt.update(dt);
+  imgF.update(dt);
+  unc.update(dt);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(function(t){
+  lastT = t;
+  requestAnimationFrame(tick);
+});
+
+})();
+</script>
+</body>
+</html>
