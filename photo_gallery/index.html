@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#060608">
+<title>图片集</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+  html,body{
+    margin:0;padding:0;
+    width:100%;height:100%;
+    background:#060608;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:none;
+    -webkit-user-select:none;
+    user-select:none;
+    cursor:grab;
+  }
+  body.grabbing{cursor:grabbing;}
+
+  #stage{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+  }
+
+  .tile{
+    position:absolute;
+    left:0;top:0;
+    transform-origin:0 0;
+    border-radius:4px;
+    overflow:hidden;
+    background:
+      linear-gradient(135deg, #14141a 0%, #0c0c12 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+
+  .tile img{
+    display:block;
+    width:100%;height:100%;
+    object-fit:cover;
+    opacity:0;
+    transition:opacity .6s cubic-bezier(.22,.61,.36,1);
+    pointer-events:none;
+    -webkit-user-drag:none;
+    user-select:none;
+  }
+  .tile img.loaded{opacity:1;}
+
+  #vignette{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:90;
+    background:
+      radial-gradient(140% 120% at 50% 48%,
+        rgba(0,0,0,0) 36%,
+        rgba(0,0,0,.42) 76%,
+        rgba(0,0,0,.82) 100%);
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="vignette"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==========================================================
+     配置
+     ========================================================== */
+
+  /* 独立图片数量（太多会拖慢加载，太少重复感明显） */
+  const IMAGE_COUNT = 80;
+
+  /* 缩略图尺寸：按卡片最大宽度的 1.5 倍设置，兼顾清晰与体积 */
+  const THUMB_W = 360;
+  const THUMB_H = 540;
+
+  /* 聚焦放大时的高清尺寸 */
+  const HD_W = 1200;
+  const HD_H = 1800;
+
+  /* 图片 URL 生成器 —— picsum.photos 相同 seed 返回相同图片 */
+  function thumbUrl(seed) {
+    return 'https://picsum.photos/seed/pic' + seed + '/' + THUMB_W + '/' + THUMB_H;
+  }
+  function hdUrl(seed) {
+    return 'https://picsum.photos/seed/pic' + seed + '/' + HD_W + '/' + HD_H;
+  }
+
+  /* ==========================================================
+     尺寸
+     ========================================================== */
+
+  let vw = window.innerWidth;
+  let vh = window.innerHeight;
+
+  const GAP = 14;
+
+  let COL_W   = vw < 700 ? 148 : 288;
+  let TILE_W  = COL_W - GAP;
+  let COLS    = 10;
+  let WORLD_W = COLS * COL_W;
+
+  let WORLD_H_DYN = COL_W * 9;
+
+  function recalcColumns() {
+    COL_W   = vw < 700 ? 148 : 288;
+    TILE_W  = COL_W - GAP;
+    COLS    = Math.max(8, Math.ceil((vw * 2.2) / COL_W));
+    WORLD_W = COLS * COL_W;
+  }
+
+  recalcColumns();
+
+  const stage = document.getElementById('stage');
+
+  /* ==========================================================
+     伪随机
+     ========================================================== */
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function wrapDelta(d, W) {
+    return d - Math.round(d / W) * W;
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  /* ==========================================================
+     世界构建
+     ========================================================== */
+
+  let tiles = [];
+
+  function buildWorld() {
+
+    tiles = [];
+    stage.innerHTML = '';
+
+    recalcColumns();
+
+    const baseH = TILE_W * 1.08;
+    const slotH = baseH + GAP;
+
+    /* 纵向铺满 1.6 倍视口即可（无限循环不需要更多） */
+    const perCol = Math.max(5, Math.ceil((vh * 1.6) / slotH));
+    const dynH   = Math.round(perCol * slotH);
+    WORLD_H_DYN  = dynH;
+
+    console.log(
+      '[gallery] 画布：' + COLS + '列 × ' + perCol + '张 = ' +
+      (COLS * perCol) + ' 卡片，' + IMAGE_COUNT + ' 张独立图片'
+    );
+
+    const frag     = document.createDocumentFragment();
+    const seedBase = (Math.random() * 1000) | 0;
+
+    let idx = 0;
+
+    for (let c = 0; c < COLS; c++) {
+
+      const rand   = mulberry32(seedBase + c * 7919);
+      const availH = dynH - perCol * GAP;
+
+      const raw = [];
+      let sum = 0;
+      for (let i = 0; i < perCol; i++) {
+        const v = 0.8 + rand() * 0.6;
+        raw.push(v);
+        sum += v;
+      }
+      const scale = availH / sum;
+
+      let y = GAP / 2;
+
+      for (let i = 0; i < perCol; i++) {
+
+        const h    = raw[i] * scale;
+        const seed = (seedBase + idx * 137) % IMAGE_COUNT;
+        idx++;
+
+        const el = document.createElement('div');
+        el.className = 'tile';
+        el.style.width  = TILE_W + 'px';
+        el.style.height = h.toFixed(2) + 'px';
+
+        const img = document.createElement('img');
+        img.decoding  = 'async';
+        img.draggable = false;
+        img.alt       = '';
+
+        img.addEventListener('load',  function () { img.classList.add('loaded'); });
+        img.addEventListener('error', function () {
+          /* 加载失败重试一次 */
+          if (!this.dataset.retried) {
+            this.dataset.retried = '1';
+            this.src = thumbUrl((seed + 1) % IMAGE_COUNT);
+          }
+        });
+
+        img.src = thumbUrl(seed);
+
+        el.appendChild(img);
+        frag.appendChild(el);
+
+        tiles.push({
+          el: el,
+          img: img,
+          seed: seed,
+          x: c * COL_W + GAP / 2,
+          y: y,
+          w: TILE_W,
+          h: h,
+          vis: true,
+          op: 1
+        });
+
+        y += h + GAP;
+      }
+    }
+
+    stage.appendChild(frag);
+
+    camX    = Math.random() * WORLD_W;
+    camY    = Math.random() * WORLD_H_DYN;
+    camZoom = 1;
+    pressZoom    = 1;
+    pressZoomVel = 0;
+    velX = velY = 0;
+    focus = null;
+    savedCam = null;
+    focusProgress = 0;
+
+    renderDirty = true;
+  }
+
+  /* ==========================================================
+     相机 & 物理
+     ========================================================== */
+
+  let camX    = Math.random() * WORLD_W;
+  let camY    = Math.random() * WORLD_H_DYN;
+  let camZoom = 1;
+
+  let velX = 0, velY = 0;
+
+  const MAX_VEL  = 3.6;
+  const FRICTION = 0.948;
+
+  let pressZoom    = 1;
+  let pressZoomVel = 0;
+  let pressTarget  = 1;
+  let speedFactor  = 0;
+
+  let prevCamX = camX;
+  let prevCamY = camY;
+
+  function updatePressZoom(dt) {
+
+    const targetMul = pressTarget * (1 - speedFactor * 0.045);
+
+    if (Math.abs(targetMul - pressZoom) < 0.0004 &&
+        Math.abs(pressZoomVel) < 0.0004) {
+      pressZoom    = targetMul;
+      pressZoomVel = 0;
+      return;
+    }
+
+    const df    = Math.max(0.5, Math.min(3, dt / 16.667));
+    const steps = Math.ceil(df);
+    const sub   = df / steps;
+
+    const k = 0.30;
+    const c = 1.00;
+
+    for (let i = 0; i < steps; i++) {
+      const accel = (targetMul - pressZoom) * k - pressZoomVel * c;
+      pressZoomVel += accel * sub;
+      pressZoom    += pressZoomVel * sub;
+    }
+
+    if (pressZoom > 1.08)      { pressZoom = 1.08; pressZoomVel = 0; }
+    else if (pressZoom < 0.86) { pressZoom = 0.86; pressZoomVel = 0; }
+  }
+
+  /* ==========================================================
+     交互状态
+     ========================================================== */
+
+  let activeId = null;
+  let dragging = false;
+  let downInfo = null;
+
+  let lastPX = 0, lastPY = 0, lastT = 0;
+  let sampleX = 0, sampleY = 0;
+
+  let focus         = null;
+  let focusProgress = 0;
+  let savedCam      = null;
+
+  /* ==========================================================
+     渲染
+     ========================================================== */
+
+  let renderDirty = true;
+
+  function render() {
+
+    const z  = camZoom * pressZoom;
+    const hw = vw * 0.5;
+    const hh = vh * 0.5;
+
+    const cullFar = Math.max(vw, vh) * 2;
+
+    const cullL = -cullFar;
+    const cullR = vw + cullFar;
+    const cullT = -cullFar;
+    const cullB = vh + cullFar;
+
+    const focusTile = focus ? focus.tile : null;
+    const fadeK     = Math.min(1, focusProgress * 2.2);
+
+    const WW = WORLD_W;
+    const WH = WORLD_H_DYN;
+
+    for (let i = 0; i < tiles.length; i++) {
+
+      const t = tiles[i];
+
+      const ox = Math.round((camX - t.x) / WW);
+      const oy = Math.round((camY - t.y) / WH);
+      const nx = t.x + ox * WW;
+      const ny = t.y + oy * WH;
+
+      const sx = (nx - camX) * z + hw;
+      const sy = (ny - camY) * z + hh;
+
+      const sw = t.w * z;
+      const sh = t.h * z;
+
+      if (sx + sw < cullL || sx > cullR ||
+          sy + sh < cullT || sy > cullB) {
+        if (t.vis) { t.el.style.visibility = 'hidden'; t.vis = false; }
+        continue;
+      }
+      if (!t.vis) { t.el.style.visibility = 'visible'; t.vis = true; }
+
+      const isFocus = (t === focusTile);
+      const op = isFocus ? 1 : (1 - fadeK);
+      if (t.op !== op) { t.el.style.opacity = op; t.op = op; }
+
+      t.el.style.transform =
+        'translate3d(' + sx.toFixed(1) + 'px,' +
+                         sy.toFixed(1) + 'px,0) scale(' + z.toFixed(3) + ')';
+    }
+  }
+
+  /* ==========================================================
+     聚焦 / 退出
+     ========================================================== */
+
+  function focusOn(tile) {
+
+    if (focus) return;
+
+    const nx = tile.x + Math.round((camX - tile.x) / WORLD_W) * WORLD_W;
+    const ny = tile.y + Math.round((camY - tile.y) / WORLD_H_DYN) * WORLD_H_DYN;
+
+    const cx = nx + tile.w * 0.5;
+    const cy = ny + tile.h * 0.5;
+
+    const fitZoom = Math.min((vw * 0.85) / tile.w, (vh * 0.78) / tile.h);
+    const targetZoom = Math.max(1.2, Math.min(fitZoom, 5));
+
+    const tx = camX + wrapDelta(cx - camX, WORLD_W);
+    const ty = camY + wrapDelta(cy - camY, WORLD_H_DYN);
+
+    savedCam = { x: camX, y: camY, zoom: camZoom };
+
+    focus = {
+      tile:  tile,
+      phase: 'in',
+      t0:    performance.now(),
+      dur:   850,
+      from:  { x: camX, y: camY, zoom: camZoom },
+      to:    { x: tx,    y: ty,    zoom: targetZoom }
+    };
+
+    velX = 0; velY = 0;
+    dragging = false;
+    document.body.classList.remove('grabbing');
+
+    tile.el.style.zIndex = '1000';
+
+    /* 高清图异步替换 —— 不阻塞动画，加载完成后无缝切换 */
+    const hd = new Image();
+    hd.onload = function () {
+      if (focus && focus.tile === tile && !tile.img.dataset.hd) {
+        tile.img.dataset.hd = '1';
+        tile.img.src = hd.src;
+      }
+    };
+    hd.src = hdUrl(tile.seed);
+  }
+
+  function unfocus() {
+
+    if (!focus || focus.phase === 'out') return;
+
+    const toX = camX + wrapDelta(savedCam.x - camX, WORLD_W);
+    const toY = camY + wrapDelta(savedCam.y - camY, WORLD_H_DYN);
+
+    focus.phase = 'out';
+    focus.t0    = performance.now();
+    focus.dur   = 680;
+    focus.from  = { x: camX, y: camY, zoom: camZoom };
+    focus.to    = { x: toX,  y: toY,  zoom: savedCam.zoom };
+
+    focus.tile.el.style.zIndex = '';
+  }
+
+  /* ==========================================================
+     指针交互
+     ========================================================== */
+
+  function onPointerDown(e) {
+
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (activeId !== null) return;
+
+    activeId = e.pointerId;
+
+    if (focus) {
+      pressTarget = 1;
+      downInfo = {
+        x: e.clientX, y: e.clientY,
+        t: performance.now(),
+        isClose: true
+      };
+      return;
+    }
+
+    pressTarget = 0.96;
+    dragging = true;
+
+    lastPX = e.clientX;
+    lastPY = e.clientY;
+    lastT  = performance.now();
+
+    sampleX = 0; sampleY = 0;
+    velX = 0; velY = 0;
+
+    downInfo = {
+      x: e.clientX, y: e.clientY,
+      t: performance.now(),
+      target: e.target
+    };
+
+    document.body.classList.add('grabbing');
+  }
+
+  function onPointerMove(e) {
+
+    if (e.pointerId !== activeId) return;
+    if (focus || !dragging) return;
+
+    const now = performance.now();
+    const dx  = e.clientX - lastPX;
+    const dy  = e.clientY - lastPY;
+    const dt  = Math.max(1, now - lastT);
+
+    const zEff = Math.max(0.5, camZoom * pressZoom);
+
+    const camDX = -dx / zEff;
+    const camDY = -dy / zEff;
+
+    camX += camDX;
+    camY += camDY;
+
+    const a = 0.6;
+    sampleX = sampleX * a + (camDX / dt) * (1 - a);
+    sampleY = sampleY * a + (camDY / dt) * (1 - a);
+
+    lastPX = e.clientX;
+    lastPY = e.clientY;
+    lastT  = now;
+  }
+
+  function onPointerUp(e) {
+
+    if (e.pointerId !== activeId) return;
+
+    const now = performance.now();
+
+    if (focus && downInfo && downInfo.isClose) {
+      const dist = Math.hypot(e.clientX - downInfo.x, e.clientY - downInfo.y);
+      if (dist < 18 && now - downInfo.t < 700) unfocus();
+      activeId = null;
+      downInfo = null;
+      return;
+    }
+
+    activeId = null;
+    dragging = false;
+    document.body.classList.remove('grabbing');
+
+    pressTarget = 1;
+
+    if (now - lastT > 130) { sampleX = 0; sampleY = 0; }
+
+    let isTap = false;
+    if (downInfo) {
+      const dist = Math.hypot(e.clientX - downInfo.x, e.clientY - downInfo.y);
+      if (dist < 12 && now - downInfo.t < 480) isTap = true;
+    }
+
+    if (isTap && downInfo && downInfo.target) {
+
+      velX = 0; velY = 0;
+
+      const tileEl = downInfo.target.closest
+        ? downInfo.target.closest('.tile')
+        : null;
+
+      if (tileEl) {
+        for (let i = 0; i < tiles.length; i++) {
+          if (tiles[i].el === tileEl) { focusOn(tiles[i]); break; }
+        }
+      }
+
+    } else {
+      velX = Math.max(-MAX_VEL, Math.min(MAX_VEL, sampleX));
+      velY = Math.max(-MAX_VEL, Math.min(MAX_VEL, sampleY));
+    }
+
+    downInfo = null;
+  }
+
+  function onPointerCancel(e) {
+    if (e.pointerId !== activeId) return;
+    activeId = null;
+    dragging = false;
+    downInfo = null;
+    velX = velY = 0;
+    pressTarget = 1;
+    document.body.classList.remove('grabbing');
+  }
+
+  window.addEventListener('pointerdown',   onPointerDown,   { passive: true });
+  window.addEventListener('pointermove',   onPointerMove,   { passive: true });
+  window.addEventListener('pointerup',     onPointerUp,     { passive: true });
+  window.addEventListener('pointercancel', onPointerCancel, { passive: true });
+
+  window.addEventListener('blur', function () {
+    dragging = false;
+    activeId = null;
+    downInfo = null;
+    velX = velY = 0;
+    pressTarget = 1;
+    document.body.classList.remove('grabbing');
+  });
+
+  document.addEventListener('dragstart',    function (e) { e.preventDefault(); });
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+  window.addEventListener('resize', function () {
+    vw = window.innerWidth;
+    vh = window.innerHeight;
+    if (focus) unfocus();
+    renderDirty = true;
+  }, { passive: true });
+
+  /* ==========================================================
+     主循环
+     ========================================================== */
+
+  let prevTime = performance.now();
+
+  function frame(now) {
+
+    let dt = now - prevTime;
+    prevTime = now;
+    if (dt > 50) dt = 50;
+    if (dt <= 0) dt = 16.667;
+
+    if (focus) {
+
+      const p = Math.min(1, (now - focus.t0) / focus.dur);
+      const e = easeInOutCubic(p);
+
+      camX    = focus.from.x + (focus.to.x - focus.from.x) * e;
+      camY    = focus.from.y + (focus.to.y - focus.from.y) * e;
+      camZoom = focus.from.zoom + (focus.to.zoom - focus.from.zoom) * e;
+
+      focusProgress = (focus.phase === 'in') ? e : (1 - e);
+
+      pressTarget = 1;
+
+      if (p >= 1 && focus.phase === 'out') {
+        camZoom       = savedCam ? savedCam.zoom : 1;
+        focusProgress = 0;
+        focus         = null;
+        savedCam      = null;
+      }
+
+    } else {
+
+      focusProgress = 0;
+
+      if (!dragging && (velX !== 0 || velY !== 0)) {
+
+        camX += velX * dt;
+        camY += velY * dt;
+
+        const decay = Math.pow(FRICTION, dt / 16.667);
+        velX *= decay;
+        velY *= decay;
+
+        if (Math.abs(velX) < 0.004) velX = 0;
+        if (Math.abs(velY) < 0.004) velY = 0;
+      }
+    }
+
+    const camVX = (camX - prevCamX) / dt;
+    const camVY = (camY - prevCamY) / dt;
+
+    prevCamX = camX;
+    prevCamY = camY;
+
+    if (!focus) {
+      const rawSpeed = Math.hypot(camVX, camVY);
+      const targetSF = Math.min(1, rawSpeed / 2.5);
+      speedFactor += (targetSF - speedFactor) * Math.min(1, dt / 80);
+      if (speedFactor < 0.0005) speedFactor = 0;
+    } else {
+      speedFactor += (0 - speedFactor) * Math.min(1, dt / 120);
+      if (speedFactor < 0.0005) speedFactor = 0;
+    }
+
+    if (!focus) {
+      const ox = camX, oy = camY;
+      camX = ((camX % WORLD_W) + WORLD_W) % WORLD_W;
+      camY = ((camY % WORLD_H_DYN) + WORLD_H_DYN) % WORLD_H_DYN;
+      prevCamX += camX - ox;
+      prevCamY += camY - oy;
+    }
+
+    updatePressZoom(dt);
+
+    const isStatic =
+      !dragging && !focus &&
+      velX === 0 && velY === 0 &&
+      speedFactor === 0 &&
+      Math.abs(pressZoom - 1) < 0.0005;
+
+    if (isStatic && !renderDirty) {
+      requestAnimationFrame(frame);
+      return;
+    }
+
+    renderDirty = false;
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  /* ==========================================================
+     启动
+     ========================================================== */
+
+  buildWorld();
+  render();
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

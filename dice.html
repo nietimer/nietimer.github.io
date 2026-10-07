@@ -1,0 +1,2430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>骰子 · Dice</title>
+<style>
+  :root {
+    --bg: #ebe5da;
+    --surface: #f8f5ef;
+    --ink: #1e1a16;
+    --ink-2: #5a5148;
+    --ink-3: #9a8f82;
+    --line: #d6ccbc;
+    --accent: #a83c2f;
+    --accent-soft: #f5e7e2;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+                 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    color: var(--ink);
+    font-feature-settings: "tnum" 1;
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none; overscroll-behavior:none;
+  }
+  canvas { display:block; position:fixed; inset:0; z-index:1; }
+
+  #ui {
+    position:fixed; inset:0; z-index:10;
+    display:flex; flex-direction:column;
+    padding: calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 12px);
+    pointer-events:none;
+  }
+
+  #topbar {
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:16px; flex-shrink:0;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
+  .info { display:flex; flex-direction:column; gap:3px; }
+  .info .k {
+    font-size:9px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--ink-3); font-weight:600;
+  }
+  .info .v {
+    font-size:21px; font-weight:600; color:var(--ink);
+    line-height:1; font-variant-numeric: tabular-nums;
+    letter-spacing:-.01em;
+  }
+  .info.right { text-align:right; align-items:flex-end; }
+  .info.accent .v { color: var(--accent); }
+
+  .rolls-dots { display:flex; gap:6px; align-items:center; height:21px; }
+  .rolls-dots .dot {
+    width:8px; height:8px; border-radius:50%;
+    border:1.5px solid var(--ink-2);
+    background:transparent;
+    transition: all .2s;
+  }
+  .rolls-dots .dot.on { background: var(--ink); border-color: var(--ink); }
+  .rolls-dots .dot.used { background: transparent; border-color: var(--line); }
+
+  #spacer { flex:1; min-height:6px; }
+
+  #bottom {
+    display:flex; flex-direction:column; gap:12px;
+    flex-shrink:0; pointer-events:none;
+  }
+
+  #shakeBtn {
+    pointer-events:auto;
+    position:relative;
+    height:62px;
+    border:none;
+    border-radius:3px;
+    background: var(--ink);
+    color: var(--surface);
+    font-family:inherit;
+    font-size:12.5px; font-weight:600; letter-spacing:.26em;
+    text-transform:uppercase;
+    cursor:pointer;
+    transition: background .2s, transform .06s;
+    display:flex; align-items:center; justify-content:center;
+    gap:12px;
+    overflow:hidden;
+  }
+  #shakeBtn .label { position:relative; z-index:1; }
+  #shakeBtn .dot {
+    position:relative; z-index:1;
+    width:5px; height:5px; border-radius:50%;
+    background: var(--accent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .35; }
+  }
+  #shakeBtn:active:not(:disabled) {
+    transform: scale(.995);
+    background: #2e2720;
+  }
+  #shakeBtn.shaking {
+    background: #3a2c20;
+    color: #f5e7e2;
+  }
+  #shakeBtn.shaking .dot {
+    background: #f5c870;
+    animation: pulse 0.4s ease-in-out infinite;
+  }
+  #shakeBtn:disabled {
+    background: transparent;
+    color: var(--ink-3);
+    border:1px solid var(--line);
+    cursor:default;
+  }
+  #shakeBtn:disabled .dot { display:none; }
+
+  #board {
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    border-top:1px solid var(--line);
+    border-left:1px solid var(--line);
+  }
+  .cat {
+    pointer-events:auto;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px;
+    padding:9px 4px;
+    min-height:54px;
+    border:none;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    background: transparent;
+    font-family:inherit;
+    cursor:pointer;
+    transition: background .15s;
+    -webkit-tap-highlight-color:transparent;
+    position:relative;
+  }
+  .cat .n {
+    font-size:9.5px; font-weight:600; letter-spacing:.06em;
+    color:var(--ink-3);
+    transition: color .15s;
+  }
+  .cat .s {
+    font-size:14.5px; font-weight:600; color:var(--ink-2);
+    font-variant-numeric: tabular-nums; line-height:1.1;
+    transition: color .15s;
+    letter-spacing:-.01em;
+  }
+  .cat:active:not(.used):not(.locked) { background: var(--surface); }
+  .cat.used { pointer-events:none; background: rgba(214,204,188,0.20); }
+  .cat.used .n, .cat.used .s { color: var(--line); }
+  .cat.hot { background: var(--accent-soft); }
+  .cat.hot .n { color: var(--accent); opacity:.7; }
+  .cat.hot .s { color: var(--accent); }
+  .cat.locked { pointer-events:none; }
+  .cat.scored { animation: soft .55s ease; }
+  @keyframes soft {
+    0% { background: rgba(168,60,47,0); }
+    40% { background: rgba(168,60,47,0.10); }
+    100% { background: rgba(168,60,47,0); }
+  }
+
+  .dice-label {
+    position:fixed; left:0; top:0;
+    z-index:9; pointer-events:none;
+    font-size:12px; font-weight:600;
+    color: var(--ink);
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:1px 7px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing:.02em;
+    opacity:0;
+    transition: opacity .28s;
+    will-change: transform;
+    transform: translate(-50%, -50%);
+  }
+  .dice-label.show { opacity:1; }
+  .dice-label.kept {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  #hint {
+    position:fixed;
+    left:50%; top: calc(env(safe-area-inset-top,0px) + 92px);
+    transform: translate(-50%, -6px);
+    z-index:14; pointer-events:none;
+    background: var(--ink);
+    color: var(--surface);
+    font-size:11px; font-weight:500;
+    letter-spacing:.12em;
+    padding:9px 18px;
+    border-radius:2px;
+    opacity:0;
+    transition: opacity .3s, transform .3s;
+    white-space:nowrap;
+    text-transform:uppercase;
+  }
+  #hint.show { opacity:1; transform: translate(-50%, 0); }
+
+  .float-score {
+    position:fixed; z-index:16; pointer-events:none;
+    font-size:16px; font-weight:600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    letter-spacing:-.01em;
+    animation: floatUp 1.1s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity:0; transform: translate(-50%, 0) scale(.85); }
+    20% { opacity:1; transform: translate(-50%, -18px) scale(1); }
+    100% { opacity:0; transform: translate(-50%, -68px) scale(1); }
+  }
+
+  .overlay {
+    position:fixed; inset:0; z-index:30;
+    display:flex; align-items:center; justify-content:center;
+    padding:26px;
+    background: var(--bg);
+    transition: opacity .45s, visibility .45s;
+  }
+  .overlay.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+  .panel { text-align:center; max-width:400px; width:100%; }
+
+  .brand {
+    display:flex; align-items:center; justify-content:center;
+    gap:10px; margin-bottom:4px;
+  }
+  .brand .mark {
+    width:10px; height:10px; background: var(--accent);
+    border-radius:1px; transform: rotate(45deg);
+  }
+  .brand .name {
+    font-size:12px; font-weight:600; letter-spacing:.42em;
+    text-transform:uppercase; color: var(--ink-2);
+    padding-left:.42em;
+  }
+
+  .logo {
+    font-size: clamp(46px, 15vw, 76px);
+    font-weight: 700; letter-spacing:-.02em; line-height:1;
+    color: var(--ink);
+    margin: 16px 0 8px;
+  }
+
+  .tagline {
+    font-size:11px; letter-spacing:.4em; text-transform:uppercase;
+    color: var(--ink-3); font-weight:500;
+    margin-bottom:32px; padding-left:.4em;
+  }
+
+  .rules {
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    padding:18px 4px;
+    margin-bottom:28px;
+    text-align:left;
+  }
+  .rules li {
+    list-style:none; font-size:12.5px; line-height:2;
+    color: var(--ink-2); font-weight:400;
+    padding-left:20px; position:relative;
+  }
+  .rules li::before {
+    content:''; position:absolute; left:2px; top:14px;
+    width:6px; height:1px; background: var(--accent);
+  }
+  .rules b { color: var(--ink); font-weight:600; }
+  .rules .hl { color: var(--accent); font-weight:600; }
+
+  .btn {
+    pointer-events:auto;
+    display:inline-block;
+    border:none; border-radius:3px;
+    padding:18px 56px;
+    font-family:inherit;
+    font-size:12px; font-weight:600; letter-spacing:.28em;
+    text-transform:uppercase;
+    color: var(--surface);
+    background: var(--ink);
+    cursor:pointer;
+    transition: background .2s, transform .06s;
+  }
+  .btn:hover { background: #2e2720; }
+  .btn:active { transform: scale(.985); }
+
+  .final-label {
+    font-size:10px; letter-spacing:.44em; color:var(--ink-3);
+    font-weight:600; text-transform:uppercase;
+    margin-bottom:10px; padding-left:.44em;
+  }
+  .final-score {
+    font-size: clamp(68px,22vw,112px);
+    font-weight:700; line-height:1; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing:-.03em; margin-bottom:8px;
+  }
+  .rank {
+    display:inline-block;
+    font-size:10px; font-weight:600; letter-spacing:.3em;
+    text-transform:uppercase;
+    padding:9px 22px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    margin-bottom:30px;
+    padding-left: calc(22px + .3em);
+    color: var(--ink-2);
+  }
+  .rank.s { color: var(--accent); border-color: var(--accent); }
+  .rank.a { color: var(--ink); border-color: var(--ink-2); }
+  .rank.b { color: var(--ink-3); border-color: var(--line); }
+
+  .breakdown {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:0;
+    border-top:1px solid var(--line);
+    border-left:1px solid var(--line);
+    margin-bottom:30px;
+  }
+  .bd {
+    padding:13px 12px;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    text-align:left;
+  }
+  .bd .k {
+    font-size:9px; letter-spacing:.2em; color:var(--ink-3);
+    font-weight:600; text-transform:uppercase; margin-bottom:6px;
+  }
+  .bd .v {
+    font-size:19px; font-weight:600; color: var(--ink);
+    font-variant-numeric: tabular-nums; letter-spacing:-.01em;
+  }
+  .bd .v.g { color: var(--accent); }
+
+  @media (max-width: 520px) and (orientation: portrait) {
+    #board { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 380px) {
+    .cat { min-height:44px; padding:7px 2px; }
+    .cat .n { font-size:9px; }
+    .cat .s { font-size:12.5px; }
+    .info .v { font-size:17px; }
+    #shakeBtn { height:54px; font-size:11px; }
+  }
+  @media (min-width: 900px) {
+    #board { grid-template-columns: repeat(11, 1fr); }
+  }
+  @media (max-height: 500px) {
+    #shakeBtn { height:46px; font-size:10.5px; }
+    .cat { min-height:38px; padding:5px 2px; }
+    .rules li { line-height:1.7; font-size:11.5px; }
+    .logo { font-size:36px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div id="topbar">
+    <div class="info">
+      <span class="k">Round</span>
+      <span class="v" id="uiRound">1 / 11</span>
+    </div>
+    <div class="info" style="align-items:center; text-align:center;">
+      <span class="k">Rolls</span>
+      <div class="rolls-dots" id="uiRollsDots">
+        <span class="dot on"></span>
+        <span class="dot on"></span>
+        <span class="dot on"></span>
+      </div>
+    </div>
+    <div class="info right accent">
+      <span class="k">Score</span>
+      <span class="v" id="uiTotal">0</span>
+    </div>
+  </div>
+
+  <div id="spacer"></div>
+
+  <div id="bottom">
+    <button id="shakeBtn" class="ready">
+      <span class="dot"></span>
+      <span class="label" id="shakeLabel">按住摇骰</span>
+    </button>
+    <div id="board"></div>
+  </div>
+</div>
+
+<div id="hint"></div>
+
+<div class="overlay" id="startScreen">
+  <div class="panel">
+    <div class="brand">
+      <div class="mark"></div>
+      <div class="name">Dice</div>
+    </div>
+    <div class="logo">骰子</div>
+    <div class="tagline">Classic Game</div>
+    <ul class="rules">
+      <li><b>按住</b>下方按钮摇动骰盅，<b>松手</b>把骰子抛上桌面</li>
+      <li>骰子停下后，<b>朝上一面</b>就是它的点数</li>
+      <li>每回合最多投掷 <b>3 次</b>，点击骰子可锁定保留</li>
+      <li>锁定的骰子会移到<b>上方托盘</b>，不干扰下一次投掷</li>
+      <li>再次点击托盘上的骰子可<b>解锁回到原位</b></li>
+      <li>从 11 个计分格中选一个记录，每格限用一次</li>
+      <li>上区总分 <span class="hl">≥ 63</span> 额外奖励 <span class="hl">+35</span></li>
+    </ul>
+    <button class="btn" id="startBtn">开 始</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="overScreen">
+  <div class="panel">
+    <div class="final-label">Final Score</div>
+    <div class="final-score" id="finalScore">0</div>
+    <div class="rank" id="rankBadge">熟练</div>
+    <div class="breakdown">
+      <div class="bd"><div class="k">上区总分</div><div class="v" id="bdUpper">0</div></div>
+      <div class="bd"><div class="k">上区奖励</div><div class="v g" id="bdBonus">+0</div></div>
+      <div class="bd"><div class="k">下区总分</div><div class="v" id="bdLower">0</div></div>
+      <div class="bd"><div class="k">历史最高</div><div class="v" id="bdBest">0</div></div>
+    </div>
+    <button class="btn" id="restartBtn">再 来 一 局</button>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import * as CANNON from 'cannon-es';
+
+const clamp = (v,a,b)=> v<a?a:v>b?b:v;
+const rand  = (a,b)=> a + Math.random()*(b-a);
+const lerp  = (a,b,t)=> a + (b-a)*t;
+
+/* ============================================================
+   渲染器 / 场景 / 相机
+============================================================ */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({
+  canvas, antialias:true, alpha:true, powerPreference:'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearAlpha(0);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 200);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+/* ============================================================
+   灯光
+============================================================ */
+scene.add(new THREE.HemisphereLight(0xfdf8ee, 0xd8ccb8, 1.15));
+
+const keyLight = new THREE.DirectionalLight(0xfff4e2, 1.9);
+keyLight.position.set(-8, 18, 10);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xdde6f2, 0.65);
+fillLight.position.set(10, 8, -8);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffeedd, 0.55);
+rimLight.position.set(2, 5, 14);
+scene.add(rimLight);
+
+/* ============================================================
+   程序化纹理
+============================================================ */
+function makeTableTexture() {
+  const S = 1024;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#d9c7a8';
+  ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 40; i++) {
+    const y = Math.random() * S;
+    const h = rand(3, 22);
+    const shade = Math.random() < 0.5
+      ? `rgba(${190 + rand(-20,20)|0}, ${165 + rand(-20,20)|0}, ${130 + rand(-20,20)|0}, 0.35)`
+      : `rgba(${160 + rand(-15,15)|0}, ${135 + rand(-15,15)|0}, ${100 + rand(-15,15)|0}, 0.28)`;
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, y, S, h);
+  }
+  ctx.globalAlpha = 0.35;
+  for (let i = 0; i < 220; i++) {
+    const y = Math.random() * S;
+    ctx.strokeStyle = `rgba(${150 + rand(-30,30)|0}, ${120 + rand(-30,30)|0}, ${90 + rand(-30,30)|0}, 0.5)`;
+    ctx.lineWidth = rand(0.3, 1.1);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(S*rand(0.2,0.4), y + rand(-9,9), S*rand(0.6,0.8), y + rand(-9,9), S, y + rand(-9,9));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  const imgData = ctx.getImageData(0, 0, S, S);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 14;
+    d[i] = clamp(d[i]+n, 0, 255);
+    d[i+1] = clamp(d[i+1]+n, 0, 255);
+    d[i+2] = clamp(d[i+2]+n, 0, 255);
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+
+function makeWalnutTexture() {
+  const S = 512;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#3a271a';
+  ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 26; i++) {
+    const y = Math.random() * S;
+    const h = rand(4, 28);
+    const tone = Math.random() < 0.5
+      ? `rgba(${58 + rand(-10,10)|0}, ${38 + rand(-8,8)|0}, ${24 + rand(-6,6)|0}, 0.55)`
+      : `rgba(${88 + rand(-15,15)|0}, ${62 + rand(-12,12)|0}, ${42 + rand(-10,10)|0}, 0.4)`;
+    ctx.fillStyle = tone;
+    ctx.fillRect(0, y, S, h);
+  }
+  ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 180; i++) {
+    const y = Math.random() * S;
+    ctx.strokeStyle = `rgba(${40 + rand(-15,15)|0}, ${26 + rand(-10,10)|0}, ${16 + rand(-8,8)|0}, 0.55)`;
+    ctx.lineWidth = rand(0.3, 1.0);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(S*0.3, y + rand(-6,6), S*0.7, y + rand(-6,6), S, y + rand(-6,6));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  const imgData = ctx.getImageData(0, 0, S, S);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 16;
+    d[i] = clamp(d[i]+n, 0, 255);
+    d[i+1] = clamp(d[i+1]+n, 0, 255);
+    d[i+2] = clamp(d[i+2]+n, 0, 255);
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+
+function makeFeltTexture() {
+  const S = 1024;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+  const base = ctx.createRadialGradient(S/2, S/2, S*0.1, S/2, S/2, S*0.75);
+  base.addColorStop(0, '#8a2b24');
+  base.addColorStop(0.6, '#721e1a');
+  base.addColorStop(1, '#5a1614');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 70; i++) {
+    const x = Math.random() * S;
+    const y = Math.random() * S;
+    const r = rand(60, 220);
+    const a = rand(0.05, 0.14);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const bright = Math.random() < 0.5;
+    g.addColorStop(0, bright ? `rgba(160,50,40,${a})` : `rgba(50,12,10,${a})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x-r, y-r, r*2, r*2);
+  }
+  for (let i = 0; i < 6000; i++) {
+    const x = Math.random() * S;
+    const y = Math.random() * S;
+    const len = rand(3, 12);
+    const a = Math.random() * Math.PI * 2;
+    const bright = Math.random() < 0.5;
+    ctx.strokeStyle = bright
+      ? `rgba(150,55,45,${rand(0.05,0.18)})`
+      : `rgba(45,10,8,${rand(0.08,0.20)})`;
+    ctx.lineWidth = rand(0.3, 0.9);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+    ctx.stroke();
+  }
+  const imgData = ctx.getImageData(0, 0, S, S);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 22;
+    d[i]   = clamp(d[i] + n, 0, 255);
+    d[i+1] = clamp(d[i+1] + n * 0.7, 0, 255);
+    d[i+2] = clamp(d[i+2] + n * 0.6, 0, 255);
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+
+function makeCupTexture() {
+  const W = 512, H = 512;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#2a2620';
+  ctx.fillRect(0, 0, W, H);
+  for (let y = 0; y < H; y += 2) {
+    const a = Math.random() * 0.06;
+    ctx.fillStyle = Math.random() < 0.5
+      ? `rgba(255,255,255,${a})`
+      : `rgba(0,0,0,${a})`;
+    ctx.fillRect(0, y, W, 1);
+  }
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(255,255,255,0.10)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.18)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  const imgData = ctx.getImageData(0, 0, W, H);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 10;
+    d[i] = clamp(d[i]+n, 0, 255);
+    d[i+1] = clamp(d[i+1]+n, 0, 255);
+    d[i+2] = clamp(d[i+2]+n, 0, 255);
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+
+/* ============================================================
+   桌面
+============================================================ */
+const TABLE_W = 60, TABLE_H = 60;
+const tableMat = new THREE.MeshStandardMaterial({
+  map: makeTableTexture(),
+  color: 0xffffff,
+  roughness: 0.86,
+  metalness: 0.0,
+});
+const table = new THREE.Mesh(new THREE.PlaneGeometry(TABLE_W, TABLE_H), tableMat);
+table.rotation.x = -Math.PI/2;
+table.position.y = 0;
+scene.add(table);
+
+/* ============================================================
+   骰盘
+============================================================ */
+const GROUND_TOP_Y = 0.42;
+const TRAY_INNER = 4.30;
+const TRAY_OUTER = 5.15;
+const TRAY_EDGE  = 0.85;
+const FELT_THICK = 0.06;
+const TRAY_BASE_H = GROUND_TOP_Y - FELT_THICK * 0.5;
+
+const walnutTex = makeWalnutTexture();
+const walnutMat = new THREE.MeshPhysicalMaterial({
+  map: walnutTex,
+  color: 0xffffff,
+  roughness: 0.55,
+  metalness: 0.0,
+  clearcoat: 0.4,
+  clearcoatRoughness: 0.35,
+  envMapIntensity: 0.55,
+});
+
+const trayBase = new THREE.Mesh(
+  new RoundedBoxGeometry(TRAY_OUTER*2, TRAY_BASE_H, TRAY_OUTER*2, 4, 0.10),
+  walnutMat
+);
+trayBase.position.set(0, TRAY_BASE_H/2, 0);
+scene.add(trayBase);
+
+const FRAME_H = 0.36;
+const FRAME_Y = GROUND_TOP_Y + FRAME_H/2;
+
+const frameNSgeo = new THREE.BoxGeometry(TRAY_OUTER*2, FRAME_H, TRAY_EDGE);
+const frameN = new THREE.Mesh(frameNSgeo, walnutMat);
+frameN.position.set(0, FRAME_Y, -(TRAY_OUTER - TRAY_EDGE/2));
+scene.add(frameN);
+const frameS = new THREE.Mesh(frameNSgeo, walnutMat);
+frameS.position.set(0, FRAME_Y, (TRAY_OUTER - TRAY_EDGE/2));
+scene.add(frameS);
+
+const frameWEgeo = new THREE.BoxGeometry(TRAY_EDGE, FRAME_H, TRAY_OUTER*2 - TRAY_EDGE*2);
+const frameW = new THREE.Mesh(frameWEgeo, walnutMat);
+frameW.position.set(-(TRAY_OUTER - TRAY_EDGE/2), FRAME_Y, 0);
+scene.add(frameW);
+const frameE = new THREE.Mesh(frameWEgeo, walnutMat);
+frameE.position.set((TRAY_OUTER - TRAY_EDGE/2), FRAME_Y, 0);
+scene.add(frameE);
+
+const goldLineMat = new THREE.MeshBasicMaterial({
+  color: 0xb8893a, transparent: true, opacity: 0.55,
+});
+const LINE_LIFT = 0.012;
+const lineR = 0.012;
+
+const lineNS = new THREE.BoxGeometry(TRAY_INNER*2, lineR, lineR);
+const lineN = new THREE.Mesh(lineNS, goldLineMat);
+lineN.position.set(0, GROUND_TOP_Y + LINE_LIFT, -TRAY_INNER);
+scene.add(lineN);
+const lineS = new THREE.Mesh(lineNS, goldLineMat);
+lineS.position.set(0, GROUND_TOP_Y + LINE_LIFT, TRAY_INNER);
+scene.add(lineS);
+
+const lineWE = new THREE.BoxGeometry(lineR, lineR, TRAY_INNER*2);
+const lineW = new THREE.Mesh(lineWE, goldLineMat);
+lineW.position.set(-TRAY_INNER, GROUND_TOP_Y + LINE_LIFT, 0);
+scene.add(lineW);
+const lineE = new THREE.Mesh(lineWE, goldLineMat);
+lineE.position.set(TRAY_INNER, GROUND_TOP_Y + LINE_LIFT, 0);
+scene.add(lineE);
+
+const feltTex = makeFeltTexture();
+const feltMat = new THREE.MeshStandardMaterial({
+  map: feltTex,
+  color: 0xffffff,
+  roughness: 0.98,
+  metalness: 0.0,
+});
+const felt = new THREE.Mesh(
+  new THREE.BoxGeometry(TRAY_INNER*2, FELT_THICK, TRAY_INNER*2),
+  feltMat
+);
+felt.position.set(0, GROUND_TOP_Y - FELT_THICK/2, 0);
+scene.add(felt);
+
+/* ============================================================
+   锁定托盘
+============================================================ */
+const HOLD_Z = -6.6;
+const HOLD_Y = GROUND_TOP_Y + 0.05;
+
+const holdTray = new THREE.Mesh(
+  new RoundedBoxGeometry(8.5, 0.22, 1.9, 4, 0.09),
+  walnutMat
+);
+holdTray.position.set(0, HOLD_Y - 0.11, HOLD_Z);
+scene.add(holdTray);
+
+const holdFelt = new THREE.Mesh(
+  new THREE.BoxGeometry(8.0, 0.03, 1.5),
+  feltMat
+);
+holdFelt.position.set(0, HOLD_Y + 0.018, HOLD_Z);
+scene.add(holdFelt);
+
+const divMat = new THREE.MeshBasicMaterial({ color: 0xb8893a, transparent:true, opacity:0.35 });
+for (let i = 1; i < 5; i++) {
+  const x = (i - 2.5) * 1.5;
+  const div = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.001, 1.4), divMat);
+  div.position.set(x, HOLD_Y + 0.042, HOLD_Z);
+  scene.add(div);
+}
+
+const HOLD_SLOTS = [];
+for (let i = 0; i < 5; i++) {
+  HOLD_SLOTS.push({
+    x: (i - 2) * 1.5,
+    y: HOLD_Y + 0.65,
+    z: HOLD_Z,
+  });
+}
+
+/* ============================================================
+   骰面纹理
+============================================================ */
+const DOT_LAYOUTS = {
+  1: [[1,1]],
+  2: [[0,0],[2,2]],
+  3: [[0,0],[1,1],[2,2]],
+  4: [[0,0],[2,0],[0,2],[2,2]],
+  5: [[0,0],[2,0],[1,1],[0,2],[2,2]],
+  6: [[0,0],[2,0],[0,1],[2,1],[0,2],[2,2]],
+};
+
+function makeDiceFaceTexture(value) {
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+  const base = ctx.createLinearGradient(0, 0, S, S);
+  base.addColorStop(0,    '#fdfaf3');
+  base.addColorStop(0.5,  '#f6f2e9');
+  base.addColorStop(1,    '#ede8dc');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, S, S);
+  const imgData = ctx.getImageData(0, 0, S, S);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const n = (Math.random() - 0.5) * 6;
+    data[i]   = clamp(data[i] + n, 0, 255);
+    data[i+1] = clamp(data[i+1] + n, 0, 255);
+    data[i+2] = clamp(data[i+2] + n, 0, 255);
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const vig = ctx.createRadialGradient(S*0.5, S*0.5, S*0.25, S*0.5, S*0.5, S*0.78);
+  vig.addColorStop(0, 'rgba(255,255,255,0)');
+  vig.addColorStop(1, 'rgba(70,60,45,0.09)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, S, S);
+  const pad = S * 0.27;
+  const span = S - pad * 2;
+  const R = S * 0.068;
+  DOT_LAYOUTS[value].forEach(([cx, cy]) => {
+    const x = pad + (cx / 2) * span;
+    const y = pad + (cy / 2) * span;
+    const pit = ctx.createRadialGradient(x - R*0.3, y - R*0.35, R*0.1, x, y, R*1.05);
+    pit.addColorStop(0,    '#3a322a');
+    pit.addColorStop(0.4,  '#1c1815');
+    pit.addColorStop(0.85, '#0d0b09');
+    pit.addColorStop(1,    '#060505');
+    ctx.fillStyle = pit;
+    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(x, y, R * 0.85, Math.PI*0.62, Math.PI*1.38);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(x, y, R, Math.PI*0.72, Math.PI*1.28);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.arc(x, y, R, Math.PI*1.72, Math.PI*2.28);
+    ctx.stroke();
+  });
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+
+const FACE_TEX = {};
+for (let v = 1; v <= 6; v++) FACE_TEX[v] = makeDiceFaceTexture(v);
+
+const FACE_ORDER = [1, 6, 2, 5, 3, 4];
+
+const FACE_NORMALS = [
+  { n: new THREE.Vector3(1,0,0),  v: 1 },
+  { n: new THREE.Vector3(-1,0,0), v: 6 },
+  { n: new THREE.Vector3(0,1,0),  v: 2 },
+  { n: new THREE.Vector3(0,-1,0), v: 5 },
+  { n: new THREE.Vector3(0,0,1),  v: 3 },
+  { n: new THREE.Vector3(0,0,-1), v: 4 },
+];
+
+/* ============================================================
+   物理世界
+============================================================ */
+const world = new CANNON.World();
+world.gravity.set(0, -42, 0);
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.allowSleep = true;
+world.defaultContactMaterial.friction = 0.36;
+world.defaultContactMaterial.restitution = 0.14;
+world.solver.iterations = 30;
+world.solver.tolerance = 0.0005;
+
+const groundMat = new CANNON.Material('ground');
+const groundBody = new CANNON.Body({
+  mass: 0,
+  shape: new CANNON.Box(new CANNON.Vec3(TRAY_OUTER + 3, GROUND_TOP_Y/2, TRAY_OUTER + 3)),
+  material: groundMat,
+});
+groundBody.position.set(0, GROUND_TOP_Y/2, 0);
+world.addBody(groundBody);
+
+const WALL_H = 8.0;
+const WALL_T = 0.8;
+const WALL_OFFSET = TRAY_INNER + WALL_T/2;
+const WALL_LEN = TRAY_INNER * 2 + WALL_T * 2;
+
+function addBoxWall(x, z, w, d) {
+  const b = new CANNON.Body({
+    mass: 0,
+    shape: new CANNON.Box(new CANNON.Vec3(w/2, WALL_H/2, d/2)),
+    material: groundMat,
+  });
+  b.position.set(x, GROUND_TOP_Y + WALL_H/2, z);
+  world.addBody(b);
+}
+addBoxWall(-WALL_OFFSET, 0, WALL_T, WALL_LEN);
+addBoxWall( WALL_OFFSET, 0, WALL_T, WALL_LEN);
+addBoxWall(0, -WALL_OFFSET, WALL_LEN, WALL_T);
+addBoxWall(0,  WALL_OFFSET, WALL_LEN, WALL_T);
+
+const dicePhysMat = new CANNON.Material('dice');
+world.addContactMaterial(new CANNON.ContactMaterial(
+  dicePhysMat, groundMat,
+  {
+    friction: 0.48,
+    restitution: 0.14,
+    contactEquationStiffness: 3e7,
+    contactEquationRelaxation: 2,
+    frictionEquationStiffness: 1.2e7,
+  }
+));
+world.addContactMaterial(new CANNON.ContactMaterial(
+  dicePhysMat, dicePhysMat,
+  {
+    friction: 0.24,
+    restitution: 0.18,
+    contactEquationStiffness: 2e7,
+  }
+));
+
+/* ============================================================
+   骰子
+============================================================ */
+const DICE_SIZE = 1.10;
+const HALF = DICE_SIZE / 2;
+const DICE_HALF_R = 0.72;
+
+const diceFaceMats = FACE_ORDER.map(v => new THREE.MeshPhysicalMaterial({
+  map: FACE_TEX[v],
+  color: 0xffffff,
+  roughness: 0.34,
+  metalness: 0.0,
+  clearcoat: 0.75,
+  clearcoatRoughness: 0.16,
+  envMapIntensity: 0.9,
+}));
+
+const diceGeo = new RoundedBoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 6, 0.16);
+
+const DICE_COUNT = 5;
+const dice = [];
+
+const SLOT_R = 1.05;
+const CUP_SLOTS = [
+  { x: 0,       z: 0       },
+  { x: 0,       z: -SLOT_R },
+  { x: 0,       z:  SLOT_R },
+  { x: -SLOT_R, z: 0       },
+  { x:  SLOT_R, z: 0       },
+];
+
+for (let i = 0; i < DICE_COUNT; i++) {
+  const mesh = new THREE.Mesh(diceGeo, diceFaceMats);
+  scene.add(mesh);
+
+  const body = new CANNON.Body({
+    mass: 1.35,
+    shape: new CANNON.Box(new CANNON.Vec3(HALF, HALF, HALF)),
+    material: dicePhysMat,
+    linearDamping: 0.16,
+    angularDamping: 0.24,
+    allowSleep: true,
+    sleepSpeedLimit: 0.24,
+    sleepTimeLimit: 0.12,
+  });
+  body.type = CANNON.Body.STATIC;
+  world.addBody(body);
+
+  let lastImpact = 0;
+  body.addEventListener('collide', (e) => {
+    const now = performance.now();
+    if (now - lastImpact < 110) return;
+    const rel = e.contact.getImpactVelocityAlongNormal();
+    if (Math.abs(rel) > 1.6) {
+      lastImpact = now;
+      sfx.clack(clamp(Math.abs(rel) / 12, 0.1, 1));
+    }
+  });
+
+  dice.push({
+    index: i,
+    mesh,
+    body,
+    value: 1,
+    kept: false,
+    lockAnim: null,
+    savedPos: null,
+    savedQuat: null,
+    lpos: new THREE.Vector3(0, 0, 0),
+    lvel: new THREE.Vector3(0, 0, 0),
+    lquat: new THREE.Quaternion(),
+  });
+}
+
+/* ============================================================
+   骰盅
+============================================================ */
+const cupGroup = new THREE.Group();
+scene.add(cupGroup);
+
+const CUP_CENTER_Y = 1.31;
+const CUP_REST_Y = GROUND_TOP_Y + CUP_CENTER_Y;
+const CUP_LIFT = 2.8;
+const CUP_BASE_Z = 0;
+
+cupGroup.position.set(0, CUP_REST_Y, CUP_BASE_Z);
+
+const cupProfile = [
+  new THREE.Vector2(0.000, 0.020),
+  new THREE.Vector2(1.500, 0.020),
+  new THREE.Vector2(1.750, 0.060),
+  new THREE.Vector2(1.880, 0.150),
+  new THREE.Vector2(1.950, 0.400),
+  new THREE.Vector2(2.020, 1.000),
+  new THREE.Vector2(2.120, 1.600),
+  new THREE.Vector2(2.220, 2.200),
+  new THREE.Vector2(2.280, 2.580),
+  new THREE.Vector2(2.340, 2.620),
+  new THREE.Vector2(2.440, 2.620),
+  new THREE.Vector2(2.450, 2.580),
+  new THREE.Vector2(2.420, 2.200),
+  new THREE.Vector2(2.350, 1.600),
+  new THREE.Vector2(2.250, 1.000),
+  new THREE.Vector2(2.150, 0.400),
+  new THREE.Vector2(2.050, 0.150),
+  new THREE.Vector2(1.900, 0.000),
+  new THREE.Vector2(0.000, 0.000),
+];
+
+const cupGeo = new THREE.LatheGeometry(cupProfile, 96);
+cupGeo.translate(0, -CUP_CENTER_Y, 0);
+
+const cupTex = makeCupTexture();
+const cupMat = new THREE.MeshPhysicalMaterial({
+  map: cupTex,
+  color: 0xffffff,
+  roughness: 0.42,
+  metalness: 0.0,
+  clearcoat: 0.55,
+  clearcoatRoughness: 0.32,
+  envMapIntensity: 0.75,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 1.0,
+});
+
+const cupBody = new THREE.Mesh(cupGeo, cupMat);
+cupGroup.add(cupBody);
+
+const brassMat = new THREE.MeshPhysicalMaterial({
+  color: 0xb8893a,
+  metalness: 1.0,
+  roughness: 0.22,
+  clearcoat: 0.6,
+  clearcoatRoughness: 0.15,
+  envMapIntensity: 1.5,
+});
+const cupRimTop = new THREE.Mesh(
+  new THREE.TorusGeometry(2.405, 0.055, 14, 96),
+  brassMat
+);
+cupRimTop.rotation.x = Math.PI/2;
+cupRimTop.position.y = 2.620 - CUP_CENTER_Y;
+cupGroup.add(cupRimTop);
+
+const cupWaist = new THREE.Mesh(
+  new THREE.TorusGeometry(2.255, 0.018, 10, 96),
+  brassMat
+);
+cupWaist.rotation.x = Math.PI/2;
+cupWaist.position.y = 1.000 - CUP_CENTER_Y;
+cupGroup.add(cupWaist);
+
+const cupBaseRing = new THREE.Mesh(
+  new THREE.TorusGeometry(2.155, 0.026, 10, 96),
+  brassMat
+);
+cupBaseRing.rotation.x = Math.PI/2;
+cupBaseRing.position.y = 0.400 - CUP_CENTER_Y;
+cupGroup.add(cupBaseRing);
+
+const CUP_SLOT_Y = 0.67 - CUP_CENTER_Y;
+
+const INNER_PROFILE = [
+  { y: -1.29, r: 1.50 },
+  { y: -1.25, r: 1.75 },
+  { y: -1.16, r: 1.88 },
+  { y: -0.91, r: 1.95 },
+  { y: -0.31, r: 2.02 },
+  { y:  0.29, r: 2.12 },
+  { y:  0.89, r: 2.22 },
+  { y:  1.27, r: 2.28 },
+];
+
+function innerRadiusAt(localY) {
+  if (localY <= INNER_PROFILE[0].y) return INNER_PROFILE[0].r;
+  if (localY >= INNER_PROFILE[INNER_PROFILE.length-1].y) return INNER_PROFILE[INNER_PROFILE.length-1].r;
+  for (let i = 0; i < INNER_PROFILE.length - 1; i++) {
+    const a = INNER_PROFILE[i], b = INNER_PROFILE[i+1];
+    if (localY >= a.y && localY <= b.y) {
+      const t = (localY - a.y) / (b.y - a.y);
+      return a.r + t * (b.r - a.r);
+    }
+  }
+  return 1.9;
+}
+
+/* ============================================================
+   骰盅动态状态
+============================================================ */
+let cupLift = 0;
+let cupLiftTarget = 0;
+let cupFlyUp = 0;
+let cupFadingOut = false;
+
+/* 倒扣动画 */
+let cupTipping = false;
+let cupTipTime = 0;
+const CUP_TIP_DURATION = 0.70;
+const CUP_RELEASE_AT = 0.55;   // 倒扣到 55% 进度时释放骰子（smoothstep 后约 95°）
+const cupTipStartQ = new THREE.Quaternion();
+const cupTipStartPos = new THREE.Vector3();
+const cupTipEndQ = new THREE.Quaternion();
+const cupTipEndPos = new THREE.Vector3();
+
+/* 骰子是否已经释放（从倒扣过渡到自由飞行） */
+let diceReleased = false;
+
+const _cupQuatInv = new THREE.Quaternion();
+const _prevCupPos = new THREE.Vector3();
+const _prevCupVel = new THREE.Vector3();
+const _cupVel = new THREE.Vector3();
+const _cupAccWorld = new THREE.Vector3();
+const _hasCupSample = { v: false };
+const _effG = new THREE.Vector3();
+const _gLocal = new THREE.Vector3();
+const _accLocal = new THREE.Vector3();
+const _dieWorldPos = new THREE.Vector3();
+const _dieFinalQuat = new THREE.Quaternion();
+const _rollAxis = new THREE.Vector3();
+const _rollDelta = new THREE.Quaternion();
+const _tmpEuler = new THREE.Euler();
+const _spillDir = new THREE.Vector3();
+const _dieDir = new THREE.Vector3();
+
+/* ============================================================
+   音效
+============================================================ */
+let audioCtx = null;
+let soundOn = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function tone(freq, dur, type='sine', vol=0.08, slide=null, delay=0) {
+  if (!audioCtx || !soundOn) return;
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, slide), t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.010);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.03);
+}
+function noise(dur, vol=0.05, freq=1600, q=1.2, delay=0) {
+  if (!audioCtx || !soundOn) return;
+  const t0 = audioCtx.currentTime + delay;
+  const len = Math.max(1, Math.floor(audioCtx.sampleRate * dur));
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 2.2);
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const flt = audioCtx.createBiquadFilter();
+  flt.type = 'bandpass'; flt.frequency.value = freq; flt.Q.value = q;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(flt); flt.connect(g); g.connect(audioCtx.destination);
+  src.start(t0);
+}
+const sfx = {
+  clack(i) {
+    const f = 900 + i * 1500;
+    noise(0.05, 0.04 * i, f, 2.6);
+    tone(320 + i * 200, 0.05, 'triangle', 0.026 * i, 180);
+  },
+  shake() { noise(0.06, 0.018, rand(1200, 2000), 2.0); },
+  cupRattle() {
+    noise(0.04, 0.028, rand(700, 1300), 3.2);
+    tone(rand(260, 400), 0.035, 'triangle', 0.015, 220);
+  },
+  lift() {
+    noise(0.18, 0.045, 900, 1.2);
+    tone(180, 0.22, 'sine', 0.04, 420);
+  },
+  throwOut() {
+    noise(0.22, 0.06, 800, 0.9);
+    tone(260, 0.30, 'triangle', 0.05, 90);
+    tone(520, 0.15, 'sine', 0.03, 260, 0.02);
+  },
+  tip() {
+    noise(0.28, 0.05, 600, 0.8);
+    tone(140, 0.35, 'sine', 0.035, 60);
+  },
+  release() {
+    /* 骰子洒落时的撞击声 */
+    noise(0.12, 0.055, 900, 1.2);
+    tone(320, 0.10, 'triangle', 0.03, 220);
+  },
+  lock() { tone(660, 0.14, 'triangle', 0.05, 880); tone(990, 0.10, 'sine', 0.03, null, 0.04); },
+  unlock() { tone(520, 0.10, 'triangle', 0.04, 380); },
+  score(n) {
+    const base = 540;
+    for (let i = 0; i < Math.min(n, 4); i++) {
+      tone(base * Math.pow(1.20, i), 0.13, 'triangle', 0.04, null, i * 0.05);
+    }
+  },
+  bonus() { [587,784,988,1175].forEach((f,i)=> tone(f,0.24,'sine',0.05,null,i*0.08)); },
+  end() { [523,440,349,262].forEach((f,i)=> tone(f,0.5,'triangle',0.05,null,i*0.14)); },
+};
+
+/* ============================================================
+   计分规则
+============================================================ */
+const CATEGORIES = [
+  { id:'ones',   name:'一点', upper:true },
+  { id:'twos',   name:'二点', upper:true },
+  { id:'threes', name:'三点', upper:true },
+  { id:'fours',  name:'四点', upper:true },
+  { id:'fives',  name:'五点', upper:true },
+  { id:'sixes',  name:'六点', upper:true },
+  { id:'fullHouse',     name:'葫芦' },
+  { id:'smallStraight', name:'小顺' },
+  { id:'largeStraight', name:'大顺' },
+  { id:'yahtzee',       name:'快艇' },
+  { id:'chance',        name:'机会' },
+];
+const UPPER_IDS = CATEGORIES.filter(c => c.upper).map(c => c.id);
+
+function countFaces(vals) {
+  const c = [0,0,0,0,0,0,0];
+  for (const v of vals) c[v]++;
+  return c;
+}
+function longestRun(vals) {
+  const u = [...new Set(vals)].sort((a,b)=>a-b);
+  let best = 1, run = 1;
+  for (let i = 1; i < u.length; i++) {
+    if (u[i] === u[i-1] + 1) { run++; if (run > best) best = run; }
+    else run = 1;
+  }
+  return best;
+}
+function scoreFor(id, vals) {
+  const c = countFaces(vals);
+  const sum = vals.reduce((a,b)=>a+b, 0);
+  switch (id) {
+    case 'ones':   return c[1] * 1;
+    case 'twos':   return c[2] * 2;
+    case 'threes': return c[3] * 3;
+    case 'fours':  return c[4] * 4;
+    case 'fives':  return c[5] * 5;
+    case 'sixes':  return c[6] * 6;
+    case 'fullHouse': {
+      const nz = c.filter(x => x > 0).sort((a,b)=>a-b);
+      if (nz.length === 2 && nz[0] === 2 && nz[1] === 3) return 25;
+      if (nz.length === 1 && nz[0] === 5) return 25;
+      return 0;
+    }
+    case 'smallStraight': return longestRun(vals) >= 4 ? 30 : 0;
+    case 'largeStraight': return longestRun(vals) >= 5 ? 40 : 0;
+    case 'yahtzee':       return c.some(x => x === 5) ? 50 : 0;
+    case 'chance':        return sum;
+  }
+  return 0;
+}
+
+/* ============================================================
+   游戏状态
+============================================================ */
+const G = {
+  round: 0,
+  rollsLeft: 3,
+  total: 0,
+  scores: {},
+  phase: 'idle',
+  bonusGiven: false,
+  settledTimer: 0,
+  keptOrder: [],
+};
+
+let best = parseInt(localStorage.getItem('dice_classic_best') || '0', 10);
+
+/* ============================================================
+   DOM
+============================================================ */
+const elRound = document.getElementById('uiRound');
+const elRollsDots = document.getElementById('uiRollsDots');
+const elTotal = document.getElementById('uiTotal');
+const elBoard = document.getElementById('board');
+const elHint  = document.getElementById('hint');
+const elShake = document.getElementById('shakeBtn');
+const elShakeLabel = document.getElementById('shakeLabel');
+const elStart = document.getElementById('startScreen');
+const elOver  = document.getElementById('overScreen');
+
+const labels = [];
+for (let i = 0; i < DICE_COUNT; i++) {
+  const el = document.createElement('div');
+  el.className = 'dice-label';
+  document.body.appendChild(el);
+  labels.push(el);
+}
+
+let hintTimer = null;
+function showHint(msg, ms = 1800) {
+  elHint.textContent = msg;
+  elHint.classList.add('show');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => elHint.classList.remove('show'), ms);
+}
+function floatScore(text, x, y) {
+  const el = document.createElement('div');
+  el.className = 'float-score';
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1150);
+}
+
+/* ============================================================
+   UI
+============================================================ */
+function updateTopbar() {
+  elRound.textContent = Math.min(G.round + 1, CATEGORIES.length) + ' / ' + CATEGORIES.length;
+  elTotal.textContent = G.total;
+  elRollsDots.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    if (i < G.rollsLeft) dot.classList.add('on');
+    else dot.classList.add('used');
+    elRollsDots.appendChild(dot);
+  }
+}
+
+function renderBoard() {
+  const vals = dice.map(d => d.value);
+  const canScore = G.phase === 'settled';
+  let html = '';
+  for (const cat of CATEGORIES) {
+    const used = Object.prototype.hasOwnProperty.call(G.scores, cat.id);
+    let cls = 'cat';
+    let text = '—';
+    if (used) {
+      cls += ' used';
+      text = G.scores[cat.id];
+    } else {
+      const p = scoreFor(cat.id, vals);
+      if (p > 0) { cls += ' hot'; text = '+' + p; }
+      else if (canScore) text = '0';
+      if (!canScore) cls += ' locked';
+    }
+    html += `<button class="${cls}" data-id="${cat.id}">
+      <span class="n">${cat.name}</span>
+      <span class="s">${text}</span>
+    </button>`;
+  }
+  elBoard.innerHTML = html;
+}
+
+function updateShakeBtn() {
+  if (G.phase === 'done') {
+    elShake.disabled = true;
+    elShake.classList.remove('shaking');
+    elShakeLabel.textContent = '已结束';
+    return;
+  }
+  if (G.phase === 'shaking') {
+    elShake.disabled = false;
+    elShake.classList.add('shaking');
+    elShakeLabel.textContent = '松开投掷';
+    return;
+  }
+  if (G.phase === 'flying') {
+    elShake.disabled = true;
+    elShake.classList.remove('shaking');
+    elShakeLabel.textContent = '骰子飞行中';
+    return;
+  }
+  if (G.phase === 'settled') {
+    if (G.rollsLeft > 0 && !dice.every(d => d.kept)) {
+      elShake.disabled = false;
+      elShake.classList.remove('shaking');
+      elShakeLabel.textContent = '按住再摇';
+      return;
+    }
+    elShake.disabled = true;
+    elShake.classList.remove('shaking');
+    elShakeLabel.textContent = '请选择计分格';
+    return;
+  }
+  elShake.disabled = false;
+  elShake.classList.remove('shaking');
+  elShakeLabel.textContent = '按住摇骰';
+}
+
+function updateUI() {
+  updateTopbar();
+  renderBoard();
+  updateShakeBtn();
+}
+
+/* ============================================================
+   摇骰动画
+============================================================ */
+let shakeTime = 0;
+let shakeSoundTimer = 0;
+let rattleSoundTimer = 0;
+let vibrateTimer = 0;
+
+function updateShakeAnim(dt) {
+  shakeTime += dt;
+  const lift = cupLift;
+
+  const t = shakeTime;
+  const s1 = Math.sin(t * 16) + 0.45 * Math.sin(t * 22.5 + 1.3);
+  const s2 = Math.sin(t * 13.5 + 0.7) + 0.4 * Math.sin(t * 19 + 2.1);
+  const s3 = Math.sin(t * 20 + 1.9);
+
+  cupGroup.rotation.z = s1 * 0.75 * lift;
+  cupGroup.rotation.x = s2 * 0.60 * lift;
+  cupGroup.rotation.y = s3 * 0.40 * lift;
+
+  const baseY = CUP_REST_Y + cupLift * CUP_LIFT;
+  cupGroup.position.x = s1 * 1.00 * lift;
+  cupGroup.position.y = baseY + Math.abs(s2) * 0.60 * lift;
+  cupGroup.position.z = CUP_BASE_Z + s3 * 0.55 * lift;
+
+  if (_hasCupSample.v && dt > 0.0005) {
+    _cupVel.subVectors(cupGroup.position, _prevCupPos).divideScalar(dt);
+    if (_prevCupVel.lengthSq() > 0) {
+      _cupAccWorld.subVectors(_cupVel, _prevCupVel).divideScalar(dt);
+    } else {
+      _cupAccWorld.set(0, 0, 0);
+    }
+  } else {
+    _cupVel.set(0, 0, 0);
+    _cupAccWorld.set(0, 0, 0);
+    _hasCupSample.v = true;
+  }
+  _prevCupPos.copy(cupGroup.position);
+  _prevCupVel.copy(_cupVel);
+
+  _cupQuatInv.copy(cupGroup.quaternion).invert();
+  _gLocal.set(0, -55, 0).applyQuaternion(_cupQuatInv);
+  _accLocal.copy(_cupAccWorld).applyQuaternion(_cupQuatInv).multiplyScalar(0.35);
+  _effG.copy(_gLocal).sub(_accLocal);
+
+  const bottomY = -1.29 + DICE_HALF_R;
+  const topY = 1.31 - DICE_HALF_R;
+
+  for (let i = 0; i < DICE_COUNT; i++) {
+    const d = dice[i];
+    if (d.kept) continue;
+
+    d.lvel.x += _effG.x * dt;
+    d.lvel.y += _effG.y * dt;
+    d.lvel.z += _effG.z * dt;
+
+    const damp = Math.pow(0.90, dt * 60);
+    d.lvel.multiplyScalar(damp);
+
+    const sp = d.lvel.length();
+    if (sp > 14) d.lvel.multiplyScalar(14 / sp);
+
+    d.lpos.x += d.lvel.x * dt;
+    d.lpos.y += d.lvel.y * dt;
+    d.lpos.z += d.lvel.z * dt;
+
+    if (d.lpos.y < bottomY) {
+      d.lpos.y = bottomY;
+      if (d.lvel.y < 0) {
+        const v = -d.lvel.y;
+        d.lvel.y = v * 0.42;
+        if (v > 1.2) sfx.clack(clamp(v / 16, 0.15, 0.65));
+      }
+    }
+    if (d.lpos.y > topY) {
+      d.lpos.y = topY;
+      if (d.lvel.y > 0) {
+        const v = d.lvel.y;
+        d.lvel.y = -v * 0.42;
+        if (v > 1.2) sfx.clack(clamp(v / 16, 0.15, 0.65));
+      }
+    }
+    const r = Math.sqrt(d.lpos.x * d.lpos.x + d.lpos.z * d.lpos.z);
+    const rMax = Math.max(0.15, innerRadiusAt(d.lpos.y) - DICE_HALF_R);
+    if (r > rMax) {
+      const scale = rMax / r;
+      d.lpos.x *= scale;
+      d.lpos.z *= scale;
+      const nx = r > 0.001 ? d.lpos.x / rMax : 0;
+      const nz = r > 0.001 ? d.lpos.z / rMax : 0;
+      const vr = d.lvel.x * nx + d.lvel.z * nz;
+      if (vr > 0) {
+        d.lvel.x -= nx * vr * 1.5;
+        d.lvel.z -= nz * vr * 1.5;
+        if (vr > 1.2) sfx.clack(clamp(vr / 16, 0.15, 0.65));
+      }
+    }
+
+    for (let j = i + 1; j < DICE_COUNT; j++) {
+      const d2 = dice[j];
+      if (d2.kept) continue;
+      const dx = d2.lpos.x - d.lpos.x;
+      const dy = d2.lpos.y - d.lpos.y;
+      const dz = d2.lpos.z - d.lpos.z;
+      const distSq = dx * dx + dy * dy + dz * dz;
+      const minDist = DICE_HALF_R * 2;
+      if (distSq < minDist * minDist && distSq > 0.0001) {
+        const dist = Math.sqrt(distSq);
+        const overlap = minDist - dist;
+        const nx = dx / dist, ny = dy / dist, nz = dz / dist;
+        const push = overlap * 0.5;
+        d.lpos.x -= nx * push; d.lpos.y -= ny * push; d.lpos.z -= nz * push;
+        d2.lpos.x += nx * push; d2.lpos.y += ny * push; d2.lpos.z += nz * push;
+        const dvx = d2.lvel.x - d.lvel.x;
+        const dvy = d2.lvel.y - d.lvel.y;
+        const dvz = d2.lvel.z - d.lvel.z;
+        const vn = dvx * nx + dvy * ny + dvz * nz;
+        if (vn < 0) {
+          const imp = -vn * 0.5;
+          d.lvel.x -= nx * imp; d.lvel.y -= ny * imp; d.lvel.z -= nz * imp;
+          d2.lvel.x += nx * imp; d2.lvel.y += ny * imp; d2.lvel.z += nz * imp;
+        }
+      }
+    }
+
+    const speed = d.lvel.length();
+    if (speed > 0.05) {
+      const spXZ = Math.sqrt(d.lvel.x * d.lvel.x + d.lvel.z * d.lvel.z);
+      if (spXZ > 0.02) {
+        _rollAxis.set(d.lvel.z / spXZ, 0, -d.lvel.x / spXZ);
+        const angle = speed * dt * 2.4;
+        _rollDelta.setFromAxisAngle(_rollAxis, angle);
+        d.lquat.premultiply(_rollDelta);
+      }
+      _tmpEuler.set(
+        (Math.random() - 0.5) * speed * dt * 1.6,
+        (Math.random() - 0.5) * speed * dt * 1.6,
+        (Math.random() - 0.5) * speed * dt * 1.6
+      );
+      _rollDelta.setFromEuler(_tmpEuler);
+      d.lquat.multiply(_rollDelta);
+      d.lquat.normalize();
+    }
+  }
+
+  for (let i = 0; i < DICE_COUNT; i++) {
+    const d = dice[i];
+    if (d.kept) continue;
+    _dieWorldPos.copy(d.lpos).applyQuaternion(cupGroup.quaternion);
+    d.body.type = CANNON.Body.KINEMATIC;
+    d.body.position.set(
+      cupGroup.position.x + _dieWorldPos.x,
+      cupGroup.position.y + _dieWorldPos.y,
+      cupGroup.position.z + _dieWorldPos.z
+    );
+    _dieFinalQuat.copy(cupGroup.quaternion).multiply(d.lquat);
+    d.body.quaternion.set(
+      _dieFinalQuat.x, _dieFinalQuat.y, _dieFinalQuat.z, _dieFinalQuat.w
+    );
+    d.body.velocity.set(0, 0, 0);
+    d.body.angularVelocity.set(0, 0, 0);
+  }
+
+  shakeSoundTimer -= dt;
+  if (shakeSoundTimer <= 0) {
+    shakeSoundTimer = rand(0.09, 0.16);
+    sfx.shake();
+  }
+  rattleSoundTimer -= dt;
+  if (rattleSoundTimer <= 0) {
+    rattleSoundTimer = rand(0.045, 0.095);
+    sfx.cupRattle();
+  }
+  vibrateTimer -= dt;
+  if (vibrateTimer <= 0 && navigator.vibrate && lift > 0.5) {
+    vibrateTimer = 0.12;
+    navigator.vibrate(10);
+  }
+}
+
+/* ============================================================
+   投掷 —— 阶段 1：启动倒扣动画，骰子仍留在盅内跟随翻转
+============================================================ */
+function throwDice() {
+  G.phase = 'flying';
+  G.settledTimer = 0;
+  sfx.throwOut();
+  sfx.tip();
+
+  cupTipStartQ.copy(cupGroup.quaternion);
+  cupTipStartPos.copy(cupGroup.position);
+
+  /* 计算倒扣目标姿态 —— 绕世界轴旋转约 145° */
+  const tipAxis = new THREE.Vector3(1, 0.15, 0.4).normalize();
+  const tipAngle = Math.PI * 0.80;
+  const tipRot = new THREE.Quaternion().setFromAxisAngle(tipAxis, tipAngle);
+  cupTipEndQ.copy(tipRot).multiply(cupTipStartQ);
+
+  /* 倒扣时向斜上方移动，看起来像被甩到一边 */
+  cupTipEndPos.set(
+    cupTipStartPos.x + 2.8,
+    cupTipStartPos.y + 1.0,
+    cupTipStartPos.z + 1.5
+  );
+
+  cupTipping = true;
+  cupTipTime = 0;
+  cupFadingOut = false;
+  cupFlyUp = 0;
+  diceReleased = false;
+
+  /* 骰子仍保持 kinematic，在 update 里跟随骰盅倒扣 —— 不释放 */
+
+  updateUI();
+}
+
+/* ============================================================
+   投掷 —— 阶段 2：倒扣到一定角度后，从盅口"洒出"骰子
+============================================================ */
+function releaseDice() {
+  if (diceReleased) return;
+  diceReleased = true;
+
+  const cupQ = cupGroup.quaternion.clone();
+  const cupP = cupGroup.position.clone();
+  const _v = new THREE.Vector3();
+
+  /* 骰盅本地 +Y 轴（开口方向）在世界坐标下的方向 —— 这就是"洒出"方向 */
+  _spillDir.set(0, 1, 0).applyQuaternion(cupQ);
+
+  dice.forEach((d, i) => {
+    if (d.kept) return;
+
+    _v.copy(d.lpos).applyQuaternion(cupQ);
+    const wpx = cupP.x + _v.x;
+    const wpy = cupP.y + _v.y;
+    const wpz = cupP.z + _v.z;
+
+    d.body.type = CANNON.Body.DYNAMIC;
+    d.body.position.set(wpx, wpy, wpz);
+
+    _dieFinalQuat.copy(cupQ).multiply(d.lquat);
+    d.body.quaternion.set(
+      _dieFinalQuat.x, _dieFinalQuat.y, _dieFinalQuat.z, _dieFinalQuat.w
+    );
+
+    /* 洒出速度 = 骰盅开口方向 + 一点随机扰动 */
+    const speed = rand(2.0, 3.2);
+    d.body.velocity.set(
+      _spillDir.x * speed + rand(-0.6, 0.6),
+      Math.max(_spillDir.y * speed, 0.2) + rand(0.2, 0.8),
+      _spillDir.z * speed + rand(-0.6, 0.6)
+    );
+    d.body.angularVelocity.set(rand(-28, 28), rand(-28, 28), rand(-28, 28));
+    d.body.wakeUp();
+    d.body.updateMassProperties();
+  });
+
+  sfx.release();
+
+  /* 轻微震屏，强调骰子洒出的瞬间 */
+  if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
+}
+
+/* ============================================================
+   骰盅显隐
+============================================================ */
+function showCup() {
+  cupLift = 0;
+  cupLiftTarget = 0;
+  cupFlyUp = 0;
+  cupFadingOut = false;
+  cupTipping = false;
+  cupTipTime = 0;
+  diceReleased = false;
+  cupMat.opacity = 1;
+  cupGroup.visible = true;
+  cupGroup.position.set(0, CUP_REST_Y, CUP_BASE_Z);
+  cupGroup.rotation.set(0,0,0);
+  cupGroup.quaternion.set(0,0,0,1);
+  _hasCupSample.v = false;
+}
+
+/* ============================================================
+   位置钳制
+============================================================ */
+const TRAY_BOUND = TRAY_INNER - DICE_SIZE * 0.52;
+const TRAY_MAX_Y = WALL_H - DICE_SIZE * 0.6;
+const TRAY_MIN_Y = DICE_SIZE * 0.5 - 0.01;
+
+function keepDiceInTray() {
+  for (const d of dice) {
+    if (d.kept) continue;
+    if (d.lockAnim) continue;
+    if (d.body.type !== CANNON.Body.DYNAMIC) continue;
+
+    const p = d.body.position;
+    let out = false;
+    if (p.x < -TRAY_BOUND) { p.x = -TRAY_BOUND; out = true; }
+    if (p.x >  TRAY_BOUND) { p.x =  TRAY_BOUND; out = true; }
+    if (p.z < -TRAY_BOUND) { p.z = -TRAY_BOUND; out = true; }
+    if (p.z >  TRAY_BOUND) { p.z =  TRAY_BOUND; out = true; }
+    if (p.y < TRAY_MIN_Y)  { p.y = TRAY_MIN_Y;  out = true; }
+    if (p.y > TRAY_MAX_Y)  { p.y = TRAY_MAX_Y;  out = true; }
+
+    if (out) {
+      const v = d.body.velocity;
+      v.x *= 0.25; v.y = clamp(v.y, -3, 3); v.z *= 0.25;
+      const av = d.body.angularVelocity;
+      av.x *= 0.4; av.y *= 0.4; av.z *= 0.4;
+      d.body.wakeUp();
+    }
+  }
+}
+
+/* ============================================================
+   读取点数
+============================================================ */
+const _tmpQ = new THREE.Quaternion();
+const _tmpV = new THREE.Vector3();
+
+function readDiceValues() {
+  dice.forEach(d => {
+    const q = d.body.quaternion;
+    _tmpQ.set(q.x, q.y, q.z, q.w);
+    let bestVal = 1, bestY = -Infinity;
+    for (const f of FACE_NORMALS) {
+      _tmpV.copy(f.n).applyQuaternion(_tmpQ);
+      if (_tmpV.y > bestY) { bestY = _tmpV.y; bestVal = f.v; }
+    }
+    d.value = bestVal;
+  });
+}
+
+/* ============================================================
+   停稳判定
+   ⚠️ 未释放骰子时直接返回 false，避免倒扣期间误判
+============================================================ */
+function allSettled() {
+  if (!diceReleased) return false;
+  for (const d of dice) {
+    if (d.kept) continue;
+    if (d.body.type === CANNON.Body.STATIC) continue;
+    const v = d.body.velocity.lengthSquared();
+    const a = d.body.angularVelocity.lengthSquared();
+    if (v > 0.10 || a > 0.16) return false;
+  }
+  return true;
+}
+
+/* ============================================================
+   锁定 / 解锁
+============================================================ */
+function setKeptGlow(d, on) {
+  d.mesh.material.forEach(m => {
+    m.emissive.setHex(on ? 0xa83c2f : 0x000000);
+    m.emissiveIntensity = on ? 0.18 : 0;
+  });
+}
+
+function lockDice(d) {
+  const slotIndex = G.keptOrder.length;
+  if (slotIndex >= HOLD_SLOTS.length) return;
+
+  G.keptOrder.push(d.index);
+  const slot = HOLD_SLOTS[slotIndex];
+
+  const p = d.body.position;
+  const q = d.body.quaternion;
+  d.savedPos = { x: p.x, y: p.y, z: p.z };
+  d.savedQuat = { x: q.x, y: q.y, z: q.z, w: q.w };
+
+  d.lockAnim = {
+    fromX: p.x, fromY: p.y, fromZ: p.z,
+    toX: slot.x, toY: slot.y, toZ: slot.z,
+    t: 0, duration: 0.55, returning: false,
+  };
+
+  d.kept = true;
+  d.body.type = CANNON.Body.STATIC;
+  d.body.velocity.set(0,0,0);
+  d.body.angularVelocity.set(0,0,0);
+
+  setKeptGlow(d, true);
+  sfx.lock();
+}
+
+function unlockDice(d) {
+  const idx = G.keptOrder.indexOf(d.index);
+  if (idx >= 0) G.keptOrder.splice(idx, 1);
+  const p = d.body.position;
+  const target = d.savedPos;
+  if (target) {
+    d.lockAnim = {
+      fromX: p.x, fromY: p.y, fromZ: p.z,
+      toX: target.x, toY: target.y, toZ: target.z,
+      t: 0, duration: 0.5, returning: true,
+    };
+  }
+  d.kept = false;
+  setKeptGlow(d, false);
+  sfx.unlock();
+}
+
+function reassignHoldSlots() {
+  G.keptOrder.forEach((diceIndex, slotIndex) => {
+    const d = dice[diceIndex];
+    if (!d || !d.kept) return;
+    const slot = HOLD_SLOTS[slotIndex];
+    if (!slot) return;
+    const p = d.body.position;
+    d.lockAnim = {
+      fromX: p.x, fromY: p.y, fromZ: p.z,
+      toX: slot.x, toY: slot.y, toZ: slot.z,
+      t: 0, duration: 0.35, returning: false,
+    };
+  });
+}
+
+/* ============================================================
+   计分
+============================================================ */
+function applyScore(catId, btnEl) {
+  if (G.phase !== 'settled') return;
+  if (Object.prototype.hasOwnProperty.call(G.scores, catId)) return;
+
+  const vals = dice.map(d => d.value);
+  const gained = scoreFor(catId, vals);
+
+  G.scores[catId] = gained;
+  G.total += gained;
+
+  if (btnEl) {
+    btnEl.classList.add('scored');
+    if (gained > 0) {
+      const r = btnEl.getBoundingClientRect();
+      floatScore('+' + gained, r.left + r.width/2, r.top - 6);
+    }
+  }
+
+  sfx.score(gained > 0 ? Math.min(4, 1 + Math.floor(gained/14)) : 1);
+
+  if (!G.bonusGiven && UPPER_IDS.every(id => Object.prototype.hasOwnProperty.call(G.scores, id))) {
+    const upperSum = UPPER_IDS.reduce((s, id) => s + G.scores[id], 0);
+    if (upperSum >= 63) {
+      G.total += 35;
+      G.bonusGiven = true;
+      sfx.bonus();
+      showHint('上区奖励 +35', 2200);
+    }
+  }
+
+  G.round++;
+
+  if (G.round >= CATEGORIES.length) {
+    G.phase = 'done';
+    updateUI();
+    setTimeout(endGame, 750);
+    return;
+  }
+
+  setTimeout(() => {
+    G.keptOrder = [];
+    dice.forEach(d => {
+      d.kept = false;
+      d.lockAnim = null;
+      d.savedPos = null;
+      d.savedQuat = null;
+      setKeptGlow(d, false);
+      labels[d.index].classList.remove('kept');
+    });
+    G.rollsLeft = 3;
+    G.phase = 'idle';
+    showCup();
+    placeDiceInCup();
+    updateUI();
+  }, 520);
+
+  updateUI();
+}
+
+/* ============================================================
+   放置骰子到骰盅
+============================================================ */
+function placeDiceInCup() {
+  const cupQ = cupGroup.quaternion;
+  const _v = new THREE.Vector3();
+
+  dice.forEach((d, i) => {
+    const slot = CUP_SLOTS[i];
+    _v.set(slot.x, CUP_SLOT_Y, slot.z);
+    _v.applyQuaternion(cupQ);
+
+    d.lpos.copy(_v);
+    d.lvel.set(0, 0, 0);
+    d.lquat.setFromEuler(new THREE.Euler(rand(0,6.28), rand(0,6.28), rand(0,6.28)));
+
+    d.body.type = CANNON.Body.STATIC;
+    d.body.position.set(
+      cupGroup.position.x + _v.x,
+      cupGroup.position.y + _v.y,
+      cupGroup.position.z + _v.z
+    );
+    d.body.quaternion.setFromEuler(rand(0,6.28), rand(0,6.28), rand(0,6.28));
+    d.body.velocity.set(0,0,0);
+    d.body.angularVelocity.set(0,0,0);
+  });
+}
+
+/* ============================================================
+   结束
+============================================================ */
+function endGame() {
+  sfx.end();
+  const total = G.total;
+  let rankText, rankCls;
+  if (total >= 300)      { rankText = 'Legend';  rankCls = 's'; }
+  else if (total >= 255) { rankText = 'Master';  rankCls = 's'; }
+  else if (total >= 215) { rankText = 'Expert';  rankCls = 'a'; }
+  else if (total >= 175) { rankText = 'Skilled'; rankCls = ''; }
+  else if (total >= 130) { rankText = 'Novice';  rankCls = 'b'; }
+  else                   { rankText = 'Retry';   rankCls = 'b'; }
+
+  document.getElementById('finalScore').textContent = total;
+  const badge = document.getElementById('rankBadge');
+  badge.textContent = rankText;
+  badge.className = 'rank ' + rankCls;
+
+  const upperSum = UPPER_IDS.reduce((s, id) => s + (G.scores[id] || 0), 0);
+  const lowerSum = total - upperSum - (G.bonusGiven ? 35 : 0);
+
+  document.getElementById('bdUpper').textContent = upperSum;
+  document.getElementById('bdBonus').textContent = '+' + (G.bonusGiven ? 35 : 0);
+  document.getElementById('bdLower').textContent = lowerSum;
+  document.getElementById('bdBest').textContent = best;
+
+  if (total > best) {
+    best = total;
+    localStorage.setItem('dice_classic_best', String(best));
+    document.getElementById('bdBest').textContent = best;
+  }
+
+  elOver.classList.remove('hidden');
+  updateUI();
+}
+
+/* ============================================================
+   开始 / 重置
+============================================================ */
+function resetGame() {
+  G.round = 0;
+  G.rollsLeft = 3;
+  G.total = 0;
+  G.scores = {};
+  G.phase = 'idle';
+  G.bonusGiven = false;
+  G.settledTimer = 0;
+  G.keptOrder = [];
+
+  dice.forEach((d, i) => {
+    d.kept = false;
+    d.value = 1;
+    d.lockAnim = null;
+    d.savedPos = null;
+    d.savedQuat = null;
+    setKeptGlow(d, false);
+    labels[i].classList.remove('show');
+    labels[i].classList.remove('kept');
+  });
+
+  showCup();
+  placeDiceInCup();
+
+  updateUI();
+}
+
+function startGame() {
+  initAudio();
+  elStart.classList.add('hidden');
+  elOver.classList.add('hidden');
+  layoutCamera();
+  resetGame();
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+
+/* ============================================================
+   摇骰交互
+============================================================ */
+let pointerDown = false;
+
+function beginShake() {
+  const canShake = (G.phase === 'idle') ||
+    (G.phase === 'settled' && G.rollsLeft > 0 && !dice.every(d => d.kept));
+  if (!canShake) return;
+
+  initAudio();
+  sfx.lift();
+
+  G.rollsLeft--;
+  if (G.rollsLeft < 0) G.rollsLeft = 0;
+
+  G.phase = 'shaking';
+  shakeTime = 0;
+  shakeSoundTimer = 0;
+  rattleSoundTimer = 0;
+  vibrateTimer = 0;
+
+  showCup();
+  cupLift = 0;
+  cupLiftTarget = 1;
+
+  dice.forEach((d, i) => {
+    if (d.kept) return;
+    const slot = CUP_SLOTS[i];
+    d.lpos.set(slot.x, -0.35, slot.z);
+    d.lvel.set(rand(-2.5, 2.5), rand(-1, 1), rand(-2.5, 2.5));
+    d.lquat.setFromEuler(new THREE.Euler(rand(0, 6.28), rand(0, 6.28), rand(0, 6.28)));
+  });
+
+  updateUI();
+}
+
+function endShake() {
+  if (G.phase !== 'shaking') return;
+  throwDice();
+}
+
+elShake.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (elShake.disabled) return;
+  pointerDown = true;
+  beginShake();
+});
+elShake.addEventListener('pointerup', (e) => {
+  e.preventDefault();
+  if (!pointerDown) return;
+  pointerDown = false;
+  endShake();
+});
+elShake.addEventListener('pointercancel', () => {
+  if (!pointerDown) return;
+  pointerDown = false;
+  endShake();
+});
+elShake.addEventListener('pointerleave', () => {
+  if (!pointerDown) return;
+  pointerDown = false;
+  endShake();
+});
+elShake.addEventListener('contextmenu', e => e.preventDefault());
+
+let spaceDown = false;
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (spaceDown) return;
+    spaceDown = true;
+    if (G.phase === 'idle' || (G.phase === 'settled' && G.rollsLeft > 0)) beginShake();
+    else if (!elStart.classList.contains('hidden')) startGame();
+  }
+  if (e.code === 'Enter' && !elStart.classList.contains('hidden')) startGame();
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (!spaceDown) return;
+    spaceDown = false;
+    if (G.phase === 'shaking') endShake();
+  }
+});
+
+/* ============================================================
+   3D 点击锁定 / 解锁
+============================================================ */
+const raycaster = new THREE.Raycaster();
+const pointerNDC = new THREE.Vector2();
+let downPos = null;
+
+canvas.addEventListener('pointerdown', (e) => {
+  downPos = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', (e) => {
+  if (!downPos) return;
+  const dx = e.clientX - downPos.x;
+  const dy = e.clientY - downPos.y;
+  downPos = null;
+  if (dx*dx + dy*dy > 100) return;
+
+  if (G.phase !== 'settled') return;
+
+  pointerNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointerNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointerNDC, camera);
+
+  const hits = raycaster.intersectObjects(dice.map(d => d.mesh), false);
+  if (hits.length > 0) {
+    const d = dice.find(x => x.mesh === hits[0].object);
+    if (!d) return;
+    if (d.kept) {
+      unlockDice(d);
+      labels[d.index].classList.remove('kept');
+      showHint('已解锁 · 回到原位', 1200);
+    } else {
+      lockDice(d);
+      labels[d.index].classList.add('kept');
+      showHint('已锁定 · 移入托盘', 1400);
+    }
+    reassignHoldSlots();
+    updateUI();
+  }
+});
+
+elBoard.addEventListener('click', (e) => {
+  const btn = e.target.closest('.cat');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (!id) return;
+  applyScore(id, btn);
+});
+
+/* ============================================================
+   相机
+============================================================ */
+let camBaseY = 0;
+let camBaseZ = 0;
+let camLookY = 0;
+
+function layoutCamera() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const aspect = w / h;
+
+  const fovV = 42 * Math.PI / 180;
+  const needW = 15.5;
+  const needH = 17.5;
+
+  const fovH = 2 * Math.atan(Math.tan(fovV / 2) * aspect);
+  const distW = (needW / 2) / Math.tan(fovH / 2);
+  const distH = (needH / 2) / Math.tan(fovV / 2);
+  let dist = Math.max(distW, distH, 13);
+  if (aspect < 0.8) dist *= 1.10;
+
+  const pitch = 0.80;
+  camBaseY = dist * Math.sin(pitch);
+  camBaseZ = dist * Math.cos(pitch) + 2.0;
+  camLookY = 0;
+
+  camera.fov = 42;
+  camera.position.set(0, camBaseY, camBaseZ);
+  camera.lookAt(0, 0, -2.2);
+  camera.updateProjectionMatrix();
+}
+
+/* ============================================================
+   物理步进
+============================================================ */
+const FIXED_STEP = 1/180;
+let physAcc = 0;
+
+function stepPhysics(dt) {
+  physAcc += dt;
+  let iter = 0;
+  while (physAcc >= FIXED_STEP && iter < 12) {
+    world.step(FIXED_STEP);
+    physAcc -= FIXED_STEP;
+    iter++;
+  }
+  if (physAcc > FIXED_STEP * 12) physAcc = 0;
+}
+
+/* ============================================================
+   主循环
+============================================================ */
+let lastT = performance.now();
+
+function animate(now) {
+  requestAnimationFrame(animate);
+  let dt = (now - lastT) / 1000;
+  lastT = now;
+  if (dt > 0.06) dt = 0.06;
+  if (dt < 0) dt = 0;
+  update(dt);
+  renderer.render(scene, camera);
+}
+
+function update(dt) {
+  cupLift += (cupLiftTarget - cupLift) * Math.min(1, dt * 7);
+
+  if (G.phase === 'shaking') {
+    updateShakeAnim(dt);
+  } else if (cupTipping) {
+    /* ⚠️ 倒扣动画 —— 骰子在释放前跟随骰盅一起翻转 */
+    cupTipTime += dt;
+    const p = clamp(cupTipTime / CUP_TIP_DURATION, 0, 1);
+    const e = p * p * (3 - 2 * p);
+    cupGroup.quaternion.slerpQuaternions(cupTipStartQ, cupTipEndQ, e);
+    cupGroup.position.lerpVectors(cupTipStartPos, cupTipEndPos, e);
+
+    /* 未释放时，骰子作为骰盅的"子物体"跟随翻转 */
+    if (!diceReleased) {
+      const cupQ = cupGroup.quaternion;
+      const cupP = cupGroup.position;
+
+      for (let i = 0; i < DICE_COUNT; i++) {
+        const d = dice[i];
+        if (d.kept) continue;
+
+        _dieWorldPos.copy(d.lpos).applyQuaternion(cupQ);
+        d.body.type = CANNON.Body.KINEMATIC;
+        d.body.position.set(
+          cupP.x + _dieWorldPos.x,
+          cupP.y + _dieWorldPos.y,
+          cupP.z + _dieWorldPos.z
+        );
+        _dieFinalQuat.copy(cupQ).multiply(d.lquat);
+        d.body.quaternion.set(
+          _dieFinalQuat.x, _dieFinalQuat.y, _dieFinalQuat.z, _dieFinalQuat.w
+        );
+        d.body.velocity.set(0, 0, 0);
+        d.body.angularVelocity.set(0, 0, 0);
+      }
+
+      /* 倒扣到一定进度时，从盅口洒出骰子 */
+      if (p >= CUP_RELEASE_AT) {
+        releaseDice();
+      }
+    }
+
+    if (p >= 1) {
+      cupTipping = false;
+      cupFadingOut = true;
+      cupFlyUp = 0;
+    }
+  } else if (cupGroup.visible) {
+    if (cupFadingOut) {
+      /* 倒扣完成后继续向上升起并淡出 */
+      cupFlyUp += dt * 12;
+      cupMat.opacity = Math.max(0, cupMat.opacity - dt * 2.5);
+      if (cupMat.opacity <= 0.02) {
+        cupGroup.visible = false;
+        cupFadingOut = false;
+        cupFlyUp = 0;
+      }
+      cupGroup.position.y += dt * 6;
+      cupGroup.position.x += dt * 2;
+      cupGroup.rotation.x += dt * 1.2;
+    } else {
+      const baseY = CUP_REST_Y + cupLift * CUP_LIFT + cupFlyUp;
+      cupGroup.position.y += (baseY - cupGroup.position.y) * Math.min(1, dt * 12);
+      cupGroup.rotation.x *= Math.pow(0.02, dt);
+      cupGroup.rotation.z *= Math.pow(0.02, dt);
+      cupGroup.rotation.y *= Math.pow(0.02, dt);
+      cupGroup.position.x *= Math.pow(0.02, dt);
+      cupGroup.position.z = CUP_BASE_Z + (cupGroup.position.z - CUP_BASE_Z) * Math.pow(0.02, dt);
+    }
+  }
+
+  const camTargetY = camBaseY + cupLift * 1.6;
+  const camTargetLookY = camLookY + cupLift * 1.15;
+  camera.position.y += (camTargetY - camera.position.y) * Math.min(1, dt * 5);
+  camera.lookAt(0, camTargetLookY, -2.2);
+
+  stepPhysics(dt);
+  keepDiceInTray();
+
+  dice.forEach(d => {
+    if (d.lockAnim) {
+      d.lockAnim.t += dt;
+      const p = clamp(d.lockAnim.t / d.lockAnim.duration, 0, 1);
+      const e = p * p * (3 - 2 * p);
+      const arc = Math.sin(p * Math.PI) * (d.lockAnim.returning ? 0.6 : 1.1);
+      d.body.position.set(
+        lerp(d.lockAnim.fromX, d.lockAnim.toX, e),
+        lerp(d.lockAnim.fromY, d.lockAnim.toY, e) + arc,
+        lerp(d.lockAnim.fromZ, d.lockAnim.toZ, e)
+      );
+      if (p >= 1) {
+        d.body.position.set(d.lockAnim.toX, d.lockAnim.toY, d.lockAnim.toZ);
+        if (d.lockAnim.returning && d.savedQuat) {
+          d.body.quaternion.set(d.savedQuat.x, d.savedQuat.y, d.savedQuat.z, d.savedQuat.w);
+        }
+        d.lockAnim = null;
+      }
+    }
+  });
+
+  dice.forEach(d => {
+    d.mesh.position.set(d.body.position.x, d.body.position.y, d.body.position.z);
+    d.mesh.quaternion.set(d.body.quaternion.x, d.body.quaternion.y, d.body.quaternion.z, d.body.quaternion.w);
+  });
+
+  /* 只有骰子已释放并且都在缓慢运动时才判定停稳 */
+  if (G.phase === 'flying' && diceReleased) {
+    G.settledTimer += dt;
+    if (G.settledTimer > 0.85 && allSettled()) settleDice();
+    else if (G.settledTimer > 8) settleDice();
+  }
+
+  if (G.phase === 'settled' || G.phase === 'done') {
+    dice.forEach((d, i) => {
+      const worldY = d.kept ? d.body.position.y + 0.5 : d.body.position.y + DICE_SIZE * 0.82;
+      _tmpV.set(d.body.position.x, worldY, d.body.position.z);
+      _tmpV.project(camera);
+      const sx = (_tmpV.x * 0.5 + 0.5) * window.innerWidth;
+      const sy = (-_tmpV.y * 0.5 + 0.5) * window.innerHeight;
+      labels[i].style.transform = `translate(-50%, -50%) translate(${sx}px, ${sy}px)`;
+      labels[i].textContent = d.value;
+      labels[i].classList.add('show');
+      labels[i].classList.toggle('kept', d.kept);
+    });
+  } else {
+    labels.forEach(el => el.classList.remove('show'));
+  }
+}
+
+function settleDice() {
+  G.phase = 'settled';
+  readDiceValues();
+  dice.forEach(d => {
+    if (!d.kept) {
+      d.body.type = CANNON.Body.STATIC;
+      d.body.velocity.set(0,0,0);
+      d.body.angularVelocity.set(0,0,0);
+    }
+  });
+  labels.forEach((el, i) => {
+    el.textContent = dice[i].value;
+    el.classList.add('show');
+  });
+  updateUI();
+  showHint('选择计分格', 1900);
+}
+
+/* ============================================================
+   尺寸
+============================================================ */
+let resizeTimer = null;
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(layoutCamera, 70);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 280));
+
+/* ============================================================
+   初始化
+============================================================ */
+layoutCamera();
+resetGame();
+requestAnimationFrame(animate);
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    lastT = performance.now();
+    physAcc = 0;
+    _hasCupSample.v = false;
+  }
+});
+</script>
+</body>
+</html>
