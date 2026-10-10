@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0f">
+<title>Pixel Music Canvas</title>
+<style>
+  :root{
+    --bg:#0a0b0f;
+    --panel:#13151b;
+    --panel-2:#1a1d25;
+    --panel-3:#22262f;
+    --line:#23272f;
+    --line-2:#2f3440;
+    --text:#e0e3ea;
+    --text-2:#9ba1b0;
+    --dim:#666d7d;
+    --accent:#5eb8a8;
+    --accent-hover:#70d0be;
+    --accent-text:#06120e;
+    --danger:#c66a6a;
+    --danger-hover:#d87c7c;
+  }
+  *{box-sizing:border-box;}
+
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--text);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono","PingFang SC","Microsoft YaHei",monospace;
+    font-size:13px;
+    line-height:1.45;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:18px 14px 40px;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior-y:contain;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    width:100%;
+    max-width:1120px;
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    margin-bottom:14px;
+  }
+  h1{
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.02em;
+    color:var(--text);
+    margin:0;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  h1::before{
+    content:'';
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:2px;
+    background:var(--accent);
+    box-shadow:0 0 8px rgba(94,184,168,0.6);
+    transform:translateY(-1px);
+    animation:breath 3.2s ease-in-out infinite;
+  }
+  @keyframes breath{
+    0%,100%{opacity:1;}
+    50%{opacity:.55;}
+  }
+  h1 span{
+    font-size:11px;
+    font-weight:400;
+    letter-spacing:0;
+    color:var(--dim);
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap{
+    width:100%;
+    max-width:1120px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:6px;
+    padding:8px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+  }
+  .divider{
+    width:1px;
+    height:18px;
+    background:var(--line);
+    margin:0 4px;
+    flex-shrink:0;
+  }
+  .spacer{flex:1;min-width:0;}
+
+  /* ---------- Buttons ---------- */
+  button, select{
+    font:inherit;
+    font-size:12px;
+    letter-spacing:.01em;
+    color:var(--text-2);
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:5px 10px;
+    min-height:28px;
+    cursor:pointer;
+    transition:background .12s ease, border-color .12s ease, color .12s ease, opacity .12s;
+    white-space:nowrap;
+    -webkit-appearance:none;
+    appearance:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+  }
+  button svg{
+    flex-shrink:0;
+    display:block;
+  }
+  button:hover:not(:disabled), select:hover{
+    background:var(--panel-2);
+    border-color:var(--line-2);
+    color:var(--text);
+  }
+  button:active:not(:disabled), select:active{
+    background:var(--panel-3);
+  }
+  button:focus-visible, select:focus-visible{
+    outline:none;
+    border-color:var(--accent);
+  }
+  button:disabled{
+    opacity:.32;
+    cursor:not-allowed;
+    pointer-events:none;
+  }
+
+  button.primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:var(--accent-text);
+    font-weight:600;
+    min-width:80px;
+  }
+  button.primary:hover{
+    background:var(--accent-hover);
+    border-color:var(--accent-hover);
+    color:var(--accent-text);
+  }
+  button.primary.playing{
+    background:var(--danger);
+    border-color:var(--danger);
+    color:#1a0808;
+  }
+  button.primary.playing:hover{
+    background:var(--danger-hover);
+    border-color:var(--danger-hover);
+  }
+  button.toggle.active{
+    background:var(--panel-2);
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  button.icon{
+    padding:5px 7px;
+    min-width:30px;
+    color:var(--text-2);
+  }
+  button.icon:hover{color:var(--text);}
+
+  select{
+    padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'><path d='M0 0l4 5 4-5z' fill='%23666d7d'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 7px center;
+  }
+
+  /* ---------- Sliders ---------- */
+  .slider-wrap{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    height:28px;
+    padding:0 6px;
+    color:var(--dim);
+    font-size:10.5px;
+    letter-spacing:.06em;
+  }
+  input[type=range]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:96px;
+    height:3px;
+    border-radius:2px;
+    background:var(--panel-3);
+    outline:none;
+    margin:0;
+    cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:12px;height:12px;
+    border-radius:50%;
+    background:var(--text);
+    border:none;
+    cursor:pointer;
+    box-shadow:0 0 0 1px var(--bg);
+    transition:background .12s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb{background:var(--accent);}
+  input[type=range]::-moz-range-thumb{
+    width:12px;height:12px;
+    border:none;border-radius:50%;
+    background:var(--text);cursor:pointer;
+    box-shadow:0 0 0 1px var(--bg);
+  }
+  .slider-val{
+    color:var(--text);
+    width:26px;
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    font-size:11px;
+  }
+
+  /* ---------- Palette ---------- */
+  .palette{
+    display:flex;
+    gap:4px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .sw{
+    width:26px;
+    height:26px;
+    border-radius:5px;
+    border:1px solid rgba(0,0,0,0.4);
+    cursor:pointer;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:8.5px;
+    font-weight:700;
+    color:#fff;
+    text-shadow:0 1px 2px rgba(0,0,0,0.55);
+    letter-spacing:0;
+    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    flex-shrink:0;
+    overflow:visible;
+    touch-action:manipulation;
+  }
+  .sw .face{
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .sw .face::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:linear-gradient(180deg, rgba(255,255,255,0.16), rgba(0,0,0,0.08));
+    pointer-events:none;
+  }
+  .sw .label{
+    position:relative;
+    z-index:1;
+  }
+  .sw:hover{transform:translateY(-1px);}
+  .sw.active{
+    box-shadow:0 0 0 2px var(--bg), 0 0 0 3px currentColor;
+  }
+  .sw.muted{opacity:.22;}
+  .sw.eraser{
+    background:var(--panel-2);
+    border:1px dashed var(--line-2);
+    color:var(--dim);
+  }
+  .sw.eraser .face::before{display:none;}
+  .sw.eraser svg{position:relative;z-index:1;}
+  .sw.eraser.active{
+    border-style:solid;
+    border-color:var(--text);
+    color:var(--text);
+    box-shadow:0 0 0 2px var(--bg), 0 0 0 3px var(--text);
+  }
+
+  /* 色块 tooltip */
+  .sw[data-name]:hover::after{
+    content:attr(data-name);
+    position:absolute;
+    bottom:calc(100% + 6px);
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--panel-3);
+    border:1px solid var(--line-2);
+    padding:3px 8px;
+    border-radius:4px;
+    font-size:10px;
+    font-weight:400;
+    color:var(--text);
+    white-space:nowrap;
+    pointer-events:none;
+    z-index:20;
+    box-shadow:0 6px 18px -8px rgba(0,0,0,0.9);
+    text-shadow:none;
+    letter-spacing:0;
+  }
+  .sw.muted[data-name]:hover::after{
+    content:attr(data-name) ' · 已静音';
+  }
+
+  /* ---------- Stage ---------- */
+  .stage{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px;
+  }
+  .scroll{
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    border-radius:5px;
+    background:#07080b;
+    border:1px solid #1a1d25;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.4);
+    scrollbar-width:thin;
+    scrollbar-color:#2a2d38 transparent;
+  }
+  .scroll::-webkit-scrollbar{height:8px;}
+  .scroll::-webkit-scrollbar-track{background:transparent;}
+  .scroll::-webkit-scrollbar-thumb{
+    background:#252932;
+    border-radius:4px;
+    border:2px solid var(--panel);
+  }
+  .scroll::-webkit-scrollbar-thumb:hover{background:#343947;}
+
+  canvas{
+    display:block;
+    background:#07080b;
+    cursor:crosshair;
+    touch-action:none;
+  }
+  canvas.erasing{cursor:not-allowed;}
+
+  .hud{
+    position:absolute;
+    top:18px;
+    right:20px;
+    font-size:10px;
+    letter-spacing:.08em;
+    color:var(--dim);
+    text-align:right;
+    line-height:1.7;
+    pointer-events:none;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 8px #07080b, 0 0 3px #07080b;
+  }
+  .hud b{color:var(--accent);font-weight:600;}
+
+  /* ---------- Tips ---------- */
+  .tips{
+    font-size:11px;
+    line-height:1.9;
+    color:var(--dim);
+    letter-spacing:.01em;
+  }
+  .tips kbd{
+    display:inline-block;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-bottom-width:2px;
+    border-radius:3px;
+    padding:0 5px;
+    font-size:10px;
+    font-family:inherit;
+    color:var(--text-2);
+    line-height:1.6;
+    min-width:18px;
+    text-align:center;
+  }
+  .hide-mobile{display:inline;}
+  .show-mobile{display:none;}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:30px;
+    transform:translate(-50%,12px);
+    background:var(--panel-3);
+    border:1px solid var(--line-2);
+    color:var(--text);
+    font-size:12px;
+    padding:9px 16px;
+    border-radius:6px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+    z-index:99;
+    white-space:nowrap;
+    box-shadow:0 12px 30px -12px rgba(0,0,0,0.9);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:760px){
+    body{padding:12px 8px 28px;font-size:12px;}
+    header{margin-bottom:10px;}
+    h1{font-size:12px;}
+    h1 span{display:none;}
+    .toolbar{padding:6px;gap:5px;border-radius:7px;}
+    button, select{padding:5px 9px;font-size:11.5px;min-height:32px;}
+    button.primary{min-width:70px;}
+    button.icon{min-width:34px;padding:5px 8px;}
+    .divider{display:none;}
+    .slider-wrap{padding:0 3px;gap:5px;height:32px;}
+    input[type=range]{width:70px;}
+    .sw{width:30px;height:30px;border-radius:5px;font-size:9px;}
+    .stage{padding:8px;border-radius:8px;}
+    .hud{top:14px;right:15px;font-size:9px;}
+    .tips{font-size:10px;line-height:1.8;}
+    .hide-mobile{display:none;}
+    .show-mobile{display:inline;}
+    .sw[data-name]:hover::after{display:none;}
+  }
+  @media (max-width:420px){
+    .slider-wrap{padding:0;}
+    input[type=range]{width:54px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>
+    Pixel Music Canvas
+    <span>画出来，就是循环音乐</span>
+  </h1>
+</header>
+
+<div class="wrap">
+
+  <div class="toolbar">
+    <button id="playBtn" class="primary">
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3.4 2.15a.55.55 0 0 1 .84-.46l5.35 3.4a.55.55 0 0 1 0 .92L4.24 9.4a.55.55 0 0 1-.84-.46z"/></svg>
+      <span>播放</span>
+    </button>
+
+    <div class="slider-wrap">
+      <label for="bpm">BPM</label>
+      <input id="bpm" type="range" min="50" max="200" step="1" value="110">
+      <span class="slider-val" id="bpmVal">110</span>
+    </div>
+
+    <select id="colsSelect" title="修改循环步数">
+      <option value="8">8 步</option>
+      <option value="16">16 步</option>
+      <option value="24">24 步</option>
+      <option value="32">32 步</option>
+      <option value="48">48 步</option>
+      <option value="64">64 步</option>
+    </select>
+
+    <div class="slider-wrap">
+      <label for="swing">摇摆</label>
+      <input id="swing" type="range" min="0" max="100" step="1" value="0">
+      <span class="slider-val" id="swingVal">0</span>
+    </div>
+
+    <button id="followBtn" class="toggle active" title="播放时自动滚动画布">跟随</button>
+
+    <div class="divider"></div>
+
+    <select id="rootSelect" title="根音">
+      <option value="0">A</option>
+      <option value="1">A#</option>
+      <option value="2">B</option>
+      <option value="3">C</option>
+      <option value="4">C#</option>
+      <option value="5">D</option>
+      <option value="6">D#</option>
+      <option value="7">E</option>
+      <option value="8">F</option>
+      <option value="9">F#</option>
+      <option value="10">G</option>
+      <option value="11">G#</option>
+    </select>
+
+    <select id="scaleSelect" title="音阶">
+      <option value="minorPent" selected>小调五声</option>
+      <option value="majorPent">大调五声</option>
+      <option value="blues">布鲁斯</option>
+      <option value="minor">自然小调</option>
+      <option value="dorian">多利亚</option>
+      <option value="major">自然大调</option>
+    </select>
+
+    <div class="divider"></div>
+
+    <div class="palette" id="palette"></div>
+
+    <div class="spacer"></div>
+
+    <button id="undoBtn" title="撤销 (Ctrl+Z)" disabled>
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4.5 3L1.8 5.7l2.7 2.7"/>
+        <path d="M1.8 5.7h6.4a3.3 3.3 0 0 1 3.3 3.3v1.5"/>
+      </svg>
+      <span>撤销</span>
+    </button>
+
+    <button id="clearBtn">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2.5 3.5h9"/>
+        <path d="M5.5 3.5V2.4a.4.4 0 0 1 .4-.4h2.2a.4.4 0 0 1 .4.4v1.1"/>
+        <path d="M3.6 3.5l.6 8.1h5.6l.6-8.1"/>
+      </svg>
+      <span>清空</span>
+    </button>
+
+    <button id="randomBtn">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2.4" y="2.4" width="9.2" height="9.2" rx="1.4"/>
+        <circle cx="5" cy="5" r="0.65" fill="currentColor"/>
+        <circle cx="9" cy="5" r="0.65" fill="currentColor"/>
+        <circle cx="7" cy="7" r="0.65" fill="currentColor"/>
+        <circle cx="5" cy="9" r="0.65" fill="currentColor"/>
+        <circle cx="9" cy="9" r="0.65" fill="currentColor"/>
+      </svg>
+      <span>随机</span>
+    </button>
+
+    <button id="demoBtn">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5.6 10.4V3.2l6.2-1.3v7.1"/>
+        <circle cx="3.6" cy="10.6" r="1.9"/>
+        <circle cx="9.8" cy="9.2" r="1.9"/>
+      </svg>
+      <span>示例</span>
+    </button>
+
+    <button id="flipHBtn" class="icon" title="水平镜像（左右翻转）" aria-label="水平镜像">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7 1.8v10.4" stroke-dasharray="1.6 1.6"/>
+        <path d="M4.6 4.2L1.8 7l2.8 2.8"/>
+        <path d="M9.4 4.2L12.2 7l-2.8 2.8"/>
+      </svg>
+    </button>
+
+    <button id="flipVBtn" class="icon" title="垂直倒影（上下翻转）" aria-label="垂直倒影">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M1.8 7h10.4" stroke-dasharray="1.6 1.6"/>
+        <path d="M4.2 4.6L7 1.8l2.8 2.8"/>
+        <path d="M4.2 9.4L7 12.2l2.8-2.8"/>
+      </svg>
+    </button>
+
+    <div class="divider"></div>
+
+    <button id="saveBtn" title="导出为 JSON">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7 9.2V2"/>
+        <path d="M4.2 4.8L7 2l2.8 2.8"/>
+        <path d="M2.5 9.2v2.3h9V9.2"/>
+      </svg>
+      <span>导出</span>
+    </button>
+
+    <button id="loadBtn" title="从 JSON 导入">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7 2v7.2"/>
+        <path d="M4.2 6.4L7 9.2l2.8-2.8"/>
+        <path d="M2.5 9.2v2.3h9V9.2"/>
+      </svg>
+      <span>导入</span>
+    </button>
+    <input id="fileInput" type="file" accept=".json,application/json" hidden>
+  </div>
+
+  <div class="stage">
+    <div class="scroll" id="scroll">
+      <canvas id="grid"></canvas>
+    </div>
+    <div class="hud">
+      <div>STEP <b id="hudStep">00</b>/<span id="hudCols">32</span></div>
+      <div>NOTES <b id="hudNotes">0</b></div>
+    </div>
+  </div>
+
+  <div class="tips">
+    <span class="hide-mobile">左键涂抹 · 右键擦除 · 拖动连续绘制 · 双指滑动画布 · 单击色块换色 · 双击色块静音</span>
+    <span class="show-mobile">单指涂抹 · 长按擦除 · 双指左右滑动画布 · 短按色块换色 · 长按色块静音</span><br>
+    <span class="hide-mobile"><kbd>空格</kbd> 播放/暂停 · <kbd>1</kbd>–<kbd>8</kbd> 换色 · <kbd>E</kbd> 橡皮 · <kbd>R</kbd> 随机 · <kbd>H</kbd>/<kbd>V</kbd> 翻转 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销</span>
+    <span class="show-mobile">长按已画的格子可切换为擦除</span><br>
+    纵向 = 音高（下低上高）· 横向 = 时间 · 颜色 = 音色 · 根音/音阶实时生效
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ============================================================
+   常量
+   ============================================================ */
+const ROWS = 16;
+const STEPS_PER_BEAT = 4;
+
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches ||
+                 ('ontouchstart' in window && window.innerWidth < 900);
+const IS_NARROW = window.innerWidth < 760;
+
+let COLS = (IS_TOUCH || IS_NARROW) ? 16 : 32;
+
+const TIMBRES = [
+  { name:'正弦主音', short:'SN', color:'#5eb8a8', type:'sine'   },
+  { name:'三角拨弦', short:'TR', color:'#6a9fd0', type:'tri'    },
+  { name:'方波主音', short:'SQ', color:'#9184c8', type:'square' },
+  { name:'锯齿铺底', short:'SW', color:'#b878b8', type:'saw'    },
+  { name:'铃音',     short:'BL', color:'#c8b070', type:'bell'   },
+  { name:'底鼓',     short:'KK', color:'#d07070', type:'kick'   },
+  { name:'踩镲',     short:'HH', color:'#a0b868', type:'hat'    },
+  { name:'军鼓',     short:'SD', color:'#d08860', type:'snare'  },
+];
+const ERASER = -1;
+
+// SVG 图标
+const ICON_PLAY = `<svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3.4 2.15a.55.55 0 0 1 .84-.46l5.35 3.4a.55.55 0 0 1 0 .92L4.24 9.4a.55.55 0 0 1-.84-.46z"/></svg>`;
+const ICON_PAUSE = `<svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="3" y="2.6" width="2.1" height="6.8" rx="0.55"/><rect x="6.9" y="2.6" width="2.1" height="6.8" rx="0.55"/></svg>`;
+
+const SCALES = {
+  minorPent: [0,3,5,7,10],
+  majorPent: [0,2,4,7,9],
+  blues:     [0,3,5,6,7,10],
+  minor:     [0,2,3,5,7,8,10],
+  dorian:    [0,2,3,5,7,9,10],
+  major:     [0,2,4,5,7,9,11],
+};
+
+const ROOT_HZ = 110;
+
+function buildNotes(intervals, count){
+  const arr = [];
+  let oct = 0;
+  while(arr.length < count && oct < 20){
+    for(const i of intervals){
+      if(arr.length >= count) break;
+      arr.push(i + oct*12);
+    }
+    oct++;
+  }
+  return arr;
+}
+
+/* ============================================================
+   状态
+   ============================================================ */
+let cells = new Int8Array(COLS * ROWS).fill(ERASER);
+let activeTimbres = new Set(TIMBRES.map((_,i)=>i));
+let currentColor = 0;
+let eraserMode = false;
+let isPlaying = false;
+let bpm = 110;
+let swing = 0;
+let followPlayhead = true;
+
+let scaleName = 'minorPent';
+let rootSemi = 0;
+let scaleNotes = buildNotes(SCALES[scaleName], ROWS);
+
+const rowFreq = r => {
+  const idx = Math.min(r, scaleNotes.length - 1);
+  const semi = rootSemi + scaleNotes[idx];
+  return ROOT_HZ * Math.pow(2, semi / 12);
+};
+
+const undoStack = [];
+const MAX_UNDO = 60;
+
+let audioCtx = null;
+let masterGain = null;
+let stepDur = 60 / bpm / STEPS_PER_BEAT;
+let startTime = 0;
+let nextNoteTime = 0;
+let scheduleStep = 0;
+let schedulerTimer = null;
+const flashQueue = [];
+const flashes = [];
+
+/* ============================================================
+   Canvas
+   ============================================================ */
+const canvas = document.getElementById('grid');
+const ctx = canvas.getContext('2d');
+const scrollEl = document.getElementById('scroll');
+
+let cellW = 20, cellH = 20, dpr = 1, cssCell = 20;
+
+const off = document.createElement('canvas');
+const offCtx = off.getContext('2d');
+
+function layout(){
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const availW = Math.max(scrollEl.clientWidth || 320, 240);
+
+  const minCell = (IS_TOUCH || IS_NARROW) ? 24 : 14;
+  const maxCell = 40;
+
+  let c = availW / COLS;
+  c = Math.max(minCell, Math.min(maxCell, c));
+  cssCell = c;
+
+  const cssW = Math.round(c * COLS);
+  const cssH = Math.round(c * ROWS);
+
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+
+  off.width  = canvas.width;
+  off.height = canvas.height;
+
+  cellW = canvas.width / COLS;
+  cellH = canvas.height / ROWS;
+
+  drawStatic();
+}
+
+/* ============================================================
+   绘制
+   ============================================================ */
+function roundRect(c, x, y, w, h, r){
+  r = Math.min(r, w/2, h/2);
+  c.beginPath();
+  c.moveTo(x+r, y);
+  c.arcTo(x+w, y,   x+w, y+h, r);
+  c.arcTo(x+w, y+h, x,   y+h, r);
+  c.arcTo(x,   y+h, x,   y,   r);
+  c.arcTo(x,   y,   x+w, y,   r);
+  c.closePath();
+}
+
+function drawStatic(){
+  offCtx.clearRect(0,0,off.width,off.height);
+
+  const bg = offCtx.createLinearGradient(0,0,0,off.height);
+  bg.addColorStop(0,'#0a0c12');
+  bg.addColorStop(1,'#07080b');
+  offCtx.fillStyle = bg;
+  offCtx.fillRect(0,0,off.width,off.height);
+
+  offCtx.fillStyle = 'rgba(140,160,220,0.022)';
+  for(let c=0;c<COLS;c+=8){
+    offCtx.fillRect(c*cellW, 0, cellW*4, off.height);
+  }
+
+  offCtx.fillStyle = 'rgba(255,255,255,0.014)';
+  for(let r=0;r<ROWS;r+=5){
+    offCtx.fillRect(0, off.height - (r+1)*cellH, off.width, cellH);
+  }
+
+  const lw = Math.max(1, dpr*0.5);
+  for(let c=0;c<=COLS;c++){
+    const x = Math.round(c*cellW) + 0.5;
+    const strong = (c % 4 === 0);
+    offCtx.strokeStyle = strong ? 'rgba(140,150,200,0.16)' : 'rgba(140,150,200,0.055)';
+    offCtx.lineWidth = lw;
+    offCtx.beginPath(); offCtx.moveTo(x,0); offCtx.lineTo(x,off.height); offCtx.stroke();
+  }
+  for(let r=0;r<=ROWS;r++){
+    const y = Math.round(r*cellH) + 0.5;
+    offCtx.strokeStyle = 'rgba(140,150,200,0.055)';
+    offCtx.lineWidth = lw;
+    offCtx.beginPath(); offCtx.moveTo(0,y); offCtx.lineTo(off.width,y); offCtx.stroke();
+  }
+
+  for(let c=0;c<COLS;c+=4){
+    const x = Math.round(c*cellW) + 0.5;
+    offCtx.fillStyle = 'rgba(140,160,220,0.5)';
+    offCtx.fillRect(x, 0, Math.max(1, dpr), 3*dpr);
+  }
+  for(let c=0;c<COLS;c+=16){
+    const x = Math.round(c*cellW) + 0.5;
+    offCtx.fillStyle = 'rgba(94,184,168,0.9)';
+    offCtx.fillRect(x, 0, Math.max(1.5, dpr*1.2), 5*dpr);
+  }
+
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const v = cells[c*ROWS + r];
+      if(v < 0) continue;
+      paintCell(offCtx, c, r, TIMBRES[v].color, 1);
+    }
+  }
+}
+
+function paintCell(c2, col, row, color, alpha){
+  const pad = Math.max(1, cellW*0.075);
+  const x = col*cellW + pad;
+  const y = off.height - (row+1)*cellH + pad;
+  const w = cellW - pad*2;
+  const h = cellH - pad*2;
+  const r = Math.min(3, w*0.2);
+
+  c2.save();
+  c2.globalAlpha = alpha;
+
+  c2.shadowColor = color;
+  c2.shadowBlur = Math.max(3, cellW*0.32);
+  c2.fillStyle = color;
+  roundRect(c2, x, y, w, h, r);
+  c2.fill();
+
+  c2.shadowBlur = 0;
+  c2.globalAlpha = alpha * 0.4;
+  const g = c2.createLinearGradient(x, y, x, y + h);
+  g.addColorStop(0,'rgba(255,255,255,0.5)');
+  g.addColorStop(0.5,'rgba(255,255,255,0.04)');
+  g.addColorStop(1,'rgba(0,0,0,0.15)');
+  c2.fillStyle = g;
+  roundRect(c2, x, y, w, h, r);
+  c2.fill();
+
+  c2.restore();
+}
+
+/* ============================================================
+   渲染循环
+   ============================================================ */
+let playhead = -1;
+let lastTime = performance.now();
+
+function render(now){
+  const dt = Math.min((now - lastTime)/1000, 0.05);
+  lastTime = now;
+
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(isPlaying && audioCtx && audioCtx.currentTime >= startTime){
+    playhead = ((audioCtx.currentTime - startTime) / stepDur) % COLS;
+  }
+
+  ctx.drawImage(off, 0, 0);
+
+  if(activeTimbres.size < TIMBRES.length){
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const v = cells[c*ROWS + r];
+        if(v < 0 || activeTimbres.has(v)) continue;
+        ctx.fillStyle = 'rgba(7,8,11,0.82)';
+        ctx.fillRect(c*cellW, off.height-(r+1)*cellH, cellW+1, cellH+1);
+      }
+    }
+  }
+
+  for(let i=flashes.length-1;i>=0;i--){
+    const f = flashes[i];
+    f.t += dt;
+    const k = 1 - f.t / f.life;
+    if(k <= 0){ flashes.splice(i,1); continue; }
+    const pad = Math.max(1, cellW*0.075);
+    const x = f.col*cellW + pad;
+    const y = off.height - (f.row+1)*cellH + pad;
+    ctx.save();
+    ctx.globalAlpha = k * 0.9;
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = cellW * 1.3 * k;
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, x, y, cellW-pad*2, cellH-pad*2, Math.min(3, cellW*0.2));
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if(playhead >= 0){
+    const x = playhead * cellW;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createLinearGradient(x - cellW*1.8, 0, x + cellW*0.3, 0);
+    g.addColorStop(0,'rgba(94,184,168,0)');
+    g.addColorStop(1,'rgba(94,184,168,0.18)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - cellW*1.8, 0, cellW*2.1, canvas.height);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(140,240,220,0.9)';
+    ctx.shadowColor = 'rgba(94,184,168,0.9)';
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = Math.max(1.3, dpr*1);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(94,184,168,1)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(160,255,236,1)';
+    ctx.beginPath();
+    ctx.arc(x, 5.5*dpr, 2.8*dpr, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if(isPlaying && followPlayhead && playhead >= 0 && scrollEl.scrollWidth > scrollEl.clientWidth + 4){
+    const cssX = playhead * cssCell;
+    const viewLeft = scrollEl.scrollLeft;
+    const viewW = scrollEl.clientWidth;
+    const margin = cssCell * 2.5;
+
+    if(cssX < viewLeft + margin || cssX > viewLeft + viewW - margin){
+      const target = cssX - viewW * 0.4;
+      const maxLeft = scrollEl.scrollWidth - viewW;
+      scrollEl.scrollLeft = Math.max(0, Math.min(maxLeft, target));
+    }
+  }
+
+  requestAnimationFrame(render);
+}
+
+/* ============================================================
+   音频引擎
+   ============================================================ */
+function initAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new AC();
+
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.58;
+
+  const comp = audioCtx.createDynamicsCompressor();
+  comp.threshold.value = -14;
+  comp.knee.value = 22;
+  comp.ratio.value = 6;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.22;
+
+  const delay = audioCtx.createDelay(0.5);
+  delay.delayTime.value = 0.16;
+  const fb = audioCtx.createGain();
+  fb.gain.value = 0.2;
+  const wet = audioCtx.createGain();
+  wet.gain.value = 0.14;
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 2600;
+
+  masterGain.connect(comp);
+  masterGain.connect(delay);
+  delay.connect(lp);
+  lp.connect(fb);
+  fb.connect(delay);
+  lp.connect(wet);
+  wet.connect(comp);
+  comp.connect(audioCtx.destination);
+}
+
+function envGain(t, attack, decay, peak){
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(peak,0.0002), t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+  return g;
+}
+
+let _noiseBuf = null;
+function noiseBuffer(){
+  if(_noiseBuf) return _noiseBuf;
+  const len = Math.floor(audioCtx.sampleRate * 0.5);
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i] = Math.random()*2 - 1;
+  _noiseBuf = buf;
+  return buf;
+}
+
+function playNote(idx, freq, time){
+  const tb = TIMBRES[idx];
+  const out = audioCtx.createGain();
+  out.gain.value = 1;
+  out.connect(masterGain);
+
+  switch(tb.type){
+    case 'sine': {
+      const o = audioCtx.createOscillator();
+      o.type = 'sine'; o.frequency.value = freq;
+      const g = envGain(time, 0.008, 0.18, 0.30);
+      o.connect(g); g.connect(out);
+      o.start(time); o.stop(time + 0.4);
+      break;
+    }
+    case 'tri': {
+      const o = audioCtx.createOscillator();
+      o.type = 'triangle'; o.frequency.value = freq;
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(Math.min(freq*7, 9000), time);
+      lp.frequency.exponentialRampToValueAtTime(Math.max(freq*1.5, 300), time + 0.28);
+      const g = envGain(time, 0.005, 0.32, 0.26);
+      o.connect(lp); lp.connect(g); g.connect(out);
+      o.start(time); o.stop(time + 0.6);
+      break;
+    }
+    case 'square': {
+      const o = audioCtx.createOscillator();
+      o.type = 'square'; o.frequency.value = freq;
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(Math.min(freq*5, 6000), time);
+      lp.frequency.exponentialRampToValueAtTime(Math.max(freq*1.2, 260), time + 0.22);
+      lp.Q.value = 3;
+      const g = envGain(time, 0.006, 0.22, 0.14);
+      o.connect(lp); lp.connect(g); g.connect(out);
+      o.start(time); o.stop(time + 0.45);
+      break;
+    }
+    case 'saw': {
+      const o = audioCtx.createOscillator();
+      o.type = 'sawtooth'; o.frequency.value = freq;
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(Math.min(freq*8, 7000), time);
+      lp.frequency.exponentialRampToValueAtTime(Math.max(freq*1.4, 240), time + 0.5);
+      lp.Q.value = 5;
+      const g = envGain(time, 0.02, 0.44, 0.13);
+      o.connect(lp); lp.connect(g); g.connect(out);
+      o.start(time); o.stop(time + 0.85);
+      break;
+    }
+    case 'bell': {
+      const carrier = audioCtx.createOscillator();
+      carrier.type = 'sine'; carrier.frequency.value = freq;
+      const mod = audioCtx.createOscillator();
+      mod.type = 'sine'; mod.frequency.value = freq * 3.51;
+      const mg = audioCtx.createGain();
+      mg.gain.setValueAtTime(freq * 1.8, time);
+      mg.gain.exponentialRampToValueAtTime(1, time + 0.5);
+      mod.connect(mg); mg.connect(carrier.frequency);
+      const g = envGain(time, 0.004, 0.65, 0.22);
+      carrier.connect(g); g.connect(out);
+      carrier.start(time); mod.start(time);
+      carrier.stop(time + 1.1); mod.stop(time + 1.1);
+      break;
+    }
+    case 'kick': {
+      const o = audioCtx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(155, time);
+      o.frequency.exponentialRampToValueAtTime(44, time + 0.12);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.exponentialRampToValueAtTime(0.95, time + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + 0.30);
+      o.connect(g); g.connect(out);
+      o.start(time); o.stop(time + 0.35);
+      break;
+    }
+    case 'hat': {
+      const s = audioCtx.createBufferSource();
+      s.buffer = noiseBuffer();
+      const hp = audioCtx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 7800;
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 11000; bp.Q.value = 1.2;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.exponentialRampToValueAtTime(0.16, time + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + 0.055);
+      s.connect(hp); hp.connect(bp); bp.connect(g); g.connect(out);
+      s.start(time); s.stop(time + 0.1);
+      break;
+    }
+    case 'snare': {
+      const s = audioCtx.createBufferSource();
+      s.buffer = noiseBuffer();
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.8;
+      const ng = audioCtx.createGain();
+      ng.gain.setValueAtTime(0.0001, time);
+      ng.gain.exponentialRampToValueAtTime(0.34, time + 0.003);
+      ng.gain.exponentialRampToValueAtTime(0.0001, time + 0.19);
+      s.connect(bp); bp.connect(ng); ng.connect(out);
+
+      const o = audioCtx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(210, time);
+      o.frequency.exponentialRampToValueAtTime(120, time + 0.1);
+      const og = audioCtx.createGain();
+      og.gain.setValueAtTime(0.0001, time);
+      og.gain.exponentialRampToValueAtTime(0.16, time + 0.003);
+      og.gain.exponentialRampToValueAtTime(0.0001, time + 0.13);
+      o.connect(og); og.connect(out);
+
+      s.start(time); s.stop(time + 0.25);
+      o.start(time); o.stop(time + 0.25);
+      break;
+    }
+  }
+}
+
+/* ============================================================
+   调度器（含摇摆）
+   ============================================================ */
+function scheduler(){
+  if(!isPlaying || !audioCtx) return;
+  while(nextNoteTime < audioCtx.currentTime + 0.12){
+    const step = scheduleStep;
+    const swingOffset = (step % 2 === 1) ? (swing / 100) * stepDur * 0.33 : 0;
+    const playTime = nextNoteTime + swingOffset;
+
+    for(let r=0;r<ROWS;r++){
+      const v = cells[step*ROWS + r];
+      if(v >= 0 && activeTimbres.has(v)){
+        playNote(v, rowFreq(r), playTime);
+        flashQueue.push({ step, row:r, time: playTime });
+      }
+    }
+    nextNoteTime += stepDur;
+    scheduleStep = (scheduleStep + 1) % COLS;
+  }
+}
+
+function processFlashQueue(){
+  if(!audioCtx) return;
+  const now = audioCtx.currentTime;
+  while(flashQueue.length && flashQueue[0].time <= now){
+    const f = flashQueue.shift();
+    flashes.push({ col:f.step, row:f.row, t:0, life:0.24 });
+    if(flashes.length > 160) flashes.shift();
+    document.getElementById('hudStep').textContent = String(f.step).padStart(2,'0');
+  }
+}
+
+/* ============================================================
+   播放控制
+   ============================================================ */
+const playBtn = document.getElementById('playBtn');
+
+function startPlay(){
+  initAudio();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+
+  isPlaying = true;
+  stepDur = 60 / bpm / STEPS_PER_BEAT;
+  startTime = audioCtx.currentTime + 0.08;
+  nextNoteTime = startTime;
+  scheduleStep = 0;
+  flashQueue.length = 0;
+  playhead = 0;
+
+  clearInterval(schedulerTimer);
+  schedulerTimer = setInterval(() => { scheduler(); processFlashQueue(); }, 25);
+
+  playBtn.innerHTML = ICON_PAUSE + '<span>暂停</span>';
+  playBtn.classList.add('playing');
+}
+
+function stopPlay(){
+  isPlaying = false;
+  clearInterval(schedulerTimer);
+  schedulerTimer = null;
+  playhead = -1;
+  flashQueue.length = 0;
+
+  playBtn.innerHTML = ICON_PLAY + '<span>播放</span>';
+  playBtn.classList.remove('playing');
+}
+
+playBtn.addEventListener('click', () => isPlaying ? stopPlay() : startPlay());
+
+/* ============================================================
+   撤销栈
+   ============================================================ */
+const undoBtn = document.getElementById('undoBtn');
+
+function pushUndo(){
+  undoStack.push(Int8Array.from(cells));
+  if(undoStack.length > MAX_UNDO) undoStack.shift();
+  updateUndoState();
+}
+
+function updateUndoState(){
+  undoBtn.disabled = undoStack.length === 0;
+}
+
+function doUndo(){
+  if(!undoStack.length) return;
+  const prev = undoStack.pop();
+  if(prev.length === cells.length) cells.set(prev);
+  drawStatic();
+  updateHUD();
+  updateUndoState();
+}
+
+undoBtn.addEventListener('click', doUndo);
+
+/* ============================================================
+   绘制交互
+   ============================================================ */
+let painting = false;
+let paintValue = ERASER;
+
+const pointers = new Map();
+let rollMode = false;
+let rollStartX = 0;
+let rollStartLeft = 0;
+
+let longPressTimer = null;
+let downX = 0, downY = 0;
+
+function cellFromEvent(e){
+  const rect = canvas.getBoundingClientRect();
+  if(!rect.width || !rect.height) return null;
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  const col = Math.floor(x * COLS);
+  const row = ROWS - 1 - Math.floor(y * ROWS);
+  if(col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
+  return { col, row };
+}
+
+function setCell(col, row, value){
+  const idx = col*ROWS + row;
+  if(cells[idx] === value) return false;
+  cells[idx] = value;
+  return true;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+
+  if(pointers.size === 2){
+    rollMode = true;
+    painting = false;
+    clearLongPress();
+    const pts = [...pointers.values()];
+    rollStartX = (pts[0].x + pts[1].x) / 2;
+    rollStartLeft = scrollEl.scrollLeft;
+    return;
+  }
+
+  if(rollMode) return;
+
+  const cell = cellFromEvent(e);
+  if(!cell) return;
+
+  downX = e.clientX;
+  downY = e.clientY;
+
+  pushUndo();
+  painting = true;
+
+  const erase = eraserMode || e.button === 2 || e.shiftKey;
+  paintValue = erase ? ERASER : currentColor;
+
+  if(!erase && cells[cell.col*ROWS + cell.row] === currentColor){
+    paintValue = ERASER;
+  }
+
+  setCell(cell.col, cell.row, paintValue);
+  drawStatic();
+  updateHUD();
+
+  if(IS_TOUCH && !erase){
+    clearLongPress();
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null;
+      paintValue = ERASER;
+      canvas.classList.add('erasing');
+      if(setCell(cell.col, cell.row, ERASER)){
+        drawStatic();
+        updateHUD();
+      }
+      if(navigator.vibrate) navigator.vibrate(10);
+    }, 360);
+  }
+
+  if(!isPlaying && paintValue >= 0){
+    initAudio();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    playNote(paintValue, rowFreq(cell.row), audioCtx.currentTime + 0.01);
+  }
+}, { passive:false });
+
+canvas.addEventListener('pointermove', e => {
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+
+  if(longPressTimer){
+    const dx = e.clientX - downX;
+    const dy = e.clientY - downY;
+    if(Math.hypot(dx, dy) > 8) clearLongPress();
+  }
+
+  if(rollMode && pointers.size >= 2){
+    e.preventDefault();
+    const pts = [...pointers.values()];
+    const x = (pts[0].x + pts[1].x) / 2;
+    scrollEl.scrollLeft = rollStartLeft - (x - rollStartX);
+    return;
+  }
+
+  if(!painting) return;
+  e.preventDefault();
+  const cell = cellFromEvent(e);
+  if(!cell) return;
+  if(setCell(cell.col, cell.row, paintValue)){
+    drawStatic();
+    updateHUD();
+  }
+}, { passive:false });
+
+function clearLongPress(){
+  if(longPressTimer){
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+function endPointer(e){
+  clearLongPress();
+  canvas.classList.remove('erasing');
+  pointers.delete(e.pointerId);
+  if(pointers.size < 2) rollMode = false;
+  if(pointers.size === 0) painting = false;
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ============================================================
+   调色板
+   ============================================================ */
+const paletteEl = document.getElementById('palette');
+const swEls = [];
+
+TIMBRES.forEach((tb, i) => {
+  const el = document.createElement('div');
+  el.className = 'sw';
+  el.style.color = tb.color;
+  el.dataset.name = tb.name;
+  el.title = tb.name + ` (${i+1})`;
+
+  const face = document.createElement('div');
+  face.className = 'face';
+  face.style.background = tb.color;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = tb.short;
+  face.appendChild(label);
+  el.appendChild(face);
+
+  let pressTimer = null;
+  let longPressed = false;
+
+  el.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    longPressed = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      longPressed = true;
+      toggleMute(i);
+      pressTimer = null;
+    }, 380);
+  });
+
+  el.addEventListener('pointerup', e => {
+    e.stopPropagation();
+    if(pressTimer){
+      clearTimeout(pressTimer);
+      pressTimer = null;
+      if(!longPressed){
+        currentColor = i;
+        eraserMode = false;
+        syncPalette();
+      }
+    }
+  });
+
+  el.addEventListener('pointercancel', () => {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  });
+
+  el.addEventListener('dblclick', e => {
+    e.preventDefault();
+    toggleMute(i);
+  });
+
+  paletteEl.appendChild(el);
+  swEls.push(el);
+});
+
+const eraserEl = document.createElement('div');
+eraserEl.className = 'sw eraser';
+eraserEl.title = '橡皮 (E)';
+eraserEl.innerHTML = `<div class="face">
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+    <path d="M3 3l6 6M9 3l-6 6"/>
+  </svg>
+</div>`;
+
+eraserEl.addEventListener('pointerdown', e => e.stopPropagation());
+eraserEl.addEventListener('click', () => {
+  eraserMode = true;
+  syncPalette();
+});
+paletteEl.appendChild(eraserEl);
+
+function toggleMute(i){
+  if(activeTimbres.has(i)) activeTimbres.delete(i);
+  else activeTimbres.add(i);
+  syncPalette();
+  toast(activeTimbres.has(i) ? `${TIMBRES[i].name} 已开启` : `${TIMBRES[i].name} 已静音`);
+}
+
+function syncPalette(){
+  swEls.forEach((el, i) => {
+    el.classList.toggle('active', !eraserMode && currentColor === i);
+    el.classList.toggle('muted', !activeTimbres.has(i));
+  });
+  eraserEl.classList.toggle('active', eraserMode);
+}
+syncPalette();
+
+/* ============================================================
+   BPM / 摇摆
+   ============================================================ */
+const bpmInput = document.getElementById('bpm');
+const bpmVal = document.getElementById('bpmVal');
+const swingInput = document.getElementById('swing');
+const swingVal = document.getElementById('swingVal');
+
+bpmInput.addEventListener('input', () => {
+  const oldBpm = bpm;
+  bpm = parseInt(bpmInput.value, 10);
+  bpmVal.textContent = bpm;
+
+  if(isPlaying && audioCtx){
+    const elapsed = audioCtx.currentTime - startTime;
+    const oldStepDur = 60 / oldBpm / STEPS_PER_BEAT;
+    const stepsDone = elapsed / oldStepDur;
+    stepDur = 60 / bpm / STEPS_PER_BEAT;
+    startTime = audioCtx.currentTime - stepsDone * stepDur;
+  } else {
+    stepDur = 60 / bpm / STEPS_PER_BEAT;
+  }
+});
+
+swingInput.addEventListener('input', () => {
+  swing = parseInt(swingInput.value, 10);
+  swingVal.textContent = swing;
+});
+
+/* ============================================================
+   跟随
+   ============================================================ */
+const followBtn = document.getElementById('followBtn');
+followBtn.addEventListener('click', () => {
+  followPlayhead = !followPlayhead;
+  followBtn.classList.toggle('active', followPlayhead);
+  followBtn.textContent = followPlayhead ? '跟随' : '手动';
+  toast(followPlayhead ? '播放时自动跟随' : '已关闭自动跟随');
+});
+
+/* ============================================================
+   根音 / 音阶
+   ============================================================ */
+const rootSelect = document.getElementById('rootSelect');
+const scaleSelect = document.getElementById('scaleSelect');
+
+rootSelect.addEventListener('change', () => {
+  rootSemi = parseInt(rootSelect.value, 10);
+  const name = rootSelect.options[rootSelect.selectedIndex].text;
+  toast('根音：' + name);
+});
+
+scaleSelect.addEventListener('change', () => {
+  scaleName = scaleSelect.value;
+  scaleNotes = buildNotes(SCALES[scaleName], ROWS);
+  toast('音阶：' + scaleSelect.options[scaleSelect.selectedIndex].text);
+});
+
+/* ============================================================
+   步数切换
+   ============================================================ */
+const colsSelect = document.getElementById('colsSelect');
+colsSelect.value = String(COLS);
+
+colsSelect.addEventListener('change', () => {
+  const newCols = parseInt(colsSelect.value, 10);
+  if(newCols === COLS) return;
+
+  const wasPlaying = isPlaying;
+  if(wasPlaying) stopPlay();
+
+  const oldCells = cells;
+  const oldCols = COLS;
+  COLS = newCols;
+  cells = new Int8Array(COLS * ROWS).fill(ERASER);
+
+  const copyCols = Math.min(oldCols, COLS);
+  for(let c=0;c<copyCols;c++){
+    for(let r=0;r<ROWS;r++){
+      cells[c*ROWS + r] = oldCells[c*ROWS + r];
+    }
+  }
+
+  undoStack.length = 0;
+  updateUndoState();
+  document.getElementById('hudCols').textContent = COLS;
+  document.getElementById('hudStep').textContent = '00';
+
+  layout();
+  updateHUD();
+  scrollEl.scrollLeft = 0;
+
+  if(wasPlaying) startPlay();
+  toast(`已切换到 ${COLS} 步`);
+});
+
+/* ============================================================
+   清空 / 随机 / 示例
+   ============================================================ */
+document.getElementById('clearBtn').addEventListener('click', () => {
+  pushUndo();
+  cells.fill(ERASER);
+  drawStatic();
+  updateHUD();
+  toast('已清空');
+});
+
+document.getElementById('randomBtn').addEventListener('click', randomize);
+
+function randomize(){
+  pushUndo();
+  cells.fill(ERASER);
+
+  const pool = TIMBRES.map((_,i)=>i);
+  const picks = [];
+  const n = 2 + Math.floor(Math.random()*2);
+  for(let i=0;i<n;i++){
+    picks.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);
+  }
+
+  const density = 0.09 + Math.random()*0.10;
+  for(let c=0;c<COLS;c++){
+    for(let r=0;r<ROWS;r++){
+      const bias = 1 - (r / ROWS) * 0.5;
+      if(Math.random() < density * bias){
+        cells[c*ROWS + r] = picks[Math.floor(Math.random()*picks.length)];
+      }
+    }
+  }
+  drawStatic();
+  updateHUD();
+  toast('已生成随机旋律');
+}
+
+document.getElementById('demoBtn').addEventListener('click', () => {
+  pushUndo();
+  cells.fill(ERASER);
+
+  const put = (c, r, v) => {
+    const cc = ((c % COLS) + COLS) % COLS;
+    if(r >= 0 && r < ROWS) cells[cc*ROWS + r] = v;
+  };
+
+  const ratio = COLS / 32;
+
+  for(let c=0;c<COLS;c+=8) put(c, 0, 5);
+  for(let c=0;c<COLS;c+=2) put(c, 5, 6);
+  for(let c=4;c<COLS;c+=8) put(c, 3, 7);
+
+  const melody = [
+    [0,7,0],[3,9,1],[6,7,0],[8,5,1],
+    [11,7,0],[14,9,1],[16,10,0],[19,9,1],
+    [22,7,0],[24,5,1],[27,7,0],[30,9,1]
+  ];
+  melody.forEach(([c,r,v]) => put(Math.round(c*ratio), r, v));
+
+  for(let c=0;c<COLS;c+=16) put(c, 3, 3);
+
+  drawStatic();
+  updateHUD();
+  toast('已载入示例');
+});
+
+/* ============================================================
+   水平 / 垂直翻转
+   ============================================================ */
+document.getElementById('flipHBtn').addEventListener('click', () => {
+  pushUndo();
+  const newCells = new Int8Array(COLS * ROWS);
+  for(let c=0;c<COLS;c++){
+    for(let r=0;r<ROWS;r++){
+      newCells[(COLS-1-c)*ROWS + r] = cells[c*ROWS + r];
+    }
+  }
+  cells = newCells;
+  drawStatic();
+  updateHUD();
+  toast('已水平镜像');
+});
+
+document.getElementById('flipVBtn').addEventListener('click', () => {
+  pushUndo();
+  const newCells = new Int8Array(COLS * ROWS);
+  for(let c=0;c<COLS;c++){
+    for(let r=0;r<ROWS;r++){
+      newCells[c*ROWS + (ROWS-1-r)] = cells[c*ROWS + r];
+    }
+  }
+  cells = newCells;
+  drawStatic();
+  updateHUD();
+  toast('已垂直倒影');
+});
+
+/* ============================================================
+   导出 / 导入
+   ============================================================ */
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const grid = [];
+  for(let r=ROWS-1;r>=0;r--){
+    const line = [];
+    for(let c=0;c<COLS;c++) line.push(cells[c*ROWS+r]);
+    grid.push(line);
+  }
+
+  const data = {
+    app: 'pixel-music-canvas',
+    version: 2,
+    bpm,
+    swing,
+    cols: COLS,
+    rows: ROWS,
+    root: rootSemi,
+    scale: scaleName,
+    grid
+  };
+
+  const blob = new Blob([JSON.stringify(data)], { type:'application/json' });
+  downloadBlob(blob, `pixel-music-${Date.now()}.json`);
+  toast('已导出 JSON');
+});
+
+document.getElementById('loadBtn').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data.grid || !Array.isArray(data.grid)) throw new Error('格式错误');
+
+      const wasPlaying = isPlaying;
+      if(wasPlaying) stopPlay();
+
+      if(data.cols && data.cols !== COLS){
+        COLS = data.cols;
+        let found = false;
+        for(const opt of colsSelect.options){
+          if(parseInt(opt.value,10) === COLS){ found = true; break; }
+        }
+        if(!found){
+          const opt = document.createElement('option');
+          opt.value = String(COLS);
+          opt.textContent = COLS + ' 步';
+          colsSelect.appendChild(opt);
+        }
+        colsSelect.value = String(COLS);
+        document.getElementById('hudCols').textContent = COLS;
+      }
+
+      cells = new Int8Array(COLS * ROWS).fill(ERASER);
+
+      const rowsIn = data.grid;
+      for(let ri=0; ri<Math.min(rowsIn.length, ROWS); ri++){
+        const row = ROWS - 1 - ri;
+        for(let c=0; c<Math.min(rowsIn[ri].length, COLS); c++){
+          const v = rowsIn[ri][c];
+          if(typeof v === 'number' && v >= 0 && v < TIMBRES.length){
+            cells[c*ROWS + row] = v;
+          }
+        }
+      }
+
+      if(typeof data.bpm === 'number'){
+        bpm = Math.max(50, Math.min(200, data.bpm));
+        bpmInput.value = bpm;
+        bpmVal.textContent = bpm;
+      }
+      if(typeof data.swing === 'number'){
+        swing = Math.max(0, Math.min(100, data.swing));
+        swingInput.value = swing;
+        swingVal.textContent = swing;
+      }
+      if(typeof data.root === 'number'){
+        rootSemi = data.root;
+        rootSelect.value = String(rootSemi);
+      }
+      if(data.scale && SCALES[data.scale]){
+        scaleName = data.scale;
+        scaleSelect.value = scaleName;
+        scaleNotes = buildNotes(SCALES[scaleName], ROWS);
+      }
+
+      stepDur = 60 / bpm / STEPS_PER_BEAT;
+
+      undoStack.length = 0;
+      updateUndoState();
+      layout();
+      updateHUD();
+      scrollEl.scrollLeft = 0;
+      if(wasPlaying) startPlay();
+      toast('已导入');
+    }catch(err){
+      toast('导入失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ============================================================
+   HUD / Toast
+   ============================================================ */
+const hudNotes = document.getElementById('hudNotes');
+document.getElementById('hudCols').textContent = COLS;
+
+function updateHUD(){
+  let n = 0;
+  for(let i=0;i<cells.length;i++) if(cells[i] >= 0) n++;
+  hudNotes.textContent = n;
+}
+updateHUD();
+
+let toastTimer = null;
+const toastEl = document.getElementById('toast');
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
+}
+
+/* ============================================================
+   键盘
+   ============================================================ */
+window.addEventListener('keydown', e => {
+  if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+  if(e.code === 'Space'){ e.preventDefault(); isPlaying ? stopPlay() : startPlay(); return; }
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); doUndo(); return; }
+
+  const k = e.key.toLowerCase();
+  if(k === 'e'){ eraserMode = true; syncPalette(); return; }
+  if(k === 'r'){ randomize(); return; }
+  if(k === 'h'){ document.getElementById('flipHBtn').click(); return; }
+  if(k === 'v'){ document.getElementById('flipVBtn').click(); return; }
+
+  const n = parseInt(e.key, 10);
+  if(n >= 1 && n <= TIMBRES.length){
+    currentColor = n - 1;
+    eraserMode = false;
+    syncPalette();
+    const el = swEls[n-1];
+    if(el){
+      el.animate(
+        [{transform:'translateY(-1px) scale(1.16)'},{transform:'translateY(-1px) scale(1)'}],
+        {duration:180, easing:'ease-out'}
+      );
+    }
+  }
+});
+
+/* ============================================================
+   启动
+   ============================================================ */
+let resizeTimer = null;
+function scheduleLayout(){
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const prevScroll = scrollEl.scrollLeft;
+    layout();
+    scrollEl.scrollLeft = prevScroll;
+  }, 120);
+}
+window.addEventListener('resize', scheduleLayout);
+window.addEventListener('orientationchange', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    layout();
+    scrollEl.scrollLeft = 0;
+  }, 220);
+});
+
+layout();
+updateUndoState();
+requestAnimationFrame(render);
+
+['pointerdown','keydown','touchstart'].forEach(ev => {
+  window.addEventListener(ev, function unlock(){
+    initAudio();
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    window.removeEventListener(ev, unlock);
+  }, { once:true, passive:true });
+});
+
+})();
+</script>
+</body>
+</html>
