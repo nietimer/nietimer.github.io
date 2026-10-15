@@ -9,6 +9,8 @@
 - [快艇骰子](/dice.html)
 - [图片集](/photo_gallery/index.html)
 - [Pixel Music Canvas](/pixel_music_canvas.html)
+- [JSON数据分析](/json_insight.html)
+- [图片混淆器](/image_scrambler.html)
 
 数学之美
 - [二进制绘制](/bitpaint.html)

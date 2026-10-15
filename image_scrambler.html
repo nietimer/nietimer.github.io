@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<title>图片混淆器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: #0a0a0c;
+    color: #e9e9ec;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .app {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: max(26px, env(safe-area-inset-top)) 18px calc(44px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- 头部 ---------- */
+  .head { margin-bottom: 20px; }
+
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #63636d;
+    margin-bottom: 12px;
+  }
+
+  .head h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: #f3f3f6;
+  }
+
+  .head p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #7f7f89;
+    max-width: 42ch;
+  }
+
+  /* ---------- 图片区 ---------- */
+  .stage {
+    position: relative;
+    border: 1px solid #222228;
+    border-radius: 14px;
+    background: #111115;
+    overflow: hidden;
+    transition: border-color .18s ease, background .18s ease;
+  }
+  .stage.drag { border-color: #4a4a56; background: #16161c; }
+  .stage.has-image { background: #0c0c0f; }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    min-height: 236px;
+    padding: 40px 24px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .empty svg { color: #4b4b55; margin-bottom: 10px; transition: color .18s ease; }
+  .empty .t { font-size: 14.5px; font-weight: 500; color: #cfcfd7; transition: color .18s ease; }
+  .empty .s { font-size: 12.5px; color: #6a6a74; }
+
+  @media (hover: hover) {
+    .empty:hover svg { color: #ffb020; }
+    .empty:hover .t { color: #fff; }
+    .empty:hover { background: #14141a; }
+  }
+
+  .stage.has-image .empty { display: none; }
+  .stage:not(.has-image) .view { display: none; }
+
+  .media {
+    display: block;
+    width: 100%;
+    max-height: 46vh;
+    object-fit: contain;
+    background: #08080a;
+  }
+
+  .badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #b2b2bc;
+    background: rgba(10, 10, 12, .74);
+    border: 1px solid rgba(255, 255, 255, .08);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    pointer-events: none;
+    transition: color .2s, border-color .2s, background .2s;
+  }
+  .badge.done {
+    color: #ffc65c;
+    border-color: rgba(255, 176, 32, .28);
+    background: rgba(255, 176, 32, .1);
+  }
+  .stage:not(.has-image) .badge { display: none; }
+
+  /* ---------- 控件 ---------- */
+  .controls {
+    margin-top: 20px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .btn {
+    height: 48px;
+    padding: 0 16px;
+    border: 1px solid #26262e;
+    border-radius: 10px;
+    background: #16161c;
+    color: #e2e2e9;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .08s, opacity .15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .btn:hover:not(:disabled) { background: #1d1d24; border-color: #33333d; }
+  .btn:active:not(:disabled) { transform: scale(.985); }
+  .btn:disabled { opacity: .38; cursor: default; }
+
+  .btn.primary {
+    background: #ffb020;
+    border-color: #ffb020;
+    color: #1c1305;
+    font-weight: 600;
+  }
+  .btn.primary:hover:not(:disabled) { background: #ffbd45; border-color: #ffbd45; }
+
+  .btn.wide { width: 100%; }
+
+  /* ---------- 状态 ---------- */
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 19px;
+    font-size: 12.5px;
+    color: #6a6a74;
+    transition: color .15s;
+  }
+  .status.err { color: #ff7b72; }
+  .status.ok  { color: #6fcf8b; }
+
+  .status.work::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffb020;
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: .28; transform: scale(.8); }
+    50%      { opacity: 1;   transform: scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="head">
+    <div class="eyebrow">Image Scrambler</div>
+    <h1>图片混淆器</h1>
+    <p>把照片变成一幅看不出内容的水波纹抽象画。要还原时，把这张画再放回来点一下就行。</p>
+  </header>
+
+  <section class="stage" id="stage">
+    <button class="empty" id="emptyBtn" type="button">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 8.4v7.2M8.4 12h7.2"/>
+      </svg>
+      <span class="t">选择图片</span>
+      <span class="s">点击上传 · 拖拽 · 粘贴</span>
+    </button>
+
+    <div class="view" id="view"></div>
+    <div class="badge" id="badge"></div>
+  </section>
+
+  <div class="controls">
+    <div class="actions">
+      <button class="btn primary" id="btnObf" type="button">混淆</button>
+      <button class="btn" id="btnRes" type="button">还原</button>
+    </div>
+
+    <button class="btn wide" id="btnDl" type="button" hidden>下载 PNG</button>
+
+    <div class="status" id="status"></div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+     参数
+     ========================================================= */
+  var MAX_PIXELS = 10000000;   // 处理上限，超出则等比缩小
+  var MAX_DIM    = 16384;      // 单边上限，规避浏览器画布限制
+
+  // 水波扭曲强度（相对图片宽/高的比例）
+  // 由两组不同频率的正弦叠加，形成有机的波纹感，避免机械感
+  var AMP_A = 0.28;   // 主波幅度
+  var AMP_B = 0.10;   // 次波幅度
+
+  var el = {
+    stage:  document.getElementById('stage'),
+    empty:  document.getElementById('emptyBtn'),
+    view:   document.getElementById('view'),
+    badge:  document.getElementById('badge'),
+    file:   document.getElementById('fileInput'),
+    obf:    document.getElementById('btnObf'),
+    res:    document.getElementById('btnRes'),
+    dl:     document.getElementById('btnDl'),
+    status: document.getElementById('status')
+  };
+
+  var current  = null;     // 当前显示的 <img> 或 <canvas>
+  var busy     = false;
+  var baseName = 'image';
+  var lastURL  = null;
+  var lastMode = 'scramble';
+
+  /* =========================================================
+     小工具
+     ========================================================= */
+  function nextTick() {
+    return new Promise(function (r) {
+      requestAnimationFrame(function () { setTimeout(r, 0); });
+    });
+  }
+
+  function setStatus(text, kind) {
+    el.status.textContent = text || '';
+    el.status.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function setBusy(on, text) {
+    busy = on;
+    el.obf.disabled = on;
+    el.res.disabled = on;
+    el.dl.disabled  = on;
+    if (on) setStatus(text || '处理中…', 'work');
+  }
+
+  /* =========================================================
+     水波位移函数
+     ---------------------------------------------------------
+     关键：位移只依赖单一坐标
+       dx = f(y)   → 每行整体平移
+       dy = g(x)   → 每列整体平移
+     这样映射一定是双射，逆变换只需反着平移即可。
+     ========================================================= */
+  function rowShiftRatio(y, h) {
+    var t = y / h;
+    return AMP_A * Math.sin(t * Math.PI * 4.0 + 1.15)
+         + AMP_B * Math.sin(t * Math.PI * 6.0 + 0.42);
+  }
+
+  function colShiftRatio(x, w) {
+    var t = x / w;
+    return AMP_A * Math.cos(t * Math.PI * 4.0 + 0.75)
+         + AMP_B * Math.cos(t * Math.PI * 6.0 + 2.10);
+  }
+
+  /* =========================================================
+     颜色通道循环（可逆）
+     正：R←G, G←B, B←R
+     逆：R←B, G←R, B←G
+     ========================================================= */
+  function channelCycle(d, inverse) {
+    var i, r, g, b;
+    if (!inverse) {
+      for (i = 0; i < d.length; i += 4) {
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        d[i]     = g;
+        d[i + 1] = b;
+        d[i + 2] = r;
+      }
+    } else {
+      for (i = 0; i < d.length; i += 4) {
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        d[i]     = b;
+        d[i + 1] = r;
+        d[i + 2] = g;
+      }
+    }
+  }
+
+  /* =========================================================
+     逐行循环平移
+     ========================================================= */
+  function rowWarp(d, w, h, inverse) {
+    if (w < 2 || h < 1) return;
+
+    var buf = new Uint8ClampedArray(w * 4);
+    var y, x, s, shift, off, i, si, di;
+
+    for (y = 0; y < h; y++) {
+      s = Math.round(rowShiftRatio(y, h) * w);
+      s = ((s % w) + w) % w;
+      if (s === 0) continue;
+
+      off = y * w * 4;
+
+      // 把这一行搬进临时缓冲
+      for (i = 0; i < w * 4; i++) buf[i] = d[off + i];
+
+      // 正向：new[x] = old[(x + s) % w]
+      // 逆向：new[x] = old[(x - s) % w]
+      shift = inverse ? (w - s) % w : s;
+
+      for (x = 0; x < w; x++) {
+        si = ((x + shift) % w) * 4;
+        di = off + x * 4;
+        d[di]     = buf[si];
+        d[di + 1] = buf[si + 1];
+        d[di + 2] = buf[si + 2];
+        d[di + 3] = buf[si + 3];
+      }
+    }
+  }
+
+  /* =========================================================
+     逐列循环平移
+     ========================================================= */
+  function colWarp(d, w, h, inverse) {
+    if (h < 2 || w < 1) return;
+
+    var buf = new Uint8ClampedArray(h * 4);
+    var x, y, s, shift, di, si;
+
+    for (x = 0; x < w; x++) {
+      s = Math.round(colShiftRatio(x, w) * h);
+      s = ((s % h) + h) % h;
+      if (s === 0) continue;
+
+      // 收集这一列
+      for (y = 0; y < h; y++) {
+        di = (y * w + x) * 4;
+        buf[y * 4]     = d[di];
+        buf[y * 4 + 1] = d[di + 1];
+        buf[y * 4 + 2] = d[di + 2];
+        buf[y * 4 + 3] = d[di + 3];
+      }
+
+      shift = inverse ? (h - s) % h : s;
+
+      for (y = 0; y < h; y++) {
+        si = ((y + shift) % h) * 4;
+        di = (y * w + x) * 4;
+        d[di]     = buf[si];
+        d[di + 1] = buf[si + 1];
+        d[di + 2] = buf[si + 2];
+        d[di + 3] = buf[si + 3];
+      }
+    }
+  }
+
+  /* =========================================================
+     核心变换
+     ---------------------------------------------------------
+     正序：颜色 → 行波 → 列波
+     逆序：列波 → 行波 → 颜色
+     ========================================================= */
+  function transform(src, inverse) {
+    var w = src.naturalWidth || src.width;
+    var h = src.naturalHeight || src.height;
+    if (!w || !h) throw new Error('图片尺寸无效');
+
+    // 单边限制
+    if (w > MAX_DIM || h > MAX_DIM) {
+      var k1 = Math.min(MAX_DIM / w, MAX_DIM / h);
+      w = Math.max(1, Math.round(w * k1));
+      h = Math.max(1, Math.round(h * k1));
+    }
+    // 总像素限制
+    var total = w * h;
+    if (total > MAX_PIXELS) {
+      var k2 = Math.sqrt(MAX_PIXELS / total);
+      w = Math.max(1, Math.round(w * k2));
+      h = Math.max(1, Math.round(h * k2));
+    }
+
+    var cv = document.createElement('canvas');
+    cv.width  = w;
+    cv.height = h;
+
+    var ctx = cv.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('无法创建画布');
+
+    ctx.drawImage(src, 0, 0, w, h);
+
+    var frame = ctx.getImageData(0, 0, w, h);
+    var d = frame.data;
+
+    if (!inverse) {
+      channelCycle(d, false);
+      rowWarp(d, w, h, false);
+      colWarp(d, w, h, false);
+    } else {
+      colWarp(d, w, h, true);
+      rowWarp(d, w, h, true);
+      channelCycle(d, true);
+    }
+
+    ctx.putImageData(frame, 0, 0);
+    return cv;
+  }
+
+  /* =========================================================
+     界面状态
+     ========================================================= */
+  function showNode(node) {
+    current = node;
+    if (node.nodeType === 1) node.classList.add('media');
+    el.view.replaceChildren(node);
+    el.stage.classList.add('has-image');
+  }
+
+  function loadFile(file) {
+    if (!file) return;
+    if (!file.type || file.type.indexOf('image/') !== 0) {
+      setStatus('这不是图片文件', 'err');
+      return;
+    }
+
+    if (lastURL) { URL.revokeObjectURL(lastURL); lastURL = null; }
+    var url = URL.createObjectURL(file);
+    lastURL = url;
+
+    var img = new Image();
+    img.decoding = 'async';
+
+    img.onload = function () {
+      baseName = (file.name || 'image').replace(/\.[^.]+$/, '').slice(0, 40) || 'image';
+      showNode(img);
+      el.badge.textContent = '原图';
+      el.badge.classList.remove('done');
+      el.dl.hidden = true;
+      el.dl.textContent = '下载 PNG';
+      setStatus('已载入 · ' + img.naturalWidth + ' × ' + img.naturalHeight, '');
+    };
+
+    img.onerror = function () {
+      setStatus('图片读取失败，换一张试试', 'err');
+    };
+
+    img.src = url;
+  }
+
+  /* =========================================================
+     执行
+     ========================================================= */
+  function run(inverse) {
+    if (busy) return;
+
+    if (!current) {
+      setStatus('先选一张图片', 'err');
+      return;
+    }
+
+    setBusy(true, inverse ? '正在还原…' : '正在混淆…');
+
+    nextTick()
+      .then(function () { return transform(current, inverse); })
+      .then(function (out) {
+        showNode(out);
+        el.badge.textContent = inverse ? '已还原' : '已混淆';
+        el.badge.classList.toggle('done', !inverse);
+        el.dl.hidden = false;
+        el.dl.textContent = inverse ? '下载还原图（PNG）' : '下载混淆图（PNG）';
+        setStatus('完成 · ' + out.width + ' × ' + out.height, 'ok');
+      })
+      .catch(function (err) {
+        console.error(err);
+        setStatus('失败了：' + (err && err.message ? err.message : '未知错误'), 'err');
+      })
+      .then(function () { setBusy(false); });
+  }
+
+  /* =========================================================
+     下载
+     ========================================================= */
+  function download() {
+    if (!current) return;
+
+    var canvas;
+    if (current instanceof HTMLCanvasElement) {
+      canvas = current;
+    } else {
+      canvas = document.createElement('canvas');
+      canvas.width  = current.naturalWidth;
+      canvas.height = current.naturalHeight;
+      canvas.getContext('2d').drawImage(current, 0, 0);
+    }
+
+    canvas.toBlob(function (blob) {
+      if (!blob) { setStatus('导出失败', 'err'); return; }
+
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = baseName + (lastMode === 'scramble' ? '-obfuscated.png' : '-restored.png');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      setStatus('已保存到下载目录', 'ok');
+    }, 'image/png');
+  }
+
+  /* =========================================================
+     事件绑定
+     ========================================================= */
+  el.empty.addEventListener('click', function () { el.file.click(); });
+
+  el.file.addEventListener('change', function () {
+    var f = el.file.files && el.file.files[0];
+    if (f) loadFile(f);
+    el.file.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(function (evt) {
+    el.stage.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      el.stage.classList.add('drag');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(function (evt) {
+    el.stage.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (evt === 'dragleave' && e.relatedTarget && el.stage.contains(e.relatedTarget)) return;
+      el.stage.classList.remove('drag');
+    });
+  });
+
+  el.stage.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  window.addEventListener('paste', function (e) {
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    var items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image') === 0) {
+        var f = items[i].getAsFile();
+        if (f) { e.preventDefault(); loadFile(f); return; }
+      }
+    }
+  });
+
+  el.obf.addEventListener('click', function () { lastMode = 'scramble'; run(false); });
+  el.res.addEventListener('click', function () { lastMode = 'restore';  run(true);  });
+  el.dl.addEventListener('click', download);
+
+})();
+</script>
+</body>
+</html>

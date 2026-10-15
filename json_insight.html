@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>JSON Insight · 数据可视化分析</title>
+<style>
+:root {
+  --bg: #07080B;
+  --panel: rgba(255,255,255,.028);
+  --border: rgba(255,255,255,.07);
+  --border-hi: rgba(255,255,255,.14);
+  --text: #E9EBF0;
+  --text-dim: #8B92A1;
+  --text-faint: #5A6070;
+  --c1: #7DD3FC;
+  --c2: #A78BFA;
+  --c3: #5EEAD4;
+  --c4: #FBBF24;
+  --c5: #FB7185;
+  --c6: #86EFAC;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 520px at 10% -10%, rgba(125,211,252,.10), transparent 62%),
+    radial-gradient(760px 500px at 92% -2%, rgba(167,139,250,.09), transparent 62%),
+    radial-gradient(1100px 640px at 50% 112%, rgba(94,234,212,.055), transparent 65%);
+}
+
+#bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .85;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 22px 90px;
+}
+
+/* ---------- topbar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 0 0;
+  gap: 16px;
+}
+
+.brand { display: flex; align-items: center; gap: 11px; }
+
+.logo {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--c1), var(--c2) 55%, var(--c3));
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 0 22px rgba(125,211,252,.28);
+}
+.logo::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(7,8,11,.72);
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+.brand-name { font-size: 14px; font-weight: 600; letter-spacing: .02em; }
+.brand-sub { font-size: 10.5px; color: var(--text-faint); letter-spacing: .06em; }
+
+.status {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.02);
+  transition: all .25s;
+  max-width: 55vw;
+}
+.status .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--c3);
+  box-shadow: 0 0 8px var(--c3);
+  transition: all .25s;
+  flex-shrink: 0;
+}
+.status.err .dot { background: var(--c5); box-shadow: 0 0 8px var(--c5); }
+.status.err { color: #F8A5B0; border-color: rgba(251,113,133,.25); }
+.status.wait .dot { background: var(--c4); box-shadow: 0 0 8px var(--c4); }
+.status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- hero ---------- */
+.hero { padding: 54px 0 40px; }
+
+.hero h1 {
+  font-size: clamp(30px, 5.4vw, 54px);
+  line-height: 1.14;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+.grad {
+  background: linear-gradient(100deg, var(--c1), var(--c2) 48%, var(--c3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero p {
+  margin-top: 16px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.75;
+  max-width: 560px;
+}
+
+.hero-tags {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 22px;
+}
+.tag {
+  font-size: 11px;
+  color: var(--text-faint);
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.018);
+  letter-spacing: .02em;
+}
+
+/* ---------- layout ---------- */
+.workspace {
+  display: grid;
+  grid-template-columns: 372px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.panel {
+  background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+/* ---------- editor ---------- */
+.editor-panel { padding: 16px; }
+
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 13px;
+}
+.panel-head h2 { font-size: 12px; font-weight: 500; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase; }
+.panel-hint { font-size: 10.5px; color: var(--text-faint); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 11px; }
+
+.chip {
+  font-size: 11.5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.02);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all .2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.chip:hover {
+  color: var(--text);
+  border-color: rgba(125,211,252,.4);
+  background: rgba(125,211,252,.08);
+  transform: translateY(-1px);
+}
+.chip.active {
+  color: #06121A;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--c1), var(--c3));
+  font-weight: 500;
+}
+
+/* ---------- dropzone ---------- */
+.dropzone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 15px 14px;
+  margin-bottom: 11px;
+  border: 1px dashed rgba(255,255,255,.16);
+  border-radius: 12px;
+  background: rgba(255,255,255,.012);
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .22s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.dropzone:hover {
+  border-color: rgba(125,211,252,.5);
+  background: rgba(125,211,252,.06);
+  color: var(--text);
+}
+.dropzone.dragover {
+  border-color: var(--c3);
+  border-style: solid;
+  background: rgba(94,234,212,.1);
+  color: #CFFFF4;
+  transform: scale(1.01);
+}
+.dropzone svg {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+  opacity: .8;
+  transition: transform .25s, opacity .25s;
+}
+.dropzone:hover svg { opacity: 1; transform: translateY(-1px); }
+.dropzone .dz-accent {
+  color: var(--c1);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.dropzone.loading { pointer-events: none; opacity: .6; }
+
+/* file info chip */
+.file-info {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 11px;
+  margin-bottom: 11px;
+  border-radius: 10px;
+  background: rgba(94,234,212,.07);
+  border: 1px solid rgba(94,234,212,.2);
+  font-size: 11.5px;
+  color: #A7F3E4;
+  animation: slideIn .3s cubic-bezier(.34,1.2,.5,1);
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.file-info .fi-icon {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  opacity: .9;
+}
+.file-info .fi-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.file-info .fi-size {
+  color: #6ED9C0;
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  flex-shrink: 0;
+}
+.file-info .fi-remove {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(255,255,255,.06);
+  color: #A7F3E4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all .18s;
+  font-family: inherit;
+}
+.file-info .fi-remove:hover {
+  background: rgba(251,113,133,.22);
+  color: #FCA5B4;
+}
+
+#jsonInput {
+  width: 100%;
+  height: 258px;
+  background: rgba(0,0,0,.38);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #C6D0DE;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.68;
+  padding: 12px 13px;
+  resize: vertical;
+  outline: none;
+  transition: border-color .22s, box-shadow .22s, background .22s;
+  -webkit-appearance: none;
+}
+#jsonInput::placeholder { color: #3D4351; }
+#jsonInput:focus {
+  border-color: rgba(125,211,252,.42);
+  box-shadow: 0 0 0 3px rgba(125,211,252,.07);
+  background: rgba(0,0,0,.5);
+}
+
+.editor-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 11px;
+  gap: 10px;
+}
+.hint { font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.foot-actions { display: flex; gap: 7px; }
+
+.btn {
+  font-size: 11.5px;
+  padding: 6px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.03);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all .18s;
+  font-family: inherit;
+}
+.btn:hover { color: var(--text); border-color: var(--border-hi); background: rgba(255,255,255,.06); }
+.btn:active { transform: scale(.96); }
+
+/* ---------- drop overlay ---------- */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7,8,11,.86);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s;
+}
+body.dragging .drop-overlay { opacity: 1; }
+
+.drop-overlay-inner {
+  text-align: center;
+  padding: 40px 44px;
+  border: 2px dashed rgba(94,234,212,.55);
+  border-radius: 22px;
+  background: rgba(94,234,212,.05);
+  box-shadow: 0 0 60px rgba(94,234,212,.12) inset;
+  transform: scale(.94);
+  transition: transform .3s cubic-bezier(.34,1.3,.5,1);
+  max-width: 82vw;
+}
+body.dragging .drop-overlay-inner { transform: scale(1); }
+
+.drop-overlay-inner svg {
+  width: 44px; height: 44px;
+  color: var(--c3);
+  margin-bottom: 14px;
+  animation: floaty 2.4s ease-in-out infinite;
+}
+@keyframes floaty {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.drop-overlay-inner p {
+  font-size: 15px;
+  font-weight: 500;
+  color: #CFFFF4;
+  letter-spacing: .02em;
+}
+.drop-overlay-inner span {
+  display: block;
+  margin-top: 7px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* ---------- stats ---------- */
+.dashboard { display: flex; flex-direction: column; gap: 12px; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stat {
+  position: relative;
+  padding: 15px 15px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.038), rgba(255,255,255,.01));
+  overflow: hidden;
+  transition: border-color .25s, transform .25s;
+}
+.stat:hover { border-color: var(--border-hi); transform: translateY(-2px); }
+.stat::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 14px; bottom: 14px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: .85;
+  box-shadow: 0 0 12px var(--accent);
+}
+.stat-val {
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  padding-left: 10px;
+}
+.stat-label {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  margin-top: 5px;
+  letter-spacing: .08em;
+  padding-left: 10px;
+}
+
+/* ---------- charts ---------- */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.chart-card { padding: 17px; }
+
+.card-title {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title::before {
+  content: '';
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--c1);
+  box-shadow: 0 0 6px var(--c1);
+}
+
+/* donut */
+.donut-wrap { display: flex; align-items: center; gap: 20px; }
+
+.donut-box { position: relative; width: 148px; height: 148px; flex-shrink: 0; }
+.donut { width: 100%; height: 100%; display: block; }
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.donut-total {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.donut-cap { font-size: 10px; color: var(--text-faint); letter-spacing: .1em; margin-top: 2px; }
+
+.legend { display: flex; flex-direction: column; gap: 9px; flex: 1; min-width: 0; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.legend-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+.legend-name { color: var(--text-dim); white-space: nowrap; }
+.legend-val { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 500; font-size: 11.5px; }
+
+/* depth */
+.depth-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 152px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.depth-col {
+  flex: 1 0 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 6px;
+}
+.depth-count {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  transition: color .3s;
+}
+.depth-bar {
+  width: 100%;
+  max-width: 30px;
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, var(--c2), rgba(167,139,250,.12));
+  height: 0;
+  transition: height .75s cubic-bezier(.34,1.2,.4,1);
+  min-height: 3px;
+  box-shadow: 0 0 14px rgba(167,139,250,.16);
+}
+.depth-col:hover .depth-bar { background: linear-gradient(180deg, var(--c1), rgba(125,211,252,.12)); }
+.depth-label { font-size: 10px; color: var(--text-faint); letter-spacing: .04em; }
+
+/* keys */
+.keyrow {
+  display: grid;
+  grid-template-columns: minmax(56px, 118px) 1fr 42px;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.keyrow:last-child { margin-bottom: 0; }
+.keyname {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.keytrack {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.05);
+  overflow: hidden;
+}
+.keyfill {
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--c1), var(--c2));
+  transition: width .85s cubic-bezier(.34,1.1,.4,1);
+  box-shadow: 0 0 10px rgba(125,211,252,.3);
+}
+.keycount {
+  text-align: right;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+}
+
+/* ---------- tree ---------- */
+.tree-panel { padding: 16px; }
+
+.tree-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 13px;
+}
+
+.tabs {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+}
+.tab {
+  font-size: 11.5px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: all .2s;
+  font-family: inherit;
+}
+.tab:hover { color: var(--text-dim); }
+.tab.active {
+  background: rgba(255,255,255,.075);
+  color: var(--text);
+}
+
+.tree-actions { display: flex; gap: 7px; }
+
+.pathbar {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.32);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  overflow-x: auto;
+  white-space: nowrap;
+  margin-bottom: 12px;
+  scrollbar-width: none;
+}
+.pathbar::-webkit-scrollbar { display: none; }
+.pathbar .path-str { color: var(--c3); }
+.pathbar .path-val { color: var(--c4); margin-left: 10px; }
+.pathbar .path-label {
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: .1em;
+  margin-right: 8px;
+  text-transform: uppercase;
+}
+
+.tree-scroll {
+  max-height: 430px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.85;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tree-scroll::-webkit-scrollbar { width: 7px; height: 7px; }
+.tree-scroll::-webkit-scrollbar-track { background: transparent; }
+.tree-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.09);
+  border-radius: 4px;
+}
+.tree-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.16); }
+
+.trow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .13s;
+}
+.trow:hover { background: rgba(255,255,255,.045); }
+.trow.selected { background: rgba(125,211,252,.13); box-shadow: inset 2px 0 0 var(--c1); }
+
+.caret {
+  width: 11px;
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--text-faint);
+  transition: color .15s;
+  user-select: none;
+}
+.trow:hover .caret { color: var(--c1); }
+.caret.empty { opacity: 0; }
+
+.tkey { color: #93C5FD; }
+.tcolon { color: #3D4351; margin-right: 1px; }
+
+.tval.str { color: var(--c3); }
+.tval.num { color: var(--c4); }
+.tval.bool { color: var(--c5); }
+.tval.null { color: #7A8494; font-style: italic; }
+.tval.branch { color: #667089; }
+
+.tchildren {
+  padding-left: 13px;
+  margin-left: 5px;
+  border-left: 1px solid rgba(255,255,255,.055);
+}
+.tnode.collapsed > .tchildren { display: none; }
+
+/* raw view */
+.raw-view {
+  max-height: 430px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.75;
+  white-space: pre;
+  color: #C6D0DE;
+  padding: 4px 2px;
+  margin: 0;
+}
+.raw-view::-webkit-scrollbar { width: 7px; height: 7px; }
+.raw-view::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 4px; }
+
+.tok-key { color: #93C5FD; }
+.tok-str { color: var(--c3); }
+.tok-num { color: var(--c4); }
+.tok-bool { color: var(--c5); }
+.tok-null { color: #7A8494; font-style: italic; }
+
+/* empty */
+.empty-note {
+  text-align: center;
+  padding: 34px 10px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 960px) {
+  .workspace { grid-template-columns: 1fr; }
+  #jsonInput { height: 190px; }
+  .hero { padding: 40px 0 30px; }
+}
+
+@media (max-width: 780px) {
+  .charts-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .wrap { padding: 0 15px 70px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-val { font-size: 22px; }
+  .donut-wrap { flex-direction: column; gap: 16px; }
+  .donut-box { width: 132px; height: 132px; }
+  .legend { width: 100%; }
+  .legend-item { font-size: 11.5px; }
+  .tree-scroll, .raw-view { max-height: 340px; font-size: 11.5px; }
+  .hero h1 { letter-spacing: -.02em; }
+  .topbar { padding-top: 16px; }
+  .tree-head { align-items: stretch; }
+  .tabs { flex: 1; }
+  .tab { flex: 1; }
+  .drop-overlay-inner { padding: 30px 26px; }
+  .drop-overlay-inner svg { width: 36px; height: 36px; }
+}
+
+@media (max-width: 380px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .stat { padding: 12px 11px 11px; }
+  .stat-val { font-size: 19px; }
+  .stat-label { font-size: 10px; }
+  .dropzone { font-size: 11.5px; padding: 13px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<!-- 全屏拖拽遮罩 -->
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-overlay-inner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <p>松开以载入 JSON 文件</p>
+    <span>支持 .json / .txt，文件将在本地解析</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div class="brand-text">
+        <span class="brand-name">JSON Insight</span>
+        <span class="brand-sub">可视化分析工作台</span>
+      </div>
+    </div>
+    <div class="status" id="status"><span class="dot"></span><span class="status-text">就绪</span></div>
+  </header>
+
+  <section class="hero">
+    <h1>把 <span class="grad">JSON</span> 拆成<br>看得见的结构</h1>
+    <p>上传本地 JSON 文件或直接粘贴数据，实时解析类型分布、层级深度、字段热度与完整结构树。所有计算都在你的浏览器本地完成，文件不会离开设备。</p>
+    <div class="hero-tags">
+      <span class="tag">本地文件</span>
+      <span class="tag">类型分布</span>
+      <span class="tag">深度剖析</span>
+      <span class="tag">字段热度</span>
+      <span class="tag">结构树</span>
+      <span class="tag">路径定位</span>
+    </div>
+  </section>
+
+  <div class="workspace">
+
+    <!-- ============ 编辑器 ============ -->
+    <aside class="panel editor-panel">
+      <div class="panel-head">
+        <h2>数据源</h2>
+        <span class="panel-hint">实时解析</span>
+      </div>
+
+      <div class="chips" id="chips"></div>
+
+      <!-- 文件上传区 -->
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>拖入文件或 <span class="dz-accent">点击上传</span></span>
+        <input type="file" id="fileInput" accept=".json,.txt,application/json,text/plain" hidden>
+      </div>
+
+      <!-- 已加载文件信息 -->
+      <div class="file-info" id="fileInfo">
+        <svg class="fi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span class="fi-name" id="fiName"></span>
+        <span class="fi-size" id="fiSize"></span>
+        <button class="fi-remove" id="fiRemove" title="移除文件">×</button>
+      </div>
+
+      <textarea id="jsonInput" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder='{"hello": "world"}'></textarea>
+      <div class="editor-foot">
+        <span class="hint" id="charCount">0 字符</span>
+        <div class="foot-actions">
+          <button class="btn" id="btnFormat">格式化</button>
+          <button class="btn" id="btnClear">清空</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ 仪表盘 ============ -->
+    <section class="dashboard">
+
+      <div class="stats-grid">
+        <div class="stat" style="--accent: var(--c1)">
+          <div class="stat-val" id="s-nodes">0</div>
+          <div class="stat-label">节点总数</div>
+        </div>
+        <div class="stat" style="--accent: var(--c2)">
+          <div class="stat-val" id="s-depth">0</div>
+          <div class="stat-label">最大深度</div>
+        </div>
+        <div class="stat" style="--accent: var(--c3)">
+          <div class="stat-val" id="s-containers">0</div>
+          <div class="stat-label">容器节点</div>
+        </div>
+        <div class="stat" style="--accent: var(--c4)">
+          <div class="stat-val" id="s-keys">0</div>
+          <div class="stat-label">唯一键名</div>
+        </div>
+        <div class="stat" style="--accent: var(--c5)">
+          <div class="stat-val" id="s-leaves">0</div>
+          <div class="stat-label">叶节点</div>
+        </div>
+        <div class="stat" style="--accent: var(--c6)">
+          <div class="stat-val" id="s-size">0</div>
+          <div class="stat-label">数据体积 B</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="panel chart-card">
+          <div class="card-title">类型分布</div>
+          <div class="donut-wrap">
+            <div class="donut-box">
+              <svg class="donut" viewBox="0 0 160 160">
+                <circle cx="80" cy="80" r="62" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="13"/>
+                <g id="donutSegments" transform="rotate(-90 80 80)"></g>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-total" id="donutTotal">0</div>
+                <div class="donut-cap">NODES</div>
+              </div>
+            </div>
+            <div class="legend" id="donutLegend"></div>
+          </div>
+        </div>
+
+        <div class="panel chart-card">
+          <div class="card-title">层级深度分布</div>
+          <div class="depth-chart" id="depthChart"></div>
+        </div>
+      </div>
+
+      <div class="panel chart-card">
+        <div class="card-title">字段热度 Top 8</div>
+        <div id="keyChart"></div>
+      </div>
+
+      <div class="panel tree-panel">
+        <div class="tree-head">
+          <div class="tabs">
+            <button class="tab active" data-view="tree">结构树</button>
+            <button class="tab" data-view="raw">原始 JSON</button>
+          </div>
+          <div class="tree-actions">
+            <button class="btn" id="btnExpand">全部展开</button>
+            <button class="btn" id="btnCollapse">全部折叠</button>
+          </div>
+        </div>
+        <div class="pathbar" id="pathbar">点击任意节点，查看它的完整路径</div>
+        <div id="treeView" class="tree-scroll"></div>
+        <pre id="rawView" class="raw-view" style="display:none"></pre>
+      </div>
+
+    </section>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   工具函数
+   ========================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+const esc = (s) => String(s).replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+const TYPE_COLORS = {
+  object: '#7DD3FC',
+  array:  '#A78BFA',
+  string: '#5EEAD4',
+  number: '#FBBF24',
+  boolean:'#FB7185',
+  null:   '#94A3B8'
+};
+const TYPE_LABELS = {
+  object: '对象', array: '数组', string: '字符串',
+  number: '数值', boolean: '布尔', null: '空值'
+};
+
+function animateNumber(el, target, duration = 680) {
+  const start = performance.now();
+  const fmt = (n) => n.toLocaleString('en-US');
+  function tick(now) {
+    const p = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(Math.round(target * eased));
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* =========================================================
+   背景粒子网络
+   ========================================================= */
+(function bgNetwork() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canvas = document.getElementById('bg');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  let particles = [];
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    const count = Math.max(18, Math.min(46, Math.round((W * H) / 34000)));
+    particles = [];
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - .5) * .22,
+        vy: (Math.random() - .5) * .22,
+        r: Math.random() * 1.5 + .7
+      });
+    }
+  }
+
+  const LINK = 16000;
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    for (const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < -20 || p.x > W + 20) p.vx *= -1;
+      if (p.y < -20 || p.y > H + 20) p.vy *= -1;
+    }
+
+    for (let i = 0; i < particles.length; i++) {
+      const a = particles[i];
+      for (let j = i + 1; j < particles.length; j++) {
+        const b = particles[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < LINK) {
+          const alpha = (1 - d2 / LINK) * .13;
+          ctx.strokeStyle = 'rgba(125,211,252,' + alpha.toFixed(3) + ')';
+          ctx.lineWidth = .6;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    for (const p of particles) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(167,139,250,.34)';
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  if (!reduce) requestAnimationFrame(draw);
+})();
+
+/* =========================================================
+   核心分析
+   ========================================================= */
+let nodeIdCounter = 0;
+
+function analyze(root) {
+  nodeIdCounter = 0;
+
+  const stats = {
+    nodes: 0,
+    maxDepth: 0,
+    objects: 0,
+    arrays: 0,
+    primitives: 0,
+    leaves: 0,
+    typeCounts: {},
+    depthCounts: {},
+    keyCounts: {},
+    uniqueKeys: 0
+  };
+  const keySet = new Set();
+
+  function walk(value, key, depth, path) {
+    const id = nodeIdCounter++;
+    stats.nodes++;
+    if (depth > stats.maxDepth) stats.maxDepth = depth;
+    stats.depthCounts[depth] = (stats.depthCounts[depth] || 0) + 1;
+
+    let type;
+    if (value === null) type = 'null';
+    else if (Array.isArray(value)) type = 'array';
+    else type = typeof value;
+
+    stats.typeCounts[type] = (stats.typeCounts[type] || 0) + 1;
+
+    const node = { id, key, type, depth, path, value, children: null };
+
+    if (type === 'object' || type === 'array') {
+      if (type === 'object') stats.objects++; else stats.arrays++;
+      node.children = [];
+
+      if (type === 'object') {
+        const keys = Object.keys(value);
+        for (let i = 0; i < keys.length; i++) {
+          const k = keys[i];
+          keySet.add(k);
+          stats.keyCounts[k] = (stats.keyCounts[k] || 0) + 1;
+          const childPath = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(k)
+            ? path + '.' + k
+            : path + '["' + k + '"]';
+          node.children.push(walk(value[k], k, depth + 1, childPath));
+        }
+      } else {
+        for (let i = 0; i < value.length; i++) {
+          node.children.push(walk(value[i], String(i), depth + 1, path + '[' + i + ']'));
+        }
+      }
+    } else {
+      stats.primitives++;
+      stats.leaves++;
+    }
+
+    return node;
+  }
+
+  const rootNode = walk(root, null, 0, '$');
+  stats.uniqueKeys = keySet.size;
+
+  return { stats, rootNode };
+}
+
+/* =========================================================
+   渲染：统计卡片
+   ========================================================= */
+function renderStats(stats, bytes) {
+  animateNumber($('#s-nodes'), stats.nodes);
+  animateNumber($('#s-depth'), stats.maxDepth);
+  animateNumber($('#s-containers'), stats.objects + stats.arrays);
+  animateNumber($('#s-keys'), stats.uniqueKeys);
+  animateNumber($('#s-leaves'), stats.leaves);
+  animateNumber($('#s-size'), bytes);
+}
+
+/* =========================================================
+   渲染：环形图
+   ========================================================= */
+const DONUT_ORDER = ['object', 'array', 'string', 'number', 'boolean', 'null'];
+const DONUT_R = 62;
+const DONUT_C = 2 * Math.PI * DONUT_R;
+
+function renderDonut(typeCounts) {
+  const segGroup = $('#donutSegments');
+  const legend = $('#donutLegend');
+  segGroup.innerHTML = '';
+
+  const present = DONUT_ORDER.filter(t => (typeCounts[t] || 0) > 0);
+  const total = present.reduce((s, t) => s + typeCounts[t], 0);
+
+  $('#donutTotal').textContent = total.toLocaleString('en-US');
+
+  if (!total) {
+    legend.innerHTML = '<div class="empty-note" style="padding:0;text-align:left">暂无数据</div>';
+    return;
+  }
+
+  let acc = 0;
+  present.forEach((type, i) => {
+    const count = typeCounts[type];
+    const len = (count / total) * DONUT_C;
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', '80');
+    circle.setAttribute('cy', '80');
+    circle.setAttribute('r', String(DONUT_R));
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', TYPE_COLORS[type]);
+    circle.setAttribute('stroke-width', '13');
+    circle.setAttribute('stroke-dasharray', '0 ' + DONUT_C.toFixed(2));
+    circle.setAttribute('stroke-dashoffset', (-acc).toFixed(2));
+    circle.style.transition = 'stroke-dasharray .85s cubic-bezier(.4,0,.2,1)';
+    circle.style.transitionDelay = (i * 65) + 'ms';
+    segGroup.appendChild(circle);
+
+    const dashLen = Math.max(len - 1.6, 0.001);
+    requestAnimationFrame(() => {
+      circle.setAttribute('stroke-dasharray', dashLen.toFixed(2) + ' ' + DONUT_C.toFixed(2));
+    });
+
+    acc += len;
+  });
+
+  legend.innerHTML = present.map(type => `
+    <div class="legend-item">
+      <span class="legend-dot" style="background:${TYPE_COLORS[type]}"></span>
+      <span class="legend-name">${TYPE_LABELS[type]}</span>
+      <span class="legend-val">${typeCounts[type].toLocaleString('en-US')}</span>
+    </div>
+  `).join('');
+}
+
+/* =========================================================
+   渲染：深度柱状图
+   ========================================================= */
+function renderDepth(depthCounts) {
+  const el = $('#depthChart');
+  const depths = Object.keys(depthCounts).map(Number).sort((a, b) => a - b);
+
+  if (!depths.length) {
+    el.innerHTML = '<div class="empty-note">暂无数据</div>';
+    return;
+  }
+
+  const maxCount = Math.max(...depths.map(d => depthCounts[d]));
+
+  el.innerHTML = depths.map(d => {
+    const c = depthCounts[d];
+    const h = Math.max(4, Math.round((c / maxCount) * 96));
+    return `<div class="depth-col">
+      <div class="depth-count">${c.toLocaleString('en-US')}</div>
+      <div class="depth-bar" data-h="${h}"></div>
+      <div class="depth-label">L${d}</div>
+    </div>`;
+  }).join('');
+
+  requestAnimationFrame(() => {
+    $$('.depth-bar', el).forEach((bar, i) => {
+      setTimeout(() => { bar.style.height = bar.dataset.h + 'px'; }, 40 + i * 45);
+    });
+  });
+}
+
+/* =========================================================
+   渲染：字段热度
+   ========================================================= */
+function renderKeys(keyCounts) {
+  const el = $('#keyChart');
+  const entries = Object.entries(keyCounts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 8);
+
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty-note">暂无键名</div>';
+    return;
+  }
+
+  const max = entries[0][1];
+
+  el.innerHTML = entries.map(([k, c]) => `
+    <div class="keyrow">
+      <span class="keyname" title="${esc(k)}">${esc(k)}</span>
+      <div class="keytrack"><div class="keyfill" data-w="${((c / max) * 100).toFixed(1)}"></div></div>
+      <span class="keycount">${c}</span>
+    </div>
+  `).join('');
+
+  requestAnimationFrame(() => {
+    $$('.keyfill', el).forEach((f, i) => {
+      setTimeout(() => { f.style.width = f.dataset.w + '%'; }, 50 + i * 55);
+    });
+  });
+}
+
+/* =========================================================
+   渲染：结构树
+   ========================================================= */
+let nodeMap = new Map();
+let MAX_TREE_DEPTH = 10;
+
+function valueHTML(node) {
+  switch (node.type) {
+    case 'object':
+      return `<span class="tval branch">{ ${node.children.length} }</span>`;
+    case 'array':
+      return `<span class="tval branch">[ ${node.children.length} ]</span>`;
+    case 'string': {
+      const v = node.value.length > 70 ? node.value.slice(0, 70) + '…' : node.value;
+      return `<span class="tval str">"${esc(v)}"</span>`;
+    }
+    case 'number':
+      return `<span class="tval num">${node.value}</span>`;
+    case 'boolean':
+      return `<span class="tval bool">${node.value}</span>`;
+    case 'null':
+      return `<span class="tval null">null</span>`;
+    default:
+      return '';
+  }
+}
+
+function nodeHTML(node, expandTo, budget) {
+  if (budget.n <= 0) return '';
+  budget.n--;
+
+  const isBranch = node.type === 'object' || node.type === 'array';
+  const kids = node.children || [];
+  const hasKids = isBranch && kids.length > 0;
+  const withinDepth = node.depth < MAX_TREE_DEPTH;
+  const canExpand = hasKids && withinDepth;
+  const expanded = canExpand && node.depth < expandTo;
+
+  let html = '<div class="tnode' + (expanded ? '' : ' collapsed') + '">';
+
+  html += '<div class="trow" data-id="' + node.id + '" data-path="' + esc(node.path) + '">';
+  html += canExpand
+    ? '<span class="caret">' + (expanded ? '▾' : '▸') + '</span>'
+    : '<span class="caret empty">·</span>';
+
+  if (node.key !== null) {
+    html += '<span class="tkey">' + esc(node.key) + '</span><span class="tcolon">:</span>';
+  }
+
+  html += valueHTML(node);
+  html += '</div>';
+
+  if (canExpand) {
+    html += '<div class="tchildren">';
+    for (let i = 0; i < kids.length; i++) {
+      html += nodeHTML(kids[i], expandTo, budget);
+      if (budget.n <= 0) break;
+    }
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderTree(rootNode, stats) {
+  nodeMap = new Map();
+  (function collect(n) {
+    nodeMap.set(n.id, n);
+    if (n.children) for (const c of n.children) collect(c);
+  })(rootNode);
+
+  MAX_TREE_DEPTH = stats.nodes > 6000 ? 5 : (stats.nodes > 2000 ? 7 : 12);
+
+  const expandTo = stats.nodes > 1500 ? 2 : 3;
+  const budget = { n: 6000 };
+
+  $('#treeView').innerHTML = nodeHTML(rootNode, expandTo, budget);
+}
+
+/* =========================================================
+   渲染：原始 JSON
+   ========================================================= */
+function highlightJSON(str) {
+  const safe = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return safe.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    (match) => {
+      let cls = 'tok-num';
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? 'tok-key' : 'tok-str';
+      } else if (/true|false/.test(match)) {
+        cls = 'tok-bool';
+      } else if (/null/.test(match)) {
+        cls = 'tok-null';
+      }
+      return '<span class="' + cls + '">' + match + '</span>';
+    }
+  );
+}
+
+function renderRaw(text) {
+  try {
+    const obj = JSON.parse(text);
+    const pretty = JSON.stringify(obj, null, 2);
+    $('#rawView').innerHTML = highlightJSON(pretty);
+  } catch (e) {
+    $('#rawView').textContent = text;
+  }
+}
+
+/* =========================================================
+   状态与主流程
+   ========================================================= */
+const statusEl = $('#status');
+const statusText = $('.status-text', statusEl);
+
+function setStatus(kind, text) {
+  statusEl.classList.remove('err', 'wait');
+  if (kind === 'err') statusEl.classList.add('err');
+  if (kind === 'wait') statusEl.classList.add('wait');
+  statusText.textContent = text;
+  statusEl.title = text;
+}
+
+function renderAll(data, text) {
+  const analysis = analyze(data);
+  const bytes = new TextEncoder().encode(text).length;
+
+  renderStats(analysis.stats, bytes);
+  renderDonut(analysis.stats.typeCounts);
+  renderDepth(analysis.stats.depthCounts);
+  renderKeys(analysis.stats.keyCounts);
+  renderTree(analysis.rootNode, analysis.stats);
+  renderRaw(text);
+
+  $('#pathbar').innerHTML = '点击任意节点，查看它的完整路径';
+}
+
+/* =========================================================
+   输入处理
+   ========================================================= */
+const input = $('#jsonInput');
+const charCount = $('#charCount');
+let debounceTimer = null;
+
+function updateCharCount() {
+  charCount.textContent = input.value.length.toLocaleString('en-US') + ' 字符';
+}
+
+function parseAndRender(successMsg) {
+  const text = input.value.trim();
+
+  if (!text) {
+    setStatus('wait', '等待输入');
+    return false;
+  }
+
+  try {
+    const data = JSON.parse(text);
+    setStatus('ok', successMsg || '解析成功');
+    renderAll(data, input.value);
+    return true;
+  } catch (err) {
+    setStatus('err', '解析失败：JSON 语法错误');
+    return false;
+  }
+}
+
+input.addEventListener('input', () => {
+  updateCharCount();
+  setStatus('wait', '解析中…');
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    parseAndRender();
+    // 手动编辑时清除文件信息
+    clearFileInfo();
+  }, 300);
+});
+
+/* 按钮 */
+$('#btnFormat').addEventListener('click', () => {
+  try {
+    const obj = JSON.parse(input.value);
+    input.value = JSON.stringify(obj, null, 2);
+    updateCharCount();
+    parseAndRender();
+  } catch (e) {
+    setStatus('err', '无法格式化：语法错误');
+  }
+});
+
+$('#btnClear').addEventListener('click', () => {
+  input.value = '';
+  updateCharCount();
+  input.focus();
+  setStatus('wait', '等待输入');
+  clearFileInfo();
+  $$('.chip').forEach(c => c.classList.remove('active'));
+});
+
+/* =========================================================
+   文件上传
+   ========================================================= */
+const dropzone = $('#dropzone');
+const fileInput = $('#fileInput');
+const fileInfo = $('#fileInfo');
+const fiName = $('#fiName');
+const fiSize = $('#fiSize');
+
+const MAX_FILE_SIZE = 32 * 1024 * 1024; // 32MB
+
+function clearFileInfo() {
+  fileInfo.style.display = 'none';
+  fiName.textContent = '';
+  fiSize.textContent = '';
+}
+
+function showFileInfo(name, size) {
+  fiName.textContent = name;
+  fiName.title = name;
+  fiSize.textContent = formatBytes(size);
+  fileInfo.style.display = 'flex';
+}
+
+function handleFile(file) {
+  if (!file) return;
+
+  // 简单的类型检查（部分浏览器 file.type 为空）
+  const nameLower = (file.name || '').toLowerCase();
+  const looksJSON = nameLower.endsWith('.json') ||
+                    nameLower.endsWith('.txt') ||
+                    file.type === 'application/json' ||
+                    file.type === 'text/plain' ||
+                    file.type === '';
+
+  if (!looksJSON) {
+    setStatus('err', '请选择 .json 或 .txt 文件');
+    return;
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    setStatus('err', '文件过大（上限 32MB）');
+    return;
+  }
+
+  setStatus('wait', '读取文件中…');
+  dropzone.classList.add('loading');
+
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    dropzone.classList.remove('loading');
+    let text = e.target.result;
+
+    // 去除 UTF-8 BOM
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+    input.value = text;
+    updateCharCount();
+
+    // 清空示例选中态
+    $$('.chip').forEach(c => c.classList.remove('active'));
+
+    // 稍作延迟让 UI 有机会绘制"读取中"
+    setTimeout(() => {
+      const ok = parseAndRender('已载入 ' + file.name);
+      if (ok) {
+        showFileInfo(file.name, file.size);
+      } else {
+        showFileInfo(file.name, file.size); // 仍然显示文件，方便用户看到出处的文件
+      }
+    }, 30);
+  };
+
+  reader.onerror = () => {
+    dropzone.classList.remove('loading');
+    setStatus('err', '文件读取失败');
+  };
+
+  reader.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      setStatus('wait', '读取中 ' + pct + '%');
+    }
+  };
+
+  reader.readAsText(file, 'utf-8');
+}
+
+/* 点击上传 */
+dropzone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (file) handleFile(file);
+  // 允许重复选择同一文件
+  fileInput.value = '';
+});
+
+/* 拖拽到 dropzone */
+['dragenter', 'dragover'].forEach(evt => {
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.classList.add('dragover');
+  });
+});
+
+['dragleave', 'drop'].forEach(evt => {
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (evt === 'dragleave' && dropzone.contains(e.relatedTarget)) return;
+    dropzone.classList.remove('dragover');
+  });
+});
+
+dropzone.addEventListener('drop', (e) => {
+  const dt = e.dataTransfer;
+  if (dt && dt.files && dt.files.length) {
+    handleFile(dt.files[0]);
+  }
+});
+
+/* 移除文件按钮 */
+$('#fiRemove').addEventListener('click', (e) => {
+  e.stopPropagation();
+  clearFileInfo();
+  setStatus('ok', '已移除文件');
+});
+
+/* =========================================================
+   全屏拖拽
+   ========================================================= */
+let dragCounter = 0;
+
+function hasFiles(e) {
+  const dt = e.dataTransfer;
+  if (!dt) return false;
+  if (dt.types) {
+    for (let i = 0; i < dt.types.length; i++) {
+      if (dt.types[i] === 'Files') return true;
+    }
+  }
+  return false;
+}
+
+window.addEventListener('dragenter', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragCounter++;
+  document.body.classList.add('dragging');
+});
+
+window.addEventListener('dragover', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+});
+
+window.addEventListener('dragleave', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    document.body.classList.remove('dragging');
+  }
+});
+
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragCounter = 0;
+  document.body.classList.remove('dragging');
+
+  const dt = e.dataTransfer;
+  if (dt && dt.files && dt.files.length) {
+    handleFile(dt.files[0]);
+  }
+});
+
+/* 阻止在页面其它位置误放文件时浏览器直接打开 */
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => e.preventDefault());
+
+/* =========================================================
+   树交互
+   ========================================================= */
+const treeView = $('#treeView');
+const pathbar = $('#pathbar');
+
+treeView.addEventListener('click', (e) => {
+  const row = e.target.closest('.trow');
+  if (!row) return;
+
+  const tnode = row.parentElement;
+  const children = tnode.querySelector(':scope > .tchildren');
+
+  if (children) {
+    tnode.classList.toggle('collapsed');
+    const caret = row.querySelector('.caret');
+    if (caret && !caret.classList.contains('empty')) {
+      caret.textContent = tnode.classList.contains('collapsed') ? '▸' : '▾';
+    }
+  }
+
+  $$('.trow.selected', treeView).forEach(r => r.classList.remove('selected'));
+  row.classList.add('selected');
+
+  const id = Number(row.dataset.id);
+  const node = nodeMap.get(id);
+  if (!node) return;
+
+  let valText;
+  if (node.type === 'object') valText = '{ ' + node.children.length + ' 项 }';
+  else if (node.type === 'array') valText = '[ ' + node.children.length + ' 项 ]';
+  else valText = JSON.stringify(node.value);
+
+  if (valText && valText.length > 80) valText = valText.slice(0, 80) + '…';
+
+  pathbar.innerHTML =
+    '<span class="path-label">Path</span>' +
+    '<span class="path-str">' + esc(node.path) + '</span>' +
+    '<span class="path-val">' + esc(valText) + '</span>';
+});
+
+/* 展开 / 折叠 */
+$('#btnExpand').addEventListener('click', () => {
+  $$('.tnode', treeView).forEach(n => {
+    if (n.querySelector(':scope > .tchildren')) n.classList.remove('collapsed');
+    const caret = n.querySelector(':scope > .trow > .caret');
+    if (caret && !caret.classList.contains('empty')) caret.textContent = '▾';
+  });
+});
+
+$('#btnCollapse').addEventListener('click', () => {
+  $$('.tnode', treeView).forEach(n => {
+    if (n.querySelector(':scope > .tchildren')) n.classList.add('collapsed');
+    const caret = n.querySelector(':scope > .trow > .caret');
+    if (caret && !caret.classList.contains('empty')) caret.textContent = '▸';
+  });
+  const root = treeView.firstElementChild;
+  if (root && root.querySelector(':scope > .tchildren')) {
+    root.classList.remove('collapsed');
+    const c = root.querySelector(':scope > .trow > .caret');
+    if (c) c.textContent = '▾';
+  }
+});
+
+/* 视图切换 */
+$$('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    $$('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    const view = tab.dataset.view;
+    if (view === 'tree') {
+      treeView.style.display = '';
+      $('#rawView').style.display = 'none';
+      pathbar.style.display = '';
+    } else {
+      treeView.style.display = 'none';
+      $('#rawView').style.display = 'block';
+      pathbar.style.display = 'none';
+    }
+  });
+});
+
+/* =========================================================
+   示例数据
+   ========================================================= */
+const SAMPLES = {
+  '用户列表': {
+    "code": 0,
+    "message": "success",
+    "timestamp": "2024-06-11T09:32:11Z",
+    "data": {
+      "total": 1284,
+      "page": 1,
+      "pageSize": 4,
+      "list": [
+        {
+          "id": 1001,
+          "name": "林清和",
+          "role": "admin",
+          "active": true,
+          "score": 92.5,
+          "tags": ["前端", "设计", "可视化"],
+          "profile": {
+            "city": "杭州",
+            "age": 28,
+            "contact": { "email": "lin@example.com", "phone": "138****2211" }
+          },
+          "lastLogin": "2024-06-11T09:32:00Z"
+        },
+        {
+          "id": 1002,
+          "name": "周砚舟",
+          "role": "editor",
+          "active": true,
+          "score": 88.1,
+          "tags": ["后端", "数据"],
+          "profile": {
+            "city": "成都",
+            "age": 31,
+            "contact": { "email": "zhou@example.com", "phone": "139****8877" }
+          },
+          "lastLogin": "2024-06-10T21:14:00Z"
+        },
+        {
+          "id": 1003,
+          "name": "苏见月",
+          "role": "viewer",
+          "active": false,
+          "score": 76.4,
+          "tags": ["运营"],
+          "profile": {
+            "city": "上海",
+            "age": 25,
+            "contact": { "email": "su@example.com", "phone": "137****1024" }
+          },
+          "lastLogin": "2024-05-28T16:02:00Z"
+        },
+        {
+          "id": 1004,
+          "name": "陈识微",
+          "role": "editor",
+          "active": true,
+          "score": 95,
+          "tags": ["设计", "动效"],
+          "profile": {
+            "city": "深圳",
+            "age": 29,
+            "contact": { "email": "chen@example.com", "phone": "136****3390" }
+          },
+          "lastLogin": "2024-06-11T08:45:00Z"
+        }
+      ]
+    }
+  },
+
+  '电商订单': {
+    "orderId": "SO-20240611-8842",
+    "status": "paid",
+    "createdAt": "2024-06-11T10:22:37Z",
+    "customer": {
+      "id": "U-88213",
+      "name": "顾南洲",
+      "level": "gold",
+      "vip": true,
+      "address": {
+        "province": "浙江省",
+        "city": "杭州市",
+        "district": "西湖区",
+        "detail": "文三路 199 号",
+        "zip": "310012"
+      }
+    },
+    "items": [
+      { "sku": "SKU-001", "title": "无线降噪耳机", "qty": 1, "price": 899, "category": "数码" },
+      { "sku": "SKU-114", "title": "机械键盘 87 键", "qty": 2, "price": 459.5, "category": "外设" },
+      { "sku": "SKU-207", "title": "人体工学椅", "qty": 1, "price": 1580, "category": "家具" }
+    ],
+    "payment": {
+      "method": "alipay",
+      "amount": 3398,
+      "discount": 120,
+      "coupon": null,
+      "paid": true
+    },
+    "shipping": {
+      "carrier": "SF Express",
+      "trackingNo": "SF1234567890",
+      "estimated": "2024-06-13",
+      "nodes": [
+        { "time": "2024-06-11T12:00:00Z", "status": "已揽收", "location": "杭州转运中心" },
+        { "time": "2024-06-11T20:30:00Z", "status": "运输中", "location": "上海分拨中心" },
+        { "time": "2024-06-12T09:10:00Z", "status": "派送中", "location": "徐汇区站点" }
+      ]
+    }
+  },
+
+  '系统配置': {
+    "app": {
+      "name": "Insight Dashboard",
+      "version": "3.2.1",
+      "env": "production",
+      "debug": false
+    },
+    "server": {
+      "host": "0.0.0.0",
+      "port": 8080,
+      "ssl": { "enabled": true, "cert": "/etc/ssl/app.crt", "autoRenew": true },
+      "timeout": { "connect": 5000, "read": 30000, "write": 30000 }
+    },
+    "database": {
+      "primary": {
+        "driver": "postgres",
+        "host": "db-primary.internal",
+        "port": 5432,
+        "pool": { "min": 2, "max": 20 }
+      },
+      "replicas": [
+        { "host": "db-replica-1.internal", "weight": 1 },
+        { "host": "db-replica-2.internal", "weight": 1 }
+      ],
+      "cache": {
+        "driver": "redis",
+        "ttl": 3600,
+        "cluster": ["10.0.1.11:6379", "10.0.1.12:6379"]
+      }
+    },
+    "features": {
+      "darkMode": true,
+      "analytics": true,
+      "betaUI": false,
+      "exportFormats": ["csv", "xlsx", "pdf", "json"]
+    },
+    "logging": {
+      "level": "info",
+      "outputs": ["stdout", "file"],
+      "rotate": { "size": "100MB", "keep": 14 }
+    }
+  },
+
+  '时序指标': {
+    "metric": "api_latency_ms",
+    "interval": "1h",
+    "range": {
+      "from": "2024-06-10T00:00:00Z",
+      "to": "2024-06-11T00:00:00Z"
+    },
+    "series": [
+      { "t": "2024-06-10T00:00:00Z", "p50": 42, "p95": 138, "p99": 264, "rps": 812 },
+      { "t": "2024-06-10T03:00:00Z", "p50": 38, "p95": 121, "p99": 233, "rps": 604 },
+      { "t": "2024-06-10T06:00:00Z", "p50": 45, "p95": 149, "p99": 287, "rps": 923 },
+      { "t": "2024-06-10T09:00:00Z", "p50": 61, "p95": 198, "p99": 402, "rps": 1584 },
+      { "t": "2024-06-10T12:00:00Z", "p50": 55, "p95": 176, "p99": 351, "rps": 1402 },
+      { "t": "2024-06-10T15:00:00Z", "p50": 49, "p95": 158, "p99": 310, "rps": 1188 },
+      { "t": "2024-06-10T18:00:00Z", "p50": 66, "p95": 214, "p99": 445, "rps": 1706 },
+      { "t": "2024-06-10T21:00:00Z", "p50": 51, "p95": 163, "p99": 322, "rps": 1024 }
+    ],
+    "alerts": [
+      { "level": "warning", "at": "2024-06-10T18:12:00Z", "msg": "p99 超过 400ms" }
+    ]
+  }
+};
+
+/* 渲染 chips */
+const chipsEl = $('#chips');
+Object.keys(SAMPLES).forEach((name) => {
+  const btn = document.createElement('button');
+  btn.className = 'chip';
+  btn.textContent = name;
+  btn.addEventListener('click', () => {
+    $$('.chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    clearFileInfo();
+    input.value = JSON.stringify(SAMPLES[name], null, 2);
+    updateCharCount();
+    parseAndRender();
+    if (window.innerWidth < 960) {
+      setTimeout(() => {
+        document.querySelector('.dashboard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 260);
+    }
+  });
+  chipsEl.appendChild(btn);
+});
+
+/* =========================================================
+   启动
+   ========================================================= */
+(function boot() {
+  const firstChip = chipsEl.querySelector('.chip');
+  if (firstChip) firstChip.classList.add('active');
+
+  input.value = JSON.stringify(SAMPLES['用户列表'], null, 2);
+  updateCharCount();
+  parseAndRender();
+})();
+</script>
+</body>
+</html>
