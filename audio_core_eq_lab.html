@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04060a">
+<title>AUDIO//CORE — 边调边学</title>
+<style>
+/* ============================================================
+   BASE
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#04060a;
+  --panel:rgba(8,14,22,.66);
+  --line:rgba(80,190,225,.13);
+  --line-2:rgba(0,240,255,.34);
+  --txt:#c6e4f2;
+  --dim:rgba(150,192,214,.42);
+  --dim-2:rgba(150,192,214,.22);
+  --cy:#00f0ff;
+  --mg:#ff2fb9;
+  --lime:#9dff5c;
+}
+html,body{height:100%}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  font-size:13px;line-height:1.5;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,240,255,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,240,255,.045) 1px,transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 30%,#000 5%,transparent 76%);
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 30%,#000 5%,transparent 76%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% -5%,rgba(0,240,255,.085),transparent 70%),
+    radial-gradient(ellipse 50% 45% at 90% 105%,rgba(255,47,185,.055),transparent 70%),
+    radial-gradient(ellipse 40% 40% at 5% 90%,rgba(0,240,255,.04),transparent 70%);
+}
+body.dragging::after{background:radial-gradient(ellipse 70% 50% at 50% 50%,rgba(0,240,255,.13),transparent 70%)}
+.scanlines{
+  position:fixed;inset:0;z-index:99;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,rgba(160,230,255,.028) 0 1px,transparent 1px 3px);
+  mix-blend-mode:overlay;opacity:.75;
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.wrap{
+  position:relative;z-index:2;
+  max-width:1400px;margin:0 auto;
+  padding:14px 14px calc(128px + env(safe-area-inset-bottom));
+}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 14px;margin-bottom:14px;
+  border:1px solid var(--line);background:var(--panel);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  position:relative;
+}
+.topbar::after{
+  content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,240,255,.5),transparent);opacity:.5;
+}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.mark{
+  width:30px;height:30px;flex:0 0 auto;border:1px solid var(--line-2);
+  display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 50%,rgba(0,240,255,.16),transparent 72%);
+  position:relative;
+}
+.mark::before{content:'';position:absolute;inset:4px;border:1px solid rgba(0,240,255,.18)}
+.mark svg{width:16px;height:16px;stroke:var(--cy);fill:none;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round;
+  filter:drop-shadow(0 0 4px rgba(0,240,255,.85));
+  animation:pulseIcon 2.4s ease-in-out infinite;}
+@keyframes pulseIcon{0%,100%{opacity:.65}50%{opacity:1}}
+.brand-txt{min-width:0}
+.brand-title{
+  font-size:14px;letter-spacing:.22em;font-weight:600;color:#e4f7ff;
+  text-shadow:0 0 12px rgba(0,240,255,.55);white-space:nowrap;
+}
+.brand-title span{color:var(--mg);text-shadow:0 0 12px rgba(255,47,185,.7)}
+.brand-sub{font-size:9px;letter-spacing:.22em;color:var(--dim-2);margin-top:2px;white-space:nowrap}
+.sys{display:flex;align-items:center;gap:16px}
+.sys-item{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.sys-item .k{font-size:8px;letter-spacing:.2em;color:var(--dim-2)}
+.sys-item .v{font-size:11px;letter-spacing:.1em;color:var(--cy);text-shadow:0 0 8px rgba(0,240,255,.5)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim-2);transition:.3s;flex:0 0 auto}
+.dot.live{
+  background:var(--lime);
+  box-shadow:0 0 0 0 rgba(157,255,92,.7),0 0 12px rgba(157,255,92,.9);
+  animation:dotPulse 1.6s ease-out infinite;
+}
+@keyframes dotPulse{
+  0%{box-shadow:0 0 0 0 rgba(157,255,92,.6),0 0 12px rgba(157,255,92,.9)}
+  100%{box-shadow:0 0 0 12px rgba(157,255,92,0),0 0 12px rgba(157,255,92,.9)}
+}
+@media(max-width:620px){.sys-item:nth-child(2),.sys-item:nth-child(3){display:none}}
+
+/* ---------- MAIN GRID ---------- */
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}
+.col-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.col-side{display:flex;flex-direction:column;gap:14px;min-width:0}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+
+/* ---------- PANEL ---------- */
+.panel{
+  position:relative;background:var(--panel);border:1px solid var(--line);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.panel-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 13px;border-bottom:1px solid var(--line);
+  font-size:9px;letter-spacing:.24em;color:var(--dim);
+}
+.panel-head span:last-child{color:var(--dim-2)}
+.c{position:absolute;width:8px;height:8px;border:1px solid rgba(0,240,255,.5);pointer-events:none;z-index:3}
+.c-tl{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.c-tr{top:-1px;right:-1px;border-left:0;border-bottom:0}
+.c-bl{bottom:-1px;left:-1px;border-right:0;border-top:0}
+.c-br{bottom:-1px;right:-1px;border-left:0;border-top:0}
+
+/* ---------- STAGE ---------- */
+.stage-panel{padding:14px}
+.stage{position:relative;width:100%;max-width:min(100%,520px);aspect-ratio:1/1;margin:0 auto;cursor:pointer}
+#radial{position:absolute;inset:0;width:100%;height:100%;display:block}
+.core-info{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:2}
+.core-time{
+  font-size:clamp(20px,5.4vw,30px);letter-spacing:.06em;font-weight:600;color:#eafcff;
+  text-shadow:0 0 18px rgba(0,240,255,.75),0 0 42px rgba(0,240,255,.3);
+  font-variant-numeric:tabular-nums;
+}
+.core-id{margin-top:5px;font-size:9px;letter-spacing:.3em;color:var(--dim);white-space:nowrap}
+.hud-tag{position:absolute;font-size:8.5px;letter-spacing:.2em;color:var(--dim-2);pointer-events:none;white-space:nowrap}
+.hud-tag b{color:var(--cy);font-weight:400}
+.hud-tag.tl{top:2px;left:2px}
+.hud-tag.tr{top:2px;right:2px}
+.hud-tag.bl{bottom:2px;left:2px}
+.hud-tag.br{bottom:2px;right:2px;color:rgba(157,255,92,.5)}
+.stage-meta{
+  display:flex;justify-content:space-around;gap:8px;
+  margin-top:14px;padding-top:12px;border-top:1px solid var(--line);flex-wrap:wrap;
+}
+.stage-meta > div{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.stage-meta .k{font-size:8px;letter-spacing:.24em;color:var(--dim-2)}
+.stage-meta .v{font-size:11px;letter-spacing:.08em;color:var(--cy);
+  text-shadow:0 0 10px rgba(0,240,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* ---------- WAVEFORM ---------- */
+.wave-box{height:84px;padding:10px 12px}
+#wave{width:100%;height:100%;display:block}
+
+/* ============================================================
+   EQ LEARNING PANEL
+   ============================================================ */
+.eq-top{padding:12px 14px 6px}
+#eqCanvas{width:100%;height:130px;display:block}
+
+.band{padding:12px 14px;border-top:1px solid rgba(80,190,225,.09);position:relative}
+.band-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.band-tag{
+  font-size:9px;letter-spacing:.14em;padding:2px 7px;border:1px solid;border-radius:1px;font-weight:600;
+}
+.band-freq{font-size:9px;letter-spacing:.1em;color:var(--dim-2)}
+.band-gain{margin-left:auto;font-size:12.5px;font-variant-numeric:tabular-nums;letter-spacing:.04em;font-weight:600}
+.band-reset{
+  font-size:10px;color:var(--dim-2);background:none;border:1px solid rgba(80,190,225,.16);
+  padding:0 5px;cursor:pointer;font-family:inherit;border-radius:1px;line-height:16px;
+  transition:.15s;margin-left:6px;
+}
+.band-reset:hover{color:var(--cy);border-color:rgba(0,240,255,.5);background:rgba(0,240,255,.06)}
+
+.band.f-low .band-tag{color:var(--cy);border-color:rgba(0,240,255,.35);background:rgba(0,240,255,.06)}
+.band.f-low .band-gain{color:var(--cy);text-shadow:0 0 10px rgba(0,240,255,.5)}
+.band.f-mid .band-tag{color:var(--mg);border-color:rgba(255,47,185,.35);background:rgba(255,47,185,.06)}
+.band.f-mid .band-gain{color:var(--mg);text-shadow:0 0 10px rgba(255,47,185,.5)}
+.band.f-high .band-tag{color:var(--lime);border-color:rgba(157,255,92,.35);background:rgba(157,255,92,.06)}
+.band.f-high .band-gain{color:var(--lime);text-shadow:0 0 10px rgba(157,255,92,.5)}
+
+.band-meter{height:3px;background:rgba(0,240,255,.07);position:relative;overflow:hidden;margin:6px 0 8px}
+.band-meter-fill{position:absolute;left:0;top:0;bottom:0;width:0%;transition:width .08s linear}
+.band.f-low .band-meter-fill{background:var(--cy);box-shadow:0 0 8px var(--cy)}
+.band.f-mid .band-meter-fill{background:var(--mg);box-shadow:0 0 8px var(--mg)}
+.band.f-high .band-meter-fill{background:var(--lime);box-shadow:0 0 8px var(--lime)}
+
+.band-live{
+  font-size:11px;line-height:1.65;
+  color:rgba(186,220,238,.85);
+  padding:8px 10px;
+  border-left:2px solid;
+  background:rgba(255,255,255,.015);
+  min-height:38px;
+  transition:border-color .25s,background .25s;
+}
+.band.f-low .band-live{border-color:rgba(0,240,255,.4);background:rgba(0,240,255,.03)}
+.band.f-mid .band-live{border-color:rgba(255,47,185,.4);background:rgba(255,47,185,.03)}
+.band.f-high .band-live{border-color:rgba(157,255,92,.4);background:rgba(157,255,92,.03)}
+.band-live b{color:#e8f8ff;font-weight:600}
+
+.band-use{
+  margin-top:7px;font-size:9.5px;letter-spacing:.08em;color:var(--dim-2);
+}
+.band-use b{color:rgba(150,192,214,.6);font-weight:400}
+
+/* ---------- RANGE INPUT（移动端优化） ---------- */
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:44px;
+  background:transparent;
+  outline:none;cursor:pointer;display:block;
+  touch-action:pan-y;
+  margin:0;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:3px;border-radius:3px;background:rgba(0,240,255,.15);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:19px;height:19px;margin-top:-8px;border-radius:50%;
+  background:var(--cy);border:0;cursor:pointer;
+  box-shadow:0 0 10px rgba(0,240,255,.9),0 0 0 6px rgba(0,240,255,.09);
+  transition:transform .12s;
+}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
+input[type=range]::-moz-range-track{height:3px;border-radius:3px;background:rgba(0,240,255,.15)}
+input[type=range]::-moz-range-thumb{
+  width:19px;height:19px;border-radius:50%;background:var(--cy);border:0;cursor:pointer;
+  box-shadow:0 0 10px rgba(0,240,255,.9),0 0 0 6px rgba(0,240,255,.09);
+}
+input[type=range].f-mid::-webkit-slider-thumb{background:var(--mg);box-shadow:0 0 10px rgba(255,47,185,.9),0 0 0 6px rgba(255,47,185,.09)}
+input[type=range].f-mid::-moz-range-thumb{background:var(--mg);box-shadow:0 0 10px rgba(255,47,185,.9)}
+input[type=range].f-high::-webkit-slider-thumb{background:var(--lime);box-shadow:0 0 10px rgba(157,255,92,.9),0 0 0 6px rgba(157,255,92,.09)}
+input[type=range].f-high::-moz-range-thumb{background:var(--lime);box-shadow:0 0 10px rgba(157,255,92,.9)}
+
+/* ---------- DIAGNOSIS ---------- */
+.diag{
+  padding:12px 14px;
+  border-top:1px solid var(--line);
+  background:rgba(0,0,0,.15);
+}
+.diag-head{
+  font-size:9px;letter-spacing:.24em;color:var(--dim-2);margin-bottom:7px;
+  display:flex;align-items:center;gap:7px;
+}
+.diag-head::before{
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--cy);
+  box-shadow:0 0 8px var(--cy);flex:0 0 auto;
+}
+.diag-text{
+  font-size:11px;line-height:1.7;color:rgba(186,220,238,.82);
+  padding:9px 11px;border:1px solid rgba(0,240,255,.14);
+  background:rgba(0,240,255,.025);
+  transition:border-color .3s,background .3s,color .3s;
+}
+.diag-text.warn{border-color:rgba(255,47,185,.35);background:rgba(255,47,185,.045);color:#ffd9f0}
+.diag-text.good{border-color:rgba(157,255,92,.32);background:rgba(157,255,92,.04);color:#e2ffd0}
+
+/* ============================================================
+   AUDIO SOURCE / UPLOAD
+   ============================================================ */
+.src-body{padding:12px 13px}
+.upload-zone{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:18px 12px;
+  border:1px dashed rgba(0,240,255,.3);
+  background:rgba(0,240,255,.025);
+  cursor:pointer;text-align:center;
+  transition:.2s;
+  position:relative;
+}
+.upload-zone:hover,.upload-zone.hot{
+  border-color:rgba(0,240,255,.65);
+  background:rgba(0,240,255,.065);
+  box-shadow:inset 0 0 24px rgba(0,240,255,.07);
+}
+.upload-zone svg{
+  width:22px;height:22px;stroke:var(--cy);fill:none;stroke-width:1.5;
+  stroke-linecap:round;stroke-linejoin:round;
+  filter:drop-shadow(0 0 6px rgba(0,240,255,.7));
+}
+.upload-zone .u-main{font-size:11px;letter-spacing:.12em;color:#cfeaf7}
+.upload-zone .u-sub{font-size:9px;letter-spacing:.14em;color:var(--dim-2)}
+.upload-zone.loaded{border-style:solid;border-color:rgba(157,255,92,.45);background:rgba(157,255,92,.04)}
+.upload-zone.loaded svg{stroke:var(--lime);filter:drop-shadow(0 0 6px rgba(157,255,92,.7))}
+
+.src-split{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 0 8px;
+  font-size:9px;letter-spacing:.22em;color:var(--dim-2);
+}
+.src-split::before,.src-split::after{content:'';flex:1;height:1px;background:rgba(80,190,225,.14)}
+
+.tracks{display:flex;flex-direction:column}
+.track{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 13px;
+  background:transparent;border:0;border-bottom:1px solid var(--line);
+  color:var(--txt);font-family:inherit;font-size:12px;text-align:left;
+  cursor:pointer;position:relative;transition:background .18s;width:100%;
+}
+.track:last-child{border-bottom:0}
+.track:hover{background:rgba(0,240,255,.035)}
+.track.active{background:linear-gradient(90deg,rgba(0,240,255,.09),rgba(0,240,255,.01))}
+.track.active::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:var(--cy);box-shadow:0 0 12px var(--cy);
+}
+.t-num{font-size:10px;letter-spacing:.1em;color:var(--dim-2);flex:0 0 auto}
+.track.active .t-num{color:var(--cy)}
+.t-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.t-name{font-size:12px;letter-spacing:.05em;color:#d8f2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track.active .t-name{color:#fff;text-shadow:0 0 12px rgba(0,240,255,.5)}
+.t-sub{font-size:9px;letter-spacing:.14em;color:var(--dim-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-eq{display:flex;align-items:flex-end;gap:2px;height:14px;flex:0 0 auto;opacity:0;transition:opacity .2s}
+.track.active .t-eq{opacity:1}
+.t-eq i{width:2px;background:var(--cy);height:4px;box-shadow:0 0 6px var(--cy);border-radius:1px}
+.track.active .t-eq i:nth-child(1){animation:eq .7s ease-in-out infinite}
+.track.active .t-eq i:nth-child(2){animation:eq .7s ease-in-out infinite .16s}
+.track.active .t-eq i:nth-child(3){animation:eq .7s ease-in-out infinite .32s}
+.track.active .t-eq i:nth-child(4){animation:eq .7s ease-in-out infinite .48s}
+@keyframes eq{0%,100%{height:3px}50%{height:13px}}
+
+/* ---------- PARAMS ---------- */
+.params{padding:4px 13px 12px}
+.param{padding:6px 0;border-bottom:1px solid rgba(80,190,225,.09)}
+.param:last-child{border-bottom:0}
+.param-top{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:9px;letter-spacing:.2em;color:var(--dim);
+}
+.param-top span:last-child{color:var(--cy);letter-spacing:.08em;font-size:10px;font-variant-numeric:tabular-nums}
+
+/* ---------- METERS ---------- */
+.meters{padding:14px 13px 16px;display:flex;flex-direction:column;gap:12px}
+.meter-row{display:flex;flex-direction:column;gap:6px}
+.meter-label{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.2em;color:var(--dim)}
+.meter-label span:last-child{color:var(--cy);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.meter-track{height:3px;background:rgba(0,240,255,.09);position:relative;overflow:hidden}
+.meter-fill{
+  position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:linear-gradient(90deg,rgba(0,240,255,.35),var(--cy));
+  box-shadow:0 0 10px rgba(0,240,255,.8);transition:width .07s linear;
+}
+.meter-fill.mg{background:linear-gradient(90deg,rgba(255,47,185,.3),var(--mg));box-shadow:0 0 10px rgba(255,47,185,.8)}
+.meter-fill.lm{background:linear-gradient(90deg,rgba(157,255,92,.3),var(--lime));box-shadow:0 0 10px rgba(157,255,92,.8)}
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding-top:12px;border-top:1px solid var(--line)}
+.readout > div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.readout .k{font-size:8px;letter-spacing:.22em;color:var(--dim-2)}
+.readout .v{font-size:12px;color:#dff6ff;letter-spacing:.05em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readout .v em{font-style:normal;font-size:9px;color:var(--dim);margin-left:2px}
+
+/* ---------- TRANSPORT ---------- */
+.transport{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  border-top:1px solid var(--line);
+  background:linear-gradient(to top,rgba(4,6,10,.99) 30%,rgba(4,6,10,.86));
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  padding:0 14px calc(11px + env(safe-area-inset-bottom));
+}
+.transport::before{
+  content:'';position:absolute;left:0;right:0;top:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,240,255,.45),transparent);
+}
+.progress-line{
+  height:16px;display:flex;align-items:center;cursor:pointer;
+  margin:0 -14px 0;
+  padding:0 14px;
+}
+.progress-track{height:2px;width:100%;background:rgba(0,240,255,.1);position:relative;overflow:hidden}
+.progress-fill{
+  position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:linear-gradient(90deg,rgba(0,240,255,.5),var(--cy));
+  box-shadow:0 0 8px rgba(0,240,255,.7);
+}
+.transport-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:12px;padding-top:6px}
+.play-btn{
+  width:46px;height:46px;flex:0 0 auto;border-radius:50%;
+  border:1px solid rgba(0,240,255,.42);
+  background:radial-gradient(circle,rgba(0,240,255,.16),rgba(0,240,255,.02) 70%);
+  color:var(--cy);display:grid;place-items:center;cursor:pointer;
+  transition:transform .16s,box-shadow .25s,border-color .25s;position:relative;
+}
+.play-btn:hover{border-color:rgba(0,240,255,.75);box-shadow:0 0 22px rgba(0,240,255,.28)}
+.play-btn:active{transform:scale(.93)}
+.play-btn.playing{box-shadow:0 0 26px rgba(0,240,255,.42),inset 0 0 18px rgba(0,240,255,.18);border-color:var(--cy)}
+.play-btn svg{width:17px;height:17px;fill:currentColor;display:block;filter:drop-shadow(0 0 6px rgba(0,240,255,.9))}
+.play-btn .ico-pause{display:none}
+.play-btn.playing .ico-play{display:none}
+.play-btn.playing .ico-pause{display:block}
+.steps{flex:1;display:flex;gap:3px;align-items:flex-end;height:30px;min-width:0}
+.step{
+  flex:1;height:100%;min-width:0;background:rgba(0,240,255,.055);
+  border-top:1px solid rgba(0,240,255,.12);
+  transition:background .09s,box-shadow .09s,transform .09s;
+}
+.step.beat{background:rgba(0,240,255,.115)}
+.step.on{
+  background:var(--cy);
+  box-shadow:0 0 14px rgba(0,240,255,.95),0 0 30px rgba(0,240,255,.45);
+  transform:scaleY(1.06);
+}
+.vol{flex:0 0 auto;display:flex;align-items:center;gap:6px;width:130px}
+.vol svg{width:14px;height:14px;stroke:var(--dim);fill:none;stroke-width:1.5;
+  stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.vol input{flex:1;min-width:0;height:44px}
+@media(max-width:560px){
+  .vol{width:88px}
+  .steps{height:26px}
+  .play-btn{width:42px;height:42px}
+}
+
+.hint{text-align:center;font-size:9px;letter-spacing:.2em;color:var(--dim-2);padding:16px 0 4px}
+
+.fade-in{animation:fadeIn .6s cubic-bezier(.2,.8,.3,1) both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<div class="wrap">
+
+  <!-- ================= TOP BAR ================= -->
+  <header class="topbar fade-in">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24"><path d="M2 12h3l2.2-7 3.3 14 3.1-10 2 5h6.4"/></svg>
+      </div>
+      <div class="brand-txt">
+        <div class="brand-title">AUDIO<span>//</span>CORE</div>
+        <div class="brand-sub">边调边学 · 调音终端</div>
+      </div>
+    </div>
+    <div class="sys">
+      <div class="sys-item"><span class="k">STATUS</span><span class="v" id="sysState">STANDBY</span></div>
+      <div class="sys-item"><span class="k">SAMPLE RATE</span><span class="v" id="sysSR">—</span></div>
+      <div class="sys-item"><span class="k">SOURCE</span><span class="v" id="sysSrc">SYNTH</span></div>
+      <div class="dot" id="sysDot"></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= LEFT ================= -->
+    <section class="col-main">
+
+      <!-- STAGE -->
+      <div class="panel stage-panel fade-in" style="animation-delay:.05s">
+        <span class="c c-tl"></span><span class="c c-tr"></span>
+        <span class="c c-bl"></span><span class="c c-br"></span>
+        <div class="stage" id="stage">
+          <canvas id="radial"></canvas>
+          <div class="core-info">
+            <div class="core-time" id="clockTime">00:00</div>
+            <div class="core-id" id="coreId">AXIOM-01</div>
+          </div>
+          <div class="hud-tag tl">FREQ DOMAIN</div>
+          <div class="hud-tag tr">FFT · 2048</div>
+          <div class="hud-tag bl">GAIN <b id="gainTag">-3.1</b> dB</div>
+          <div class="hud-tag br" id="liveTag">▣ IDLE</div>
+        </div>
+        <div class="stage-meta">
+          <div><span class="k">SOURCE</span><span class="v" id="metaName">深空脉冲</span></div>
+          <div><span class="k">TEMPO</span><span class="v" id="metaBpm">76 BPM</span></div>
+          <div><span class="k">SCALE</span><span class="v" id="metaKey">A MINOR</span></div>
+          <div><span class="k">BARS</span><span class="v" id="metaBar">0000</span></div>
+        </div>
+      </div>
+
+      <!-- WAVEFORM -->
+      <div class="panel fade-in" style="animation-delay:.1s">
+        <span class="c c-tl"></span><span class="c c-tr"></span>
+        <span class="c c-bl"></span><span class="c c-br"></span>
+        <div class="panel-head"><span>WAVEFORM</span><span>TIME DOMAIN</span></div>
+        <div class="wave-box"><canvas id="wave"></canvas></div>
+      </div>
+
+      <!-- ============ EQ 学习面板 ============ -->
+      <div class="panel fade-in" style="animation-delay:.13s">
+        <span class="c c-tl"></span><span class="c c-tr"></span>
+        <span class="c c-bl"></span><span class="c c-br"></span>
+        <div class="panel-head"><span>3-BAND EQUALIZER · 边调边学</span><span>拖动滑块，读解释</span></div>
+
+        <div class="eq-top"><canvas id="eqCanvas"></canvas></div>
+
+        <!-- LOW -->
+        <div class="band f-low">
+          <div class="band-head">
+            <span class="band-tag">LOW</span>
+            <span class="band-freq">20 – 250 Hz</span>
+            <span class="band-gain" id="eqLowVal">+0.0 dB</span>
+            <button class="band-reset" data-reset="low" title="归零">↺</button>
+          </div>
+          <input type="range" class="f-low" id="eqLow" min="-12" max="12" step="0.5" value="0">
+          <div class="band-meter"><div class="band-meter-fill" id="lowMeter"></div></div>
+          <div class="band-live" id="lowLive">中性 · 低频保持原样</div>
+          <div class="band-use"><b>🎯 底鼓厚度 · 贝斯根基 · 减少浑浊 · 轰头感</b></div>
+        </div>
+
+        <!-- MID -->
+        <div class="band f-mid">
+          <div class="band-head">
+            <span class="band-tag">MID</span>
+            <span class="band-freq">250 Hz – 2 kHz · Q=1.0</span>
+            <span class="band-gain" id="eqMidVal">+0.0 dB</span>
+            <button class="band-reset" data-reset="mid" title="归零">↺</button>
+          </div>
+          <input type="range" class="f-mid" id="eqMid" min="-12" max="12" step="0.5" value="0">
+          <div class="band-meter"><div class="band-meter-fill" id="midMeter"></div></div>
+          <div class="band-live" id="midLive">中性 · 中频保持原样</div>
+          <div class="band-use"><b>🎯 人声主体 · 乐器核心 · 电话音 · 空洞感</b></div>
+        </div>
+
+        <!-- HIGH -->
+        <div class="band f-high">
+          <div class="band-head">
+            <span class="band-tag">HIGH</span>
+            <span class="band-freq">4 – 16 kHz</span>
+            <span class="band-gain" id="eqHighVal">+0.0 dB</span>
+            <button class="band-reset" data-reset="high" title="归零">↺</button>
+          </div>
+          <input type="range" class="f-high" id="eqHigh" min="-12" max="12" step="0.5" value="0">
+          <div class="band-meter"><div class="band-meter-fill" id="highMeter"></div></div>
+          <div class="band-live" id="highLive">中性 · 高频保持原样</div>
+          <div class="band-use"><b>🎯 空气感 · 细节光泽 · 齿音 · 刺耳感</b></div>
+        </div>
+
+        <!-- DIAGNOSIS -->
+        <div class="diag">
+          <div class="diag-head">实时诊断 · 根据当前声音与设置</div>
+          <div class="diag-text" id="diagText">
+            所有频段处于中性 — 先播放，听听哪里不满意，再去动对应的滑块。
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= RIGHT ================= -->
+    <aside class="col-side">
+
+      <!-- AUDIO SOURCE -->
+      <div class="panel fade-in" style="animation-delay:.15s">
+        <span class="c c-tl"></span><span class="c c-tr"></span>
+        <span class="c c-bl"></span><span class="c c-br"></span>
+        <div class="panel-head"><span>音频源</span><span>上传 / 选择</span></div>
+        <div class="src-body">
+          <label class="upload-zone" id="uploadZone" for="fileInput">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 16V4M12 4l-5 5M12 4l5 5"/>
+              <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+            </svg>
+            <span class="u-main" id="uploadMain">点击或拖拽音频文件</span>
+            <span class="u-sub" id="uploadSub">MP3 · WAV · OGG · M4A · FLAC</span>
+          </label>
+          <input type="file" id="fileInput" accept="audio/*" hidden>
+
+          <div class="src-split">或使用内置合成器</div>
+        </div>
+        <div class="tracks" id="tracks"></div>
+      </div>
+
+      <!-- FILTER & SPACE -->
+      <div class="panel fade-in" style="animation-delay:.2s">
+        <span class="c c-tl"></span><span class="c c-tr"></span>
+        <span class="c c-bl"></span><span class="c c-br"></span>
+        <div class="panel-head"><span>FILTER &amp; SPACE</span><span>进阶</span></div>
+        <div class="params">
+          <div class="param">
+            <div class="param-top"><span>低通截止 CUTOFF</span><span id="vCut">16.0 kHz</span></div>
+            <input type="range" id="pCut" min="500" max="20000" step="100" value="16000">
+          </div>
+          <div class="param">
+            <div class="param-top"><span>延迟混合 ECHO</span><span id="vEch">32 %</span></div>
+            <input type="range" id="pEch" min="0" max="80" value="32">
+          </div>
+          <div class="param">
+            <div class="param-top"><span>空间 SPACE</span><span id="vSpc">0.36 s</span></div>
+            <input type="range" id="pSpc" min="8" max="90" value="36">
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYSIS -->
+      <div class="panel fade-in" style="animation-delay:.25s">
+        <span class="c c-tl"></span><span class="c c-tr"></span>
+        <span class="c c-bl"></span><span class="c c-br"></span>
+        <div class="panel-head"><span>ANALYSIS</span><span>REALTIME</span></div>
+        <div class="meters">
+          <div class="meter-row">
+            <div class="meter-label"><span>LOW · 20-250Hz</span><span id="mLowV">0</span></div>
+            <div class="meter-track"><div class="meter-fill" id="mLow"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label"><span>MID · 250-2kHz</span><span id="mMidV">0</span></div>
+            <div class="meter-track"><div class="meter-fill mg" id="mMid"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label"><span>HIGH · 2k-12kHz</span><span id="mHighV">0</span></div>
+            <div class="meter-track"><div class="meter-fill lm" id="mHigh"></div></div>
+          </div>
+          <div class="readout">
+            <div><span class="k">PEAK FREQ</span><span class="v" id="rPeak">—<em>Hz</em></span></div>
+            <div><span class="k">CENTROID</span><span class="v" id="rCent">—<em>Hz</em></span></div>
+            <div><span class="k">ENERGY</span><span class="v" id="rRms">—</span></div>
+            <div><span class="k">DYNAMICS</span><span class="v" id="rDyn">—<em>dB</em></span></div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <div class="hint">点击中央圆环播放 · 空格切换 · ← → 换曲 · 拖拽文件到页面即可上传</div>
+</div>
+
+<!-- ================= TRANSPORT ================= -->
+<div class="transport">
+  <div class="progress-line" id="progressLine">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+  <div class="transport-inner">
+    <button class="play-btn" id="playBtn" aria-label="播放">
+      <svg class="ico-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>
+      <svg class="ico-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>
+    </button>
+    <div class="steps" id="steps"></div>
+    <div class="vol">
+      <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>
+      <input type="range" id="volRange" min="0" max="100" value="70">
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   状态
+   ============================================================ */
+let actx = null;
+let masterGain = null, masterFilter = null, analyser = null, comp = null;
+let delayNode = null, delayWet = null, delayFb = null;
+let eqLowNode = null, eqMidNode = null, eqHighNode = null;
+let noiseBuffer = null;
+
+let audioEl = null, mediaSource = null;
+let currentURL = null, fileName = '', hasFile = false;
+let mode = 'synth';          // 'synth' | 'file'
+
+let freqData = new Uint8Array(1024);
+let timeData = new Uint8Array(2048);
+
+let playing = false;
+let volume = 0.70;
+let currentTrack = 0;
+let step = 0, bar = 0;
+let nextTime = 0, startTime = 0;
+let schedTimer = null;
+
+const eqG = { low: 0, mid: 0, high: 0 };
+const FILE_COLOR = '#00f0ff';
+
+/* ============================================================
+   音高表
+   ============================================================ */
+const N = {
+  A1:55, C2:65.41, D2:73.42, E2:82.41, F2:87.31, G2:98,
+  A2:110, B2:123.47, C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196,
+  A3:220, B3:246.94, C4:261.63, D4:293.66, E4:329.63, G4:392, A4:440,
+  C5:523.25, D5:587.33, E5:659.25, G5:783.99, A5:880,
+  C6:1046.5, D6:1174.66, E6:1318.5, G6:1567.98, A6:1760
+};
+
+/* ============================================================
+   合成器
+   ============================================================ */
+function playKick(t, vol){
+  vol = vol || 0.85;
+  const o = actx.createOscillator(); o.type = 'sine';
+  const g = actx.createGain();
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(44, t + 0.13);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+  o.connect(g); g.connect(eqLowNode);
+  o.start(t); o.stop(t + 0.5);
+}
+function playHat(t, vol, dur){
+  vol = vol || 0.05; dur = dur || 0.035;
+  const s = actx.createBufferSource();
+  s.buffer = noiseBuffer; s.playbackRate.value = 1.4;
+  const hp = actx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7200;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(hp); hp.connect(g); g.connect(eqLowNode);
+  s.start(t); s.stop(t + dur + 0.03);
+}
+function playClap(t, vol){
+  vol = vol || 0.4;
+  const s = actx.createBufferSource(); s.buffer = noiseBuffer;
+  const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 1.5;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+  s.connect(bp); bp.connect(g); g.connect(eqLowNode);
+  s.start(t); s.stop(t + 0.22);
+}
+function playBass(t, f, dur, vol){
+  vol = vol || 0.36;
+  const o = actx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 7;
+  lp.frequency.setValueAtTime(Math.min(f * 9, 3000), t);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(f * 1.6, 90), t + dur * 0.9);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(lp); lp.connect(g); g.connect(eqLowNode);
+  o.start(t); o.stop(t + dur + 0.06);
+}
+function playPad(t, f, dur, vol){
+  vol = vol || 0.09;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + dur * 0.38);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  for (let i = 0; i < 3; i++){
+    const o = actx.createOscillator();
+    o.type = i === 0 ? 'sine' : 'triangle';
+    o.frequency.value = f; o.detune.value = (i - 1) * 8;
+    o.connect(g);
+    o.start(t); o.stop(t + dur + 0.1);
+  }
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2000; lp.Q.value = 0.6;
+  g.connect(lp); lp.connect(eqLowNode);
+}
+function playBell(t, f, vol, dur){
+  vol = vol || 0.06; dur = dur || 1.8;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const parts = [1, 2.01, 3.02, 4.72];
+  for (let i = 0; i < parts.length; i++){
+    const o = actx.createOscillator(); o.type = 'sine'; o.frequency.value = f * parts[i];
+    const og = actx.createGain(); og.gain.value = 1 / (i + 1.8);
+    o.connect(og); og.connect(g);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  g.connect(eqLowNode);
+}
+function playPluck(t, f, vol, dur){
+  vol = vol || 0.1; dur = dur || 0.26;
+  const o = actx.createOscillator(); o.type = 'square'; o.frequency.value = f;
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 9;
+  lp.frequency.setValueAtTime(Math.min(f * 12, 9000), t);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(f * 2, 200), t + dur);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(lp); lp.connect(g); g.connect(eqLowNode);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function playSweep(t, dur, vol){
+  vol = vol || 0.05;
+  const s = actx.createBufferSource(); s.buffer = noiseBuffer; s.loop = true;
+  const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2.4;
+  bp.frequency.setValueAtTime(260, t);
+  bp.frequency.exponentialRampToValueAtTime(6200, t + dur);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + dur * 0.65);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  s.connect(bp); bp.connect(g); g.connect(eqLowNode);
+  s.start(t); s.stop(t + dur + 0.06);
+}
+
+/* ============================================================
+   曲目
+   ============================================================ */
+const TRACKS = [
+  {
+    id:'AXIOM-01', name:'深空脉冲', sub:'DEEP SPACE PULSE',
+    bpm:76, key:'A MINOR', color:'#00f0ff',
+    play(step,t,bar){
+      const sd = (60/this.bpm)/4;
+      const chords = [
+        [N.A2,N.E3,N.C4],[N.G2,N.D3,N.A3],
+        [N.F2,N.C3,N.G3],[N.D2,N.A2,N.F3]
+      ];
+      const ch = chords[bar % chords.length];
+      if (step % 8 === 0) for (let i=0;i<ch.length;i++) playPad(t,ch[i],sd*8,0.075);
+      if (step===0||step===8) playKick(t,0.82);
+      if (step===11) playKick(t,0.42);
+      if (step%2===1) playHat(t, step%4===3?0.055:0.026, 0.035);
+      if (step===4||step===12) playBell(t, ch[2]*2, 0.05, 2.2);
+      if (step===6) playSweep(t, sd*6, 0.042);
+      if (step===0 && bar%4===0) playSweep(t, sd*16, 0.045);
+    }
+  },
+  {
+    id:'VECTOR-02', name:'矢量场', sub:'VECTOR FIELD',
+    bpm:122, key:'A MINOR', color:'#ff2fb9',
+    play(step,t,bar){
+      const sd = (60/this.bpm)/4;
+      if (step%4===0) playKick(t,0.85);
+      if (step===4||step===12) playClap(t,0.42);
+      if (step%2===0) playHat(t, step%4===0?0.075:0.032, 0.03);
+      else playHat(t,0.022,0.02);
+      const bass=[N.A1,0,0,N.A1,0,0,N.E2,0,N.C2,0,0,N.C2,0,N.G2,0,N.D2];
+      if (bass[step]) playBass(t, bass[step], sd*0.85, 0.34);
+      const arp=[N.A3,N.C4,N.E4,N.G4,N.A4,N.G4,N.E4,N.C4,
+                 N.A3,N.C4,N.E4,N.A4,N.C5,N.A4,N.G4,N.E4];
+      if (step%2===1) playPluck(t, arp[(step+bar*3)%16], 0.085, sd*1.7);
+      if (step===0 && bar%4===3) playSweep(t, sd*16, 0.05);
+    }
+  },
+  {
+    id:'GLASS-03', name:'玻璃雨', sub:'GLASS RAIN',
+    bpm:92, key:'C MAJOR', color:'#9dff5c',
+    play(step,t,bar){
+      const sd = (60/this.bpm)/4;
+      const scale=[N.C5,N.D5,N.E5,N.G5,N.A5,N.C6,N.D6,N.E6];
+      if (step%3===0) playBell(t, scale[(step*3+bar*5)%scale.length], 0.045, 2.6);
+      if (step%6===2) playBell(t, scale[(step*5+bar)%scale.length]/2, 0.036, 3.2);
+      if (step===0) playKick(t,0.42);
+      if (step===8) playKick(t,0.3);
+      if (step%4===2) playHat(t,0.026,0.06);
+      if (step===0) playPad(t, N.C2, sd*16, 0.055);
+      if (step===0 && bar%2===0) playSweep(t, sd*16, 0.04);
+      if (step===10) playPluck(t, N.G4, 0.05, sd*2);
+    }
+  }
+];
+
+function currentColor(){
+  return mode === 'file' ? FILE_COLOR : TRACKS[currentTrack].color;
+}
+
+/* ============================================================
+   初始化音频
+   ============================================================ */
+function initAudio(){
+  if (actx) return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  actx = new Ctx();
+
+  /* --- 输出链 --- */
+  comp = actx.createDynamicsCompressor();
+  comp.threshold.value = -6;
+  comp.knee.value = 12;
+  comp.ratio.value = 8;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.25;
+
+  masterGain = actx.createGain();
+  masterGain.gain.value = 0;
+
+  masterFilter = actx.createBiquadFilter();
+  masterFilter.type = 'lowpass';
+  masterFilter.frequency.value = 16000;
+  masterFilter.Q.value = 0.7;
+
+  /* --- 3 段 EQ --- */
+  eqLowNode = actx.createBiquadFilter();
+  eqLowNode.type = 'lowshelf';
+  eqLowNode.frequency.value = 200;
+  eqLowNode.gain.value = 0;
+
+  eqMidNode = actx.createBiquadFilter();
+  eqMidNode.type = 'peaking';
+  eqMidNode.frequency.value = 1000;
+  eqMidNode.Q.value = 1.0;
+  eqMidNode.gain.value = 0;
+
+  eqHighNode = actx.createBiquadFilter();
+  eqHighNode.type = 'highshelf';
+  eqHighNode.frequency.value = 4000;
+  eqHighNode.gain.value = 0;
+
+  /* --- 延迟 --- */
+  delayNode = actx.createDelay(1.5);
+  delayNode.delayTime.value = 0.36;
+  delayWet = actx.createGain();
+  delayWet.gain.value = 0.32;
+  delayFb = actx.createGain();
+  delayFb.gain.value = 0.34;
+
+  /* --- 连接 --- */
+  eqLowNode.connect(eqMidNode);
+  eqMidNode.connect(eqHighNode);
+  eqHighNode.connect(masterFilter);
+
+  masterFilter.connect(masterGain);
+  masterFilter.connect(delayNode);
+  delayNode.connect(delayFb);
+  delayFb.connect(delayNode);
+  delayNode.connect(delayWet);
+  delayWet.connect(masterGain);
+
+  masterGain.connect(comp);
+  comp.connect(actx.destination);
+
+  analyser = actx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.8;
+  comp.connect(analyser);
+
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  timeData = new Uint8Array(analyser.fftSize);
+
+  /* --- 噪声 --- */
+  const len = Math.floor(actx.sampleRate * 2);
+  noiseBuffer = actx.createBuffer(1, len, actx.sampleRate);
+  const d = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random()*2 - 1;
+
+  /* --- 音频元素（用于上传文件） --- */
+  audioEl = new Audio();
+  audioEl.crossOrigin = 'anonymous';
+  audioEl.preload = 'auto';
+  audioEl.loop = false;
+
+  mediaSource = actx.createMediaElementSource(audioEl);
+  mediaSource.connect(eqLowNode);
+
+  audioEl.addEventListener('play', () => {
+    rampGain(volume, 0.08);
+    setPlayingState(true);
+  });
+  audioEl.addEventListener('pause', () => {
+    rampGain(0.0001, 0.06);
+    setPlayingState(false);
+  });
+  audioEl.addEventListener('ended', () => {
+    rampGain(0.0001, 0.06);
+    setPlayingState(false);
+  });
+
+  document.getElementById('sysSR').textContent = (actx.sampleRate/1000).toFixed(1) + ' k';
+  applyEqToAudio();
+}
+
+function rampGain(to, tc){
+  if (!masterGain || !actx) return;
+  masterGain.gain.cancelScheduledValues(actx.currentTime);
+  masterGain.gain.setValueAtTime(Math.max(masterGain.gain.value, 0.0001), actx.currentTime);
+  masterGain.gain.setTargetAtTime(to, actx.currentTime, tc || 0.06);
+}
+
+function applyEqToAudio(){
+  if (!actx) return;
+  eqLowNode.gain.setTargetAtTime(eqG.low, actx.currentTime, 0.02);
+  eqMidNode.gain.setTargetAtTime(eqG.mid, actx.currentTime, 0.02);
+  eqHighNode.gain.setTargetAtTime(eqG.high, actx.currentTime, 0.02);
+}
+
+/* ============================================================
+   合成器调度
+   ============================================================ */
+function scheduler(){
+  if (!playing || mode !== 'synth') return;
+  const track = TRACKS[currentTrack];
+  const stepDur = (60/track.bpm)/4;
+  while (nextTime < actx.currentTime + 0.15){
+    if (nextTime >= startTime - 0.01){
+      try { track.play(step, nextTime, bar); } catch(e){}
+    }
+    nextTime += stepDur;
+    step++;
+    if (step >= 16){ step = 0; bar++; }
+  }
+}
+
+function startSynth(){
+  initAudio();
+  startTime = actx.currentTime + 0.08;
+  nextTime = startTime;
+  step = 0; bar = 0;
+  rampGain(volume, 0.06);
+  if (schedTimer) clearInterval(schedTimer);
+  schedTimer = setInterval(scheduler, 25);
+  setPlayingState(true);
+}
+
+function stopSynth(){
+  if (schedTimer){ clearInterval(schedTimer); schedTimer = null; }
+  rampGain(0.0001, 0.06);
+  setPlayingState(false);
+}
+
+/* ============================================================
+   播放状态
+   ============================================================ */
+function setPlayingState(v){
+  if (playing === v) return;
+  playing = v;
+  const btn = document.getElementById('playBtn');
+  const dot = document.getElementById('sysDot');
+  const st = document.getElementById('sysState');
+  const live = document.getElementById('liveTag');
+  btn.classList.toggle('playing', v);
+  dot.classList.toggle('live', v);
+  st.textContent = v ? 'LIVE' : 'STANDBY';
+  live.textContent = v ? '▣ LIVE' : '▣ IDLE';
+  live.style.color = v ? 'rgba(157,255,92,.75)' : '';
+}
+
+async function togglePlay(){
+  initAudio();
+  if (actx.state === 'suspended'){ try { await actx.resume(); } catch(e){} }
+  if (playing){
+    if (mode === 'file'){ audioEl.pause(); }
+    else { stopSynth(); }
+  } else {
+    if (mode === 'file'){
+      if (audioEl.src) audioEl.play().catch(()=>{});
+    } else {
+      startSynth();
+    }
+  }
+}
+
+/* ============================================================
+   音源切换
+   ============================================================ */
+function selectSynthTrack(i){
+  const wasPlaying = playing;
+  if (mode === 'file'){
+    audioEl.pause();
+  } else if (wasPlaying){
+    stopSynth();
+  }
+  mode = 'synth';
+  currentTrack = i;
+  updateSourceUI();
+  syncTrackMeta();
+  if (wasPlaying) startSynth();
+}
+
+function selectFileSource(){
+  if (!hasFile) return;
+  const wasPlaying = playing;
+  if (mode === 'synth' && wasPlaying) stopSynth();
+  mode = 'file';
+  updateSourceUI();
+  syncTrackMeta();
+  if (wasPlaying) audioEl.play().catch(()=>{});
+}
+
+function updateSourceUI(){
+  document.querySelectorAll('.track').forEach((el, k) => {
+    el.classList.toggle('active', mode === 'synth' && k === currentTrack);
+  });
+  const fz = document.getElementById('uploadZone');
+  fz.classList.toggle('loaded', hasFile && mode === 'file');
+  document.getElementById('sysSrc').textContent = mode === 'file' ? 'FILE' : 'SYNTH';
+}
+
+function syncTrackMeta(){
+  const el = id => document.getElementById(id);
+  if (mode === 'file' && hasFile){
+    const nm = fileName.length > 16 ? fileName.slice(0,15) + '…' : fileName;
+    el('metaName').textContent = nm;
+    el('metaBpm').textContent = '—';
+    el('metaKey').textContent = 'UPLOAD';
+    el('coreId').textContent = 'FILE';
+    el('uploadMain').textContent = nm;
+    el('uploadSub').textContent = '已加载 · 点击更换';
+  } else {
+    const tr = TRACKS[currentTrack];
+    el('metaName').textContent = tr.name;
+    el('metaBpm').textContent = tr.bpm + ' BPM';
+    el('metaKey').textContent = tr.key;
+    el('coreId').textContent = tr.id;
+    if (hasFile){
+      const nm = fileName.length > 16 ? fileName.slice(0,15) + '…' : fileName;
+      el('uploadMain').textContent = nm;
+      el('uploadSub').textContent = '点击此处切换到该文件';
+    } else {
+      el('uploadMain').textContent = '点击或拖拽音频文件';
+      el('uploadSub').textContent = 'MP3 · WAV · OGG · M4A · FLAC';
+    }
+  }
+}
+
+/* ============================================================
+   文件处理
+   ============================================================ */
+function handleFile(file){
+  if (!file) return;
+  const okType = file.type && file.type.indexOf('audio') === 0;
+  const okExt = /\.(mp3|wav|ogg|m4a|aac|flac|opus|webm)$/i.test(file.name);
+  if (!okType && !okExt){
+    alert('请选择音频文件（MP3 / WAV / OGG / M4A / FLAC）');
+    return;
+  }
+
+  initAudio();
+  if (actx.state === 'suspended') actx.resume();
+
+  const wasPlaying = playing;
+  if (mode === 'synth' && wasPlaying) stopSynth();
+
+  if (currentURL) URL.revokeObjectURL(currentURL);
+  currentURL = URL.createObjectURL(file);
+  audioEl.src = currentURL;
+  audioEl.load();
+
+  fileName = file.name;
+  hasFile = true;
+  mode = 'file';
+
+  updateSourceUI();
+  syncTrackMeta();
+
+  if (wasPlaying) {
+    audioEl.play().catch(()=>{});
+  } else {
+    /* 自动开始播放，让用户立刻听到 */
+    audioEl.play().catch(()=>{});
+  }
+}
+
+/* ============================================================
+   Canvas
+   ============================================================ */
+const RD = {w:0,h:0,ctx:null};
+const WV = {w:0,h:0,ctx:null};
+const EQC = {w:0,h:0,ctx:null};
+
+function fitCanvasEl(canvas, ref){
+  if (!canvas) return;
+  const r = canvas.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ref.w = r.width; ref.h = r.height; ref.ctx = ctx;
+}
+
+function resizeAll(){
+  fitCanvasEl(document.getElementById('radial'), RD);
+  fitCanvasEl(document.getElementById('wave'), WV);
+  fitCanvasEl(document.getElementById('eqCanvas'), EQC);
+}
+
+/* ============================================================
+   工具
+   ============================================================ */
+function hexA(hex, a){
+  const n = parseInt(hex.slice(1),16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+
+function hzToBin(hz){
+  const sr = actx ? actx.sampleRate : 44100;
+  return hz / (sr/2) * freqData.length;
+}
+
+function bandAvgHz(lo, hi){
+  const a = Math.max(0, Math.floor(hzToBin(lo)));
+  const b = Math.min(freqData.length, Math.ceil(hzToBin(hi)));
+  let s = 0, n = 0;
+  for (let i = a; i < b; i++){ s += freqData[i]; n++; }
+  return n ? s / n / 255 : 0;
+}
+
+function eqDbAt(f, lowG, midG, highG){
+  const low  = lowG  / (1 + Math.pow(f/200, 2));
+  const high = highG / (1 + Math.pow(4000/f, 2));
+  const mid  = midG  * Math.exp(-Math.pow(Math.log2(f/1000)/1.1, 2));
+  return low + mid + high;
+}
+
+/* ============================================================
+   径向可视化
+   ============================================================ */
+function drawRadial(t){
+  const ctx = RD.ctx, w = RD.w, h = RD.h;
+  if (!ctx || w < 4) return;
+  ctx.clearRect(0,0,w,h);
+
+  const cx = w/2, cy = h/2;
+  const R = Math.min(w,h)/2;
+  const baseR = R * 0.46;
+  const color = currentColor();
+
+  const bass = bandAvgHz(20, 250);
+  const mid  = bandAvgHz(250, 2000);
+  const high = bandAvgHz(2000, 12000);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const outerR = R * 0.955;
+  ctx.beginPath();
+  ctx.arc(0,0,outerR,0,Math.PI*2);
+  ctx.strokeStyle = 'rgba(80,190,225,.09)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const rot = t * 0.055;
+  for (let i = 0; i < 72; i++){
+    const a = (i/72)*Math.PI*2 + rot;
+    const long = i % 6 === 0;
+    const r1 = outerR;
+    const r2 = outerR - (long ? 10 : 4.5);
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*r1, Math.sin(a)*r1);
+    ctx.lineTo(Math.cos(a)*r2, Math.sin(a)*r2);
+    ctx.strokeStyle = long ? 'rgba(0,240,255,.30)' : 'rgba(0,240,255,.11)';
+    ctx.lineWidth = long ? 1.2 : 1;
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.arc(0,0,baseR*0.83,0,Math.PI*2);
+  ctx.setLineDash([2,7]);
+  ctx.strokeStyle = 'rgba(0,240,255,.16)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const bars = 96;
+  const bins = freqData.length;
+  const maxLen = R * 0.42;
+  const startAngle = -Math.PI/2;
+
+  for (let i = 0; i < bars; i++){
+    const a = startAngle + (i/bars)*Math.PI*2;
+    const idx = Math.min(bins-1, Math.floor(Math.pow(i/bars,1.85)*bins*0.52));
+    const v = freqData[idx]/255;
+    const len = 2.5 + v*maxLen;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(ca*baseR, sa*baseR);
+    ctx.lineTo(ca*(baseR+len), sa*(baseR+len));
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.14 + v*0.86;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.beginPath();
+  const steps = 64;
+  for (let i = 0; i <= steps; i++){
+    const a = startAngle + (i/steps)*Math.PI*2;
+    const idx = Math.min(bins-1, Math.floor(Math.pow(i/steps,1.8)*bins*0.5));
+    const v = freqData[idx]/255;
+    const r = baseR*0.72 + v*R*0.1;
+    const x = Math.cos(a)*r, y = Math.sin(a)*r;
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = hexA(color, 0.32);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const sweep = t * 0.9;
+  const sx = Math.cos(sweep)*baseR*0.98;
+  const sy = Math.sin(sweep)*baseR*0.98;
+  const lg = ctx.createLinearGradient(0,0,sx,sy);
+  lg.addColorStop(0, hexA(color,0));
+  lg.addColorStop(1, hexA(color,0.55));
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.lineTo(sx,sy);
+  ctx.strokeStyle = lg;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  const coreR = R*0.10 + bass*R*0.10;
+  const cg = ctx.createRadialGradient(0,0,0,0,0,coreR*2.6);
+  cg.addColorStop(0, hexA(color,0.5));
+  cg.addColorStop(0.3, hexA(color,0.13));
+  cg.addColorStop(1, hexA(color,0));
+  ctx.beginPath();
+  ctx.arc(0,0,coreR*2.6,0,Math.PI*2);
+  ctx.fillStyle = cg;
+  ctx.fill();
+
+  const pulse = (t*0.5) % 1;
+  ctx.beginPath();
+  ctx.arc(0,0,baseR*0.18 + pulse*baseR*0.62,0,Math.PI*2);
+  ctx.strokeStyle = hexA(color, 0.18*(1-pulse));
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0,0,baseR*0.55 + mid*baseR*0.12,0,Math.PI*2);
+  ctx.strokeStyle = hexA(color, 0.22);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0,0,baseR*0.35 + high*baseR*0.16,0,Math.PI*2);
+  ctx.strokeStyle = hexA(color, 0.14);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0,0,2.2,0,Math.PI*2);
+  ctx.fillStyle = hexA(color, 0.9);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* ============================================================
+   波形
+   ============================================================ */
+function drawWave(){
+  const ctx = WV.ctx, w = WV.w, h = WV.h;
+  if (!ctx || w < 4) return;
+  ctx.clearRect(0,0,w,h);
+
+  const color = currentColor();
+  const mid = h/2;
+
+  ctx.strokeStyle = 'rgba(80,190,225,.07)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++){
+    const y = (h/4)*i;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(w,mid);
+  ctx.strokeStyle = 'rgba(0,240,255,.15)'; ctx.stroke();
+
+  const n = timeData.length;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++){
+    const x = (i/(n-1))*w;
+    const v = (timeData[i]-128)/128;
+    const y = mid + v*h*0.42;
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle = hexA(color, 0.22);
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.strokeStyle = hexA(color, 0.95);
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  const eg = ctx.createLinearGradient(0,0,w,0);
+  eg.addColorStop(0,'rgba(4,6,10,1)');
+  eg.addColorStop(0.08,'rgba(4,6,10,0)');
+  eg.addColorStop(0.92,'rgba(4,6,10,0)');
+  eg.addColorStop(1,'rgba(4,6,10,1)');
+  ctx.fillStyle = eg;
+  ctx.fillRect(0,0,w,h);
+}
+
+/* ============================================================
+   EQ 曲线
+   ============================================================ */
+function drawEqDot(ctx, x, y, c){
+  ctx.beginPath();
+  ctx.arc(x,y,3.6,0,Math.PI*2);
+  ctx.fillStyle = c;
+  ctx.shadowColor = c;
+  ctx.shadowBlur = 10;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function drawEQ(){
+  const ctx = EQC.ctx, w = EQC.w, h = EQC.h;
+  if (!ctx || w < 4) return;
+  ctx.clearRect(0,0,w,h);
+
+  const padL = 30, padR = 10, padT = 10, padB = 18;
+  const pw = w - padL - padR;
+  const ph = h - padT - padB;
+  const fMin = 20, fMax = 20000;
+  const gMin = -14, gMax = 14;
+
+  const fx = f => padL + (Math.log10(f/fMin)/Math.log10(fMax/fMin))*pw;
+  const gy = g => padT + (1 - (g-gMin)/(gMax-gMin))*ph;
+
+  /* 频段底色 */
+  ctx.fillStyle = 'rgba(0,240,255,.030)';
+  ctx.fillRect(fx(20), padT, fx(250)-fx(20), ph);
+  ctx.fillStyle = 'rgba(255,47,185,.026)';
+  ctx.fillRect(fx(250), padT, fx(2000)-fx(250), ph);
+  ctx.fillStyle = 'rgba(157,255,92,.026)';
+  ctx.fillRect(fx(2000), padT, fx(20000)-fx(2000), ph);
+
+  /* 实时频谱底图 */
+  if (analyser){
+    const bins = freqData.length;
+    const sr = actx ? actx.sampleRate : 44100;
+    const binHz = sr/2/bins;
+    ctx.beginPath();
+    ctx.moveTo(fx(fMin), padT+ph);
+    for (let i = 1; i < 120; i++){
+      const f = fMin * Math.pow(fMax/fMin, i/120);
+      const bi = Math.min(bins-1, Math.round(f/binHz));
+      const v = freqData[bi]/255;
+      const x = fx(f);
+      const y = padT + ph - v*ph*0.55;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(fx(fMax), padT+ph);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,240,255,.055)';
+    ctx.fill();
+  }
+
+  /* 网格 */
+  [100,1000,10000].forEach(f=>{
+    ctx.beginPath();
+    ctx.moveTo(fx(f), padT);
+    ctx.lineTo(fx(f), padT+ph);
+    ctx.strokeStyle = 'rgba(80,190,225,.09)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+  [-12,-6,0,6,12].forEach(g=>{
+    const y = gy(g);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(padL+pw, y);
+    ctx.strokeStyle = g===0 ? 'rgba(0,240,255,.22)' : 'rgba(80,190,225,.07)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(150,192,214,.32)';
+    ctx.font = '8px ui-monospace,monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((g>0?'+':'')+g, padL-4, y);
+  });
+
+  ctx.fillStyle = 'rgba(150,192,214,.32)';
+  ctx.font = '8px ui-monospace,monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  [[20,'20'],[100,'100'],[1000,'1k'],[10000,'10k'],[20000,'20k']].forEach(p=>{
+    ctx.fillText(p[1], fx(p[0]), padT+ph+5);
+  });
+
+  /* 曲线 */
+  const NN = 220;
+  ctx.beginPath();
+  for (let i = 0; i <= NN; i++){
+    const t = i/NN;
+    const f = fMin * Math.pow(fMax/fMin, t);
+    const db = eqDbAt(f, eqG.low, eqG.mid, eqG.high);
+    const x = fx(f);
+    const y = gy(Math.max(gMin, Math.min(gMax, db)));
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+
+  const grad = ctx.createLinearGradient(padL,0,padL+pw,0);
+  grad.addColorStop(0,'#00f0ff');
+  grad.addColorStop(0.5,'#ff2fb9');
+  grad.addColorStop(1,'#9dff5c');
+
+  ctx.save();
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 6;
+  ctx.globalAlpha = 0.15;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.7;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  /* 控制点 */
+  const yLow  = gy(Math.max(gMin, Math.min(gMax, eqDbAt(200,  eqG.low, eqG.mid, eqG.high))));
+  const yMid  = gy(Math.max(gMin, Math.min(gMax, eqDbAt(1000, eqG.low, eqG.mid, eqG.high))));
+  const yHigh = gy(Math.max(gMin, Math.min(gMax, eqDbAt(4000, eqG.low, eqG.mid, eqG.high))));
+  drawEqDot(ctx, fx(200),  yLow,  '#00f0ff');
+  drawEqDot(ctx, fx(1000), yMid,  '#ff2fb9');
+  drawEqDot(ctx, fx(4000), yHigh, '#9dff5c');
+}
+
+/* ============================================================
+   指标
+   ============================================================ */
+const elLow = document.getElementById('mLow');
+const elMid = document.getElementById('mMid');
+const elHigh = document.getElementById('mHigh');
+const elLowV = document.getElementById('mLowV');
+const elMidV = document.getElementById('mMidV');
+const elHighV = document.getElementById('mHighV');
+const elPeak = document.getElementById('rPeak');
+const elCent = document.getElementById('rCent');
+const elRms = document.getElementById('rRms');
+const elDyn = document.getElementById('rDyn');
+
+const lowMeterEl = document.getElementById('lowMeter');
+const midMeterEl = document.getElementById('midMeter');
+const highMeterEl = document.getElementById('highMeter');
+
+function updateMetrics(){
+  const low  = bandAvgHz(20, 250);
+  const mid  = bandAvgHz(250, 2000);
+  const high = bandAvgHz(2000, 12000);
+
+  elLow.style.width  = Math.min(100, low*140) + '%';
+  elMid.style.width  = Math.min(100, mid*155) + '%';
+  elHigh.style.width = Math.min(100, high*180) + '%';
+  elLowV.textContent  = Math.round(low*100);
+  elMidV.textContent  = Math.round(mid*100);
+  elHighV.textContent = Math.round(high*100);
+
+  lowMeterEl.style.width  = Math.min(100, low*150) + '%';
+  midMeterEl.style.width  = Math.min(100, mid*165) + '%';
+  highMeterEl.style.width = Math.min(100, high*190) + '%';
+
+  let maxV = 0, maxI = 0;
+  const lim = Math.min(700, freqData.length);
+  for (let i = 1; i < lim; i++){
+    if (freqData[i] > maxV){ maxV = freqData[i]; maxI = i; }
+  }
+  const sr = actx ? actx.sampleRate : 44100;
+  const binHz = sr/2/freqData.length;
+  const peakHz = maxI * binHz;
+
+  elPeak.innerHTML = maxV > 20 ? Math.round(peakHz) + '<em>Hz</em>' : '—<em>Hz</em>';
+
+  let num = 0, den = 0;
+  for (let i = 1; i < lim; i++){
+    const v = freqData[i];
+    num += i*binHz*v;
+    den += v;
+  }
+  elCent.innerHTML = den > 0 ? Math.round(num/den) + '<em>Hz</em>' : '—<em>Hz</em>';
+
+  let sum = 0;
+  for (let i = 0; i < timeData.length; i += 2){
+    const v = (timeData[i]-128)/128;
+    sum += v*v;
+  }
+  const rms = Math.sqrt(sum/(timeData.length/2));
+  elRms.textContent = rms.toFixed(3);
+  elDyn.innerHTML = (rms > 0.0001 ? (20*Math.log10(rms)).toFixed(1) : '—') + '<em>dB</em>';
+
+  document.getElementById('gainTag').textContent =
+    (20*Math.log10(Math.max(volume, 0.001))).toFixed(1);
+}
+
+/* ============================================================
+   Step 指示灯
+   ============================================================ */
+const stepsEl = document.getElementById('steps');
+const stepEls = [];
+for (let i = 0; i < 16; i++){
+  const d = document.createElement('div');
+  d.className = 'step' + (i%4===0 ? ' beat' : '');
+  stepsEl.appendChild(d);
+  stepEls.push(d);
+}
+
+function updateSteps(){
+  let cur = -1;
+  if (playing && mode === 'synth' && actx){
+    const sd = (60/TRACKS[currentTrack].bpm)/4;
+    const el = actx.currentTime - startTime;
+    if (el >= 0) cur = Math.floor(el/sd) % 16;
+  }
+  for (let i = 0; i < 16; i++){
+    const on = (i === cur);
+    if (stepEls[i].classList.contains('on') !== on){
+      stepEls[i].classList.toggle('on', on);
+    }
+  }
+}
+
+/* ============================================================
+   时钟 / 进度
+   ============================================================ */
+const elClock = document.getElementById('clockTime');
+const elMetaBar = document.getElementById('metaBar');
+const progressFill = document.getElementById('progressFill');
+let lastClock = '';
+
+function updateClock(){
+  let secs = 0;
+  if (mode === 'file' && audioEl){
+    secs = audioEl.currentTime || 0;
+  } else if (playing && actx){
+    secs = Math.max(0, actx.currentTime - startTime);
+  }
+  const m = Math.floor(secs/60);
+  const s = Math.floor(secs%60);
+  const txt = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  if (txt !== lastClock){ elClock.textContent = txt; lastClock = txt; }
+
+  if (mode === 'synth' && playing && actx){
+    elMetaBar.textContent = String(bar).padStart(4,'0');
+  }
+}
+
+function updateProgress(){
+  let p = 0;
+  if (mode === 'file' && audioEl && audioEl.duration > 0.1){
+    p = audioEl.currentTime / audioEl.duration;
+  } else if (playing && actx){
+    const loop = 24;
+    p = ((actx.currentTime - startTime) % loop) / loop;
+  }
+  progressFill.style.width = Math.max(0, Math.min(100, p*100)) + '%';
+}
+
+/* ============================================================
+   实时解读文本
+   ============================================================ */
+function lowText(v){
+  if (v <= -8) return '<b>大幅削减</b> · 声音会变得单薄无力，通常只在处理严重轰头时才用';
+  if (v <= -3) return '<b>削减低频</b> · 鼓点更紧实，减少浑浊，适合拥挤的混音';
+  if (v <= -1) return '<b>轻微削减</b> · 清理低频细节，让中频更突出一点';
+  if (v < 1)   return '中性 · 低频保持原始状态';
+  if (v < 3)   return '<b>轻微提升</b> · 增加一点温暖和厚度';
+  if (v < 6)   return '<b>提升低频</b> · 底鼓更结实，贝斯更有力，注意别过头';
+  if (v < 9)   return '<b>大幅提升</b> · 声音开始变厚变闷，容易掩盖人声';
+  return '<b>过度提升</b> · 浑浊、轰头，整体失去清晰度';
+}
+function midText(v){
+  if (v <= -8) return '<b>大幅削减</b> · 人声几乎消失，只剩空壳感';
+  if (v <= -3) return '<b>削减中频</b> · 人声后退，空间感变强';
+  if (v <= -1) return '<b>轻微削减</b> · 削弱一点鼻音，让声音更顺滑';
+  if (v < 1)   return '中性 · 中频保持原样';
+  if (v < 3)   return '<b>轻微提升</b> · 人声更清晰、更靠前';
+  if (v < 6)   return '<b>提升中频</b> · 人声突出，但开始有点"电话音"';
+  if (v < 9)   return '<b>大幅提升</b> · 明显发闷发硬，听久了容易疲劳';
+  return '<b>过度提升</b> · 刺耳、金属感，非常不自然';
+}
+function highText(v){
+  if (v <= -8) return '<b>大幅削减</b> · 声音发闷，像盖了一层布';
+  if (v <= -3) return '<b>削减高频</b> · 整体柔和温暖，减少刺耳感';
+  if (v <= -1) return '<b>轻微削减</b> · 去掉一点嘶嘶声';
+  if (v < 1)   return '中性 · 高频保持原样';
+  if (v < 3)   return '<b>轻微提升</b> · 增加一点空气感和光泽';
+  if (v < 6)   return '<b>提升高频</b> · 细节更清晰，但齿音开始变明显';
+  if (v < 9)   return '<b>大幅提升</b> · 刺耳、疲劳，齿音突出';
+  return '<b>过度提升</b> · 尖锐嘶嘶声，非常难受';
+}
+
+/* ============================================================
+   EQ 控件
+   ============================================================ */
+const eqLowEl = document.getElementById('eqLow');
+const eqMidEl = document.getElementById('eqMid');
+const eqHighEl = document.getElementById('eqHigh');
+const eqLowVal = document.getElementById('eqLowVal');
+const eqMidVal = document.getElementById('eqMidVal');
+const eqHighVal = document.getElementById('eqHighVal');
+const lowLive = document.getElementById('lowLive');
+const midLive = document.getElementById('midLive');
+const highLive = document.getElementById('highLive');
+
+function fmtDb(v){ return (v >= 0 ? '+' : '') + v.toFixed(1) + ' dB'; }
+
+function onEqChange(){
+  eqG.low  = parseFloat(eqLowEl.value);
+  eqG.mid  = parseFloat(eqMidEl.value);
+  eqG.high = parseFloat(eqHighEl.value);
+
+  eqLowVal.textContent  = fmtDb(eqG.low);
+  eqMidVal.textContent  = fmtDb(eqG.mid);
+  eqHighVal.textContent = fmtDb(eqG.high);
+
+  lowLive.innerHTML  = lowText(eqG.low);
+  midLive.innerHTML  = midText(eqG.mid);
+  highLive.innerHTML = highText(eqG.high);
+
+  initAudio();
+  applyEqToAudio();
+}
+
+eqLowEl.addEventListener('input', onEqChange);
+eqMidEl.addEventListener('input', onEqChange);
+eqHighEl.addEventListener('input', onEqChange);
+
+document.querySelectorAll('.band-reset').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const k = btn.dataset.reset;
+    if (k === 'low')  eqLowEl.value = 0;
+    if (k === 'mid')  eqMidEl.value = 0;
+    if (k === 'high') eqHighEl.value = 0;
+    onEqChange();
+  });
+});
+
+/* ============================================================
+   实时诊断
+   ============================================================ */
+const diagText = document.getElementById('diagText');
+let lastDiag = 0;
+
+function updateDiagnosis(now){
+  if (now - lastDiag < 300) return;
+  lastDiag = now;
+
+  const low  = bandAvgHz(20, 250);
+  const mid  = bandAvgHz(250, 2000);
+  const high = bandAvgHz(2000, 12000);
+  const allNeutral = Math.abs(eqG.low) < 0.6 && Math.abs(eqG.mid) < 0.6 && Math.abs(eqG.high) < 0.6;
+  const silence = low < 0.03 && mid < 0.03 && high < 0.03;
+
+  let msg = '', cls = '';
+
+  if (silence){
+    msg = '当前没有声音 — 点击中央圆环播放，或上传一段音频，才能听到 EQ 的实际效果。';
+  } else if (allNeutral){
+    msg = '所有频段处于中性。先听，找到不满意的地方，再去动对应的滑块 — 这是调音的第一原则。';
+  } else if (low > 0.5 && eqG.low > 2.5){
+    msg = '低频能量已经很足，你还在往上提 — 试试衰减 2~3 dB，声音往往会立刻干净很多。';
+    cls = 'warn';
+  } else if (low > 0.5 && eqG.low < -6){
+    msg = '低频偏高，你正在衰减它 — 方向正确。继续保持，或再多削 1~2 dB 看看。';
+    cls = 'good';
+  } else if (low < 0.15 && eqG.low < -3){
+    msg = '低频本身就不多，继续衰减会让声音变得单薄无力 — 除非你要的就是"清瘦"的感觉。';
+    cls = 'warn';
+  } else if (high > 0.35 && eqG.high > 4){
+    msg = '高频能量偏亮，再往上提容易刺耳 — 可以试着把 4 kHz 以上拉回来一点。';
+    cls = 'warn';
+  } else if (mid > 0.45 && eqG.mid > 4){
+    msg = '中频已经很饱满，继续提升会变成"电话音" — 人声清晰靠的是中频的精准，而不是猛推。';
+    cls = 'warn';
+  } else if (eqG.high > 5 && eqG.mid < -3){
+    msg = '高频提升 + 中频衰减 = 典型的"V 型"音色，听起来有冲击力但人声会后退。';
+  } else if (eqG.low > 4 && eqG.high > 4){
+    msg = '低频和高频都提升，中频相对凹陷 — 这是常见的"响度音色"，但长时间听容易疲劳。';
+  } else {
+    msg = '正在调整中 — 幅度不大的调整往往比猛推更耐听。好调音的第一步是：先减，后加。';
+  }
+
+  if (diagText.textContent.trim() !== msg.replace(/<[^>]+>/g,'').trim() || diagText.dataset.cls !== cls){
+    diagText.innerHTML = msg;
+    diagText.className = 'diag-text' + (cls ? ' ' + cls : '');
+    diagText.dataset.cls = cls;
+  }
+}
+
+/* ============================================================
+   渲染循环
+   ============================================================ */
+function render(now){
+  requestAnimationFrame(render);
+  const t = now/1000;
+
+  if (analyser){
+    analyser.getByteFrequencyData(freqData);
+    analyser.getByteTimeDomainData(timeData);
+  }
+
+  drawRadial(t);
+  drawWave();
+  drawEQ();
+  updateMetrics();
+  updateSteps();
+  updateClock();
+  updateProgress();
+  updateDiagnosis(now);
+}
+
+/* ============================================================
+   曲目列表
+   ============================================================ */
+const tracksEl = document.getElementById('tracks');
+
+function buildTracks(){
+  TRACKS.forEach((tr, i) => {
+    const b = document.createElement('button');
+    b.className = 'track' + (i === currentTrack ? ' active' : '');
+    b.dataset.i = i;
+    b.innerHTML =
+      '<span class="t-num">0' + (i+1) + '</span>' +
+      '<span class="t-info">' +
+        '<span class="t-name">' + tr.name + '</span>' +
+        '<span class="t-sub">' + tr.id + ' · ' + tr.bpm + ' BPM · ' + tr.key + '</span>' +
+      '</span>' +
+      '<span class="t-eq"><i></i><i></i><i></i><i></i></span>';
+    b.addEventListener('click', () => selectSynthTrack(i));
+    tracksEl.appendChild(b);
+  });
+}
+
+/* ============================================================
+   文件上传
+   ============================================================ */
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+
+fileInput.addEventListener('change', e => {
+  if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+uploadZone.addEventListener('click', e => {
+  if (hasFile && mode !== 'file'){
+    e.preventDefault();
+    selectFileSource();
+  }
+});
+
+let dragDepth = 0;
+window.addEventListener('dragenter', e => {
+  e.preventDefault();
+  dragDepth++;
+  document.body.classList.add('dragging');
+  uploadZone.classList.add('hot');
+});
+window.addEventListener('dragleave', e => {
+  e.preventDefault();
+  dragDepth--;
+  if (dragDepth <= 0){
+    dragDepth = 0;
+    document.body.classList.remove('dragging');
+    uploadZone.classList.remove('hot');
+  }
+});
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  uploadZone.classList.remove('hot');
+  if (e.dataTransfer.files && e.dataTransfer.files.length){
+    handleFile(e.dataTransfer.files[0]);
+  }
+});
+
+/* ============================================================
+   Filter & Space
+   ============================================================ */
+const pCut = document.getElementById('pCut');
+const vCut = document.getElementById('vCut');
+const pEch = document.getElementById('pEch');
+const vEch = document.getElementById('vEch');
+const pSpc = document.getElementById('pSpc');
+const vSpc = document.getElementById('vSpc');
+
+pCut.addEventListener('input', e => {
+  const v = +e.target.value;
+  vCut.textContent = v >= 1000 ? (v/1000).toFixed(1) + ' kHz' : v + ' Hz';
+  initAudio();
+  if (masterFilter) masterFilter.frequency.setTargetAtTime(v, actx.currentTime, 0.02);
+});
+
+pEch.addEventListener('input', e => {
+  const v = +e.target.value;
+  vEch.textContent = v + ' %';
+  initAudio();
+  if (delayWet) delayWet.gain.setTargetAtTime(v/100, actx.currentTime, 0.02);
+});
+
+pSpc.addEventListener('input', e => {
+  const v = +e.target.value;
+  vSpc.textContent = (v/100).toFixed(2) + ' s';
+  initAudio();
+  if (delayNode) delayNode.delayTime.setTargetAtTime(v/100, actx.currentTime, 0.05);
+});
+
+/* ============================================================
+   音量
+   ============================================================ */
+const volRange = document.getElementById('volRange');
+volRange.addEventListener('input', e => {
+  volume = (+e.target.value)/100;
+  initAudio();
+  if (playing) rampGain(volume, 0.04);
+});
+
+/* ============================================================
+   播放按钮 / 键盘 / 进度
+   ============================================================ */
+document.getElementById('playBtn').addEventListener('click', togglePlay);
+document.getElementById('stage').addEventListener('click', togglePlay);
+
+const progressLine = document.getElementById('progressLine');
+progressLine.addEventListener('click', e => {
+  if (mode !== 'file' || !audioEl || !audioEl.duration) return;
+  const r = progressLine.getBoundingClientRect();
+  const p = Math.max(0, Math.min(1, (e.clientX - r.left)/r.width));
+  try { audioEl.currentTime = p * audioEl.duration; } catch(err){}
+});
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space'){ e.preventDefault(); togglePlay(); }
+  else if (e.code === 'ArrowRight'){ selectSynthTrack((currentTrack+1)%TRACKS.length); }
+  else if (e.code === 'ArrowLeft'){ selectSynthTrack((currentTrack-1+TRACKS.length)%TRACKS.length); }
+});
+
+/* ============================================================
+   启动
+   ============================================================ */
+buildTracks();
+resizeAll();
+onEqChange();
+syncTrackMeta();
+updateSourceUI();
+requestAnimationFrame(render);
+
+window.addEventListener('resize', () => {
+  clearTimeout(window.__rz);
+  window.__rz = setTimeout(resizeAll, 120);
+});
+window.addEventListener('orientationchange', () => setTimeout(resizeAll, 260));
+</script>
+</body>
+</html>

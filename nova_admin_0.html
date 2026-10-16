@@ -1,0 +1,2625 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova Admin · 控制台</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #fafbfc;
+    --surface-3: #f1f3f5;
+    --border: #e6e8eb;
+    --border-strong: #d5d9de;
+    --text: #101828;
+    --text-2: #5b6472;
+    --text-3: #98a1ae;
+    --accent: #4f46e5;
+    --accent-soft: #eef0ff;
+    --accent-text: #ffffff;
+    --green: #0d9f6e;
+    --green-soft: #e6f6f0;
+    --red: #e5484d;
+    --red-soft: #fdeced;
+    --amber: #c47f17;
+    --amber-soft: #fdf3e2;
+    --blue: #0b7fd4;
+    --blue-soft: #e7f3fc;
+    --purple: #8b5cf6;
+    --purple-soft: #f3eeff;
+    --cyan: #0891b2;
+    --cyan-soft: #e3f6fa;
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.05);
+    --shadow-md: 0 4px 14px rgba(16,24,40,.08);
+    --shadow-lg: 0 18px 48px rgba(16,24,40,.16);
+    --chart-grid: #eceef1;
+    --chart-text: #98a1ae;
+    --radius: 12px;
+    --sidebar-w: 236px;
+  }
+
+  [data-theme="dark"] {
+    --bg: #0b0c10;
+    --surface: #131519;
+    --surface-2: #171a1f;
+    --surface-3: #1c2027;
+    --border: #23272f;
+    --border-strong: #333944;
+    --text: #e9ecf1;
+    --text-2: #98a1ae;
+    --text-3: #6b7482;
+    --accent: #6366f1;
+    --accent-soft: #1d1f3a;
+    --accent-text: #ffffff;
+    --green: #34d399;
+    --green-soft: #10251f;
+    --red: #f87171;
+    --red-soft: #2a1416;
+    --amber: #fbbf24;
+    --amber-soft: #2a2010;
+    --blue: #38bdf8;
+    --blue-soft: #0e2230;
+    --purple: #a78bfa;
+    --purple-soft: #1e1733;
+    --cyan: #22d3ee;
+    --cyan-soft: #0d2529;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-md: 0 4px 14px rgba(0,0,0,.45);
+    --shadow-lg: 0 18px 48px rgba(0,0,0,.6);
+    --chart-grid: #23272f;
+    --chart-text: #6b7482;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color .25s, color .25s;
+  }
+
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; background: none; }
+  a { color: inherit; text-decoration: none; }
+
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  .sidebar {
+    width: var(--sidebar-w);
+    flex: 0 0 var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: width .22s cubic-bezier(.4,0,.2,1), flex-basis .22s cubic-bezier(.4,0,.2,1), transform .25s;
+    z-index: 40;
+  }
+
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 18px; height: 60px; flex: 0 0 60px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-mark {
+    width: 28px; height: 28px; flex: 0 0 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    display: grid; place-items: center; color: #fff;
+    font-weight: 800; font-size: 13px; letter-spacing: -.03em;
+    box-shadow: 0 2px 8px rgba(79,70,229,.35);
+  }
+  .brand-text { font-weight: 700; font-size: 15px; letter-spacing: -.01em; white-space: nowrap; }
+  .brand-text small {
+    display: block; font-weight: 500; font-size: 10.5px;
+    color: var(--text-3); letter-spacing: .06em;
+  }
+
+  .nav {
+    flex: 1; overflow-y: auto; padding: 14px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .nav::-webkit-scrollbar { width: 4px; }
+  .nav::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+  .nav-section {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-3);
+    padding: 14px 10px 6px; white-space: nowrap;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 10px; border-radius: 8px;
+    color: var(--text-2); font-size: 13.5px; font-weight: 500;
+    white-space: nowrap; position: relative;
+    transition: background-color .14s, color .14s;
+  }
+  .nav-item svg { flex: 0 0 18px; width: 18px; height: 18px; }
+  .nav-item:hover { background: var(--surface-3); color: var(--text); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .nav-item.active::before {
+    content: ""; position: absolute; left: -10px; top: 50%;
+    transform: translateY(-50%); width: 3px; height: 18px;
+    border-radius: 0 3px 3px 0; background: var(--accent);
+  }
+  .nav-badge {
+    margin-left: auto; font-size: 10.5px; font-weight: 700;
+    padding: 1px 6px; border-radius: 20px; background: var(--red); color: #fff;
+  }
+
+  .sidebar-foot { border-top: 1px solid var(--border); padding: 12px 10px; }
+  .user-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 9px; transition: background-color .14s;
+  }
+  .user-card:hover { background: var(--surface-3); }
+  .avatar {
+    width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #06b6d4);
+    display: grid; place-items: center; color: #fff;
+    font-size: 12px; font-weight: 700;
+  }
+  .user-meta { min-width: 0; }
+  .user-meta strong {
+    display: block; font-size: 13px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .user-meta span {
+    display: block; font-size: 11.5px; color: var(--text-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .sidebar.collapsed { width: 64px; flex-basis: 64px; }
+  .sidebar.collapsed .brand-text,
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .nav-badge,
+  .sidebar.collapsed .user-meta { display: none; }
+  .sidebar.collapsed .brand { justify-content: center; padding: 0; }
+  .sidebar.collapsed .nav-item { justify-content: center; padding: 10px; }
+  .sidebar.collapsed .user-card { justify-content: center; padding: 8px 0; }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  .topbar {
+    height: 60px; flex: 0 0 60px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 20px; position: relative; z-index: 20;
+  }
+
+  .icon-btn {
+    width: 34px; height: 34px; flex: 0 0 34px;
+    display: grid; place-items: center; border-radius: 8px;
+    color: var(--text-2); position: relative;
+    transition: background-color .14s, color .14s;
+  }
+  .icon-btn:hover { background: var(--surface-3); color: var(--text); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .dot-badge {
+    position: absolute; top: 6px; right: 6px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red); border: 2px solid var(--surface);
+  }
+
+  .page-title { display: flex; flex-direction: column; gap: 1px; }
+  .page-title h2 { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+  .page-title span { font-size: 11.5px; color: var(--text-3); }
+
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 12px; border-radius: 8px;
+    background: var(--surface-3); border: 1px solid transparent;
+    width: 230px; transition: border-color .15s, background-color .15s;
+  }
+  .search-box:focus-within { border-color: var(--accent); background: var(--surface); }
+  .search-box svg { width: 15px; height: 15px; color: var(--text-3); flex: 0 0 15px; }
+  .search-box input { border: 0; outline: 0; background: transparent; width: 100%; font-size: 13px; }
+  .search-box input::placeholder { color: var(--text-3); }
+
+  .topbar .avatar { width: 30px; height: 30px; flex-basis: 30px; font-size: 11px; }
+
+  .content {
+    flex: 1; overflow-y: auto; padding: 22px;
+    scroll-behavior: smooth;
+  }
+  .content::-webkit-scrollbar { width: 10px; }
+  .content::-webkit-scrollbar-thumb {
+    background: var(--border-strong); border-radius: 10px;
+    border: 3px solid var(--bg);
+  }
+  .content-inner { max-width: 1440px; margin: 0 auto; }
+
+  @keyframes viewIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  .view-anim { animation: viewIn .3s cubic-bezier(.2,.8,.2,1); }
+
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(216px, 1fr));
+    gap: 14px; margin-bottom: 16px;
+  }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 16px 14px;
+    box-shadow: var(--shadow-sm); transition: border-color .15s;
+  }
+  .kpi:hover { border-color: var(--border-strong); }
+  .kpi-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .kpi-label { font-size: 12.5px; font-weight: 500; color: var(--text-2); }
+  .kpi-icon { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; }
+  .kpi-icon svg { width: 14px; height: 14px; }
+  .kpi-value {
+    font-size: 25px; font-weight: 700; letter-spacing: -.025em;
+    font-variant-numeric: tabular-nums; line-height: 1.15;
+  }
+  .kpi-foot {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 8px; margin-top: 10px;
+  }
+  .kpi-delta {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums;
+  }
+  .kpi-delta svg { width: 12px; height: 12px; }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+  .kpi-sub { font-size: 11.5px; color: var(--text-3); margin-left: 5px; font-weight: 500; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; min-width: 0;
+  }
+  .card + .card, .card + .table-card, .table-card + .card { margin-top: 16px; }
+
+  .card-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 15px 18px; border-bottom: 1px solid var(--border);
+  }
+  .card-head h3 { font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
+  .card-head p { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+  .card-head-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+  .chip {
+    font-size: 11.5px; font-weight: 600; padding: 4px 10px;
+    border-radius: 20px; color: var(--text-2); background: var(--surface-3);
+    transition: all .14s; white-space: nowrap;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.active { background: var(--accent); color: #fff; }
+
+  .charts {
+    display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+    gap: 16px; margin-bottom: 16px;
+  }
+  .chart-wrap {
+    position: relative; padding: 14px 14px 10px;
+    flex: 1; min-height: 250px;
+  }
+  .chart-wrap canvas { display: block; width: 100%; height: 100%; }
+
+  .chart-tooltip {
+    position: fixed; pointer-events: none; z-index: 90;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 9px; box-shadow: var(--shadow-md);
+    padding: 9px 12px; font-size: 12px; opacity: 0;
+    transform: translate(-50%, -120%);
+    transition: opacity .12s; white-space: nowrap;
+  }
+  .chart-tooltip.show { opacity: 1; }
+  .chart-tooltip .tt-title { font-weight: 650; margin-bottom: 5px; font-size: 12px; }
+  .chart-tooltip .tt-row {
+    display: flex; align-items: center; gap: 7px;
+    font-variant-numeric: tabular-nums;
+  }
+  .chart-tooltip .tt-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; }
+  .chart-tooltip .tt-val { margin-left: auto; font-weight: 650; padding-left: 12px; }
+
+  .legend { display: flex; flex-direction: column; gap: 10px; padding: 4px 18px 18px; }
+  .legend-row { display: flex; align-items: center; gap: 9px; font-size: 12.5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 9px; }
+  .legend-row .lbl { color: var(--text-2); }
+  .legend-row .val { margin-left: auto; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  .table-card { overflow: hidden; }
+
+  .table-toolbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 18px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .table-search {
+    display: flex; align-items: center; gap: 8px;
+    height: 33px; padding: 0 11px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    width: 240px; transition: border-color .15s;
+  }
+  .table-search:focus-within { border-color: var(--accent); }
+  .table-search svg { width: 14px; height: 14px; color: var(--text-3); flex: 0 0 14px; }
+  .table-search input { border: 0; outline: 0; background: transparent; width: 100%; font-size: 13px; }
+  .table-search input::placeholder { color: var(--text-3); }
+
+  .filter-group { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px; height: 34px; padding: 0 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; white-space: nowrap;
+    transition: background-color .15s, border-color .15s, opacity .15s, transform .08s;
+  }
+  .btn:active { transform: scale(.975); }
+  .btn svg { width: 15px; height: 15px; }
+
+  .btn.primary {
+    background: var(--accent); color: var(--accent-text);
+    box-shadow: 0 1px 3px rgba(79,70,229,.3);
+  }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.ghost {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-2);
+  }
+  .btn.ghost:hover { background: var(--surface-3); color: var(--text); border-color: var(--border-strong); }
+  .btn.sm { height: 30px; padding: 0 11px; font-size: 12.5px; }
+
+  .table-scroll { overflow-x: auto; }
+  .table-scroll::-webkit-scrollbar { height: 8px; }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+
+  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+
+  thead th {
+    text-align: left; font-size: 11.5px; font-weight: 650;
+    letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-3); padding: 11px 18px;
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
+    white-space: nowrap; user-select: none;
+  }
+  thead th.sortable { cursor: pointer; transition: color .14s; }
+  thead th.sortable:hover { color: var(--text); }
+  thead th .th-inner { display: inline-flex; align-items: center; gap: 5px; }
+  .sort-arrow {
+    width: 12px; height: 12px; opacity: .28;
+    transition: opacity .14s, transform .14s;
+  }
+  th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+  th.sorted.desc .sort-arrow { transform: rotate(180deg); }
+
+  tbody td {
+    padding: 13px 18px; border-bottom: 1px solid var(--border);
+    font-size: 13px; vertical-align: middle; white-space: nowrap;
+  }
+  tbody tr { transition: background-color .12s; }
+  tbody tr:hover { background: var(--surface-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  .cell-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; font-weight: 600; color: var(--accent);
+  }
+  .cell-customer { display: flex; align-items: center; gap: 9px; }
+  .cell-customer .avatar { width: 28px; height: 28px; flex-basis: 28px; font-size: 10.5px; }
+  .cell-customer .meta strong { display: block; font-size: 13px; font-weight: 600; }
+  .cell-customer .meta span { display: block; font-size: 11.5px; color: var(--text-3); }
+  .cell-amount { font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600;
+    padding: 3px 9px; border-radius: 20px;
+  }
+  .badge::before {
+    content: ""; width: 5px; height: 5px;
+    border-radius: 50%; background: currentColor;
+  }
+  .badge.ok { color: var(--green); background: var(--green-soft); }
+  .badge.warn { color: var(--amber); background: var(--amber-soft); }
+  .badge.bad { color: var(--red); background: var(--red-soft); }
+  .badge.info { color: var(--blue); background: var(--blue-soft); }
+  .badge.purple { color: var(--purple); background: var(--purple-soft); }
+  .badge.plain { color: var(--text-2); background: var(--surface-3); }
+  .badge.plain::before { display: none; }
+
+  .row-actions { display: flex; gap: 4px; }
+  .mini-btn {
+    height: 28px; padding: 0 10px; border-radius: 7px;
+    font-size: 12.5px; font-weight: 600; color: var(--text-2);
+    transition: background-color .14s, color .14s;
+  }
+  .mini-btn:hover { background: var(--surface-3); color: var(--text); }
+  .mini-btn.danger:hover { background: var(--red-soft); color: var(--red); }
+
+  .empty { padding: 60px 20px; text-align: center; color: var(--text-3); }
+  .empty svg { width: 34px; height: 34px; margin-bottom: 10px; opacity: .5; }
+  .empty p { font-size: 13px; }
+
+  .table-foot {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px; border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .table-foot .info {
+    font-size: 12.5px; color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .pager { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+  .pager button {
+    min-width: 32px; height: 32px; padding: 0 8px;
+    border-radius: 7px; font-size: 13px; font-weight: 600;
+    color: var(--text-2); font-variant-numeric: tabular-nums;
+    transition: background-color .14s, color .14s;
+  }
+  .pager button:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+  .pager button.active { background: var(--accent); color: #fff; }
+  .pager button:disabled { opacity: .35; cursor: not-allowed; }
+  .pager .gap { color: var(--text-3); padding: 0 2px; }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+    gap: 14px;
+  }
+  .product-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    transition: border-color .15s, transform .15s;
+  }
+  .product-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+  .product-thumb {
+    height: 92px; border-radius: 10px;
+    display: grid; place-items: center; font-size: 30px;
+  }
+  .product-name { font-size: 13.5px; font-weight: 650; line-height: 1.35; }
+  .product-sku {
+    font-size: 11.5px; color: var(--text-3);
+    font-family: ui-monospace, Menlo, monospace; margin-top: 2px;
+  }
+  .product-foot {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 10px; margin-top: auto;
+  }
+  .product-price {
+    font-size: 17px; font-weight: 700;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  .product-stock { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+
+  .progress {
+    height: 6px; border-radius: 6px;
+    background: var(--surface-3); overflow: hidden;
+  }
+  .progress > i {
+    display: block; height: 100%; border-radius: 6px;
+    background: var(--accent); transition: width .5s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .rank-list { padding: 8px 18px 18px; display: flex; flex-direction: column; gap: 16px; }
+  .rank-row { display: flex; align-items: center; gap: 12px; }
+  .rank-idx {
+    width: 22px; height: 22px; flex: 0 0 22px; border-radius: 6px;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    background: var(--surface-3); color: var(--text-2);
+  }
+  .rank-idx.top { background: var(--accent); color: #fff; }
+  .rank-main { flex: 1; min-width: 0; }
+  .rank-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 6px; font-size: 12.5px;
+  }
+  .rank-top span { color: var(--text-2); }
+  .rank-top b { font-variant-numeric: tabular-nums; font-weight: 650; }
+
+  .campaign-list { display: flex; flex-direction: column; }
+  .campaign-item {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 18px; border-bottom: 1px solid var(--border);
+    transition: background-color .12s;
+  }
+  .campaign-item:last-child { border-bottom: 0; }
+  .campaign-item:hover { background: var(--surface-2); }
+  .campaign-main { flex: 1; min-width: 0; }
+  .campaign-title {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 13.5px; font-weight: 650; margin-bottom: 5px;
+  }
+  .campaign-meta {
+    font-size: 12px; color: var(--text-3);
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  .campaign-progress { width: 160px; flex: 0 0 160px; }
+  .campaign-progress .lbl {
+    display: flex; justify-content: space-between;
+    font-size: 11.5px; color: var(--text-3); margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .settings-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px; align-items: start;
+  }
+  .setting-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 15px 18px; border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child { border-bottom: 0; }
+  .setting-info { flex: 1; min-width: 0; }
+  .setting-info strong { display: block; font-size: 13.5px; font-weight: 600; }
+  .setting-info span { display: block; font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+  .field { display: flex; flex-direction: column; gap: 7px; padding: 15px 18px; }
+  .field label { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+  .input, .select {
+    height: 38px; padding: 0 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    font-size: 13.5px; outline: none; width: 100%;
+    transition: border-color .15s, background-color .15s;
+  }
+  .input:focus, .select:focus { border-color: var(--accent); background: var(--surface); }
+
+  .switch {
+    position: relative; width: 40px; height: 22px; flex: 0 0 40px;
+    border-radius: 20px; background: var(--border-strong);
+    transition: background-color .2s;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    transition: transform .2s;
+  }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { transform: translateX(18px); }
+
+  .theme-picker { display: flex; gap: 8px; padding: 15px 18px; flex-wrap: wrap; }
+  .theme-opt {
+    flex: 1; min-width: 90px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 12px 10px; text-align: center;
+    font-size: 12.5px; font-weight: 600; color: var(--text-2);
+    transition: all .16s;
+  }
+  .theme-opt:hover { border-color: var(--border-strong); color: var(--text); }
+  .theme-opt.active {
+    border-color: var(--accent); color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .theme-opt .swatch {
+    display: block; height: 26px; border-radius: 6px;
+    margin-bottom: 9px; border: 1px solid var(--border);
+  }
+
+  .modal-scrim {
+    position: fixed; inset: 0; background: rgba(12,14,20,.5);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    z-index: 100; display: grid; place-items: center; padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal-scrim.open { opacity: 1; pointer-events: auto; }
+  .modal-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow-lg);
+    width: 100%; max-width: 460px;
+    transform: translateY(10px) scale(.98);
+    transition: transform .22s cubic-bezier(.2,.8,.2,1);
+    overflow: hidden;
+  }
+  .modal-scrim.open .modal-card { transform: none; }
+  .modal-head {
+    display: flex; align-items: center;
+    padding: 17px 20px; border-bottom: 1px solid var(--border);
+  }
+  .modal-head h3 { font-size: 15px; font-weight: 650; }
+  .modal-head .icon-btn { margin-left: auto; }
+  .modal-body { padding: 20px; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+  .detail-item label {
+    display: block; font-size: 11.5px; font-weight: 600;
+    color: var(--text-3); letter-spacing: .03em;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .detail-item div { font-size: 13.5px; font-weight: 500; word-break: break-all; }
+  .modal-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 14px 20px; border-top: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+
+  .toasts {
+    position: fixed; bottom: 22px; right: 22px; z-index: 200;
+    display: flex; flex-direction: column; gap: 9px;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 10px; box-shadow: var(--shadow-md);
+    padding: 11px 15px; font-size: 13px; font-weight: 500;
+    min-width: 220px;
+    animation: toastIn .28s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .toast.out { animation: toastOut .22s forwards; }
+  .toast svg { width: 16px; height: 16px; flex: 0 0 16px; }
+  .toast.ok svg { color: var(--green); }
+  .toast.warn svg { color: var(--amber); }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(24px) scale(.96); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(24px) scale(.96); } }
+
+  .scrim {
+    position: fixed; inset: 0; background: rgba(12,14,20,.45);
+    z-index: 35; opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .app.nav-open .scrim { opacity: 1; pointer-events: auto; }
+
+  @media (max-width: 1180px) {
+    .charts { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 1023px) {
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w); flex-basis: auto;
+      transform: translateX(-100%); box-shadow: var(--shadow-lg);
+    }
+    .app.nav-open .sidebar { transform: none; }
+    .sidebar.collapsed { width: var(--sidebar-w); }
+    .sidebar.collapsed .brand-text,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .nav-section,
+    .sidebar.collapsed .user-meta { display: block; }
+    .sidebar.collapsed .nav-badge { display: inline-block; }
+    .sidebar.collapsed .brand { justify-content: flex-start; padding: 0 18px; }
+    .sidebar.collapsed .nav-item { justify-content: flex-start; padding: 9px 10px; }
+    .sidebar.collapsed .user-card { justify-content: flex-start; padding: 8px 10px; }
+    .search-box { width: 170px; }
+  }
+  @media (max-width: 720px) {
+    .content { padding: 14px; }
+    .topbar { padding: 0 12px; gap: 8px; }
+    .search-box { display: none; }
+    .page-title span { display: none; }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .kpi-value { font-size: 21px; }
+    .table-search { width: 100%; }
+    .table-toolbar { padding: 12px 14px; }
+    .card-head { padding: 13px 14px; }
+    thead th, tbody td { padding-left: 14px; padding-right: 14px; }
+    .table-foot { padding: 12px 14px; }
+    .toasts { left: 14px; right: 14px; bottom: 14px; }
+    .toast { min-width: 0; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .campaign-item { flex-wrap: wrap; gap: 12px; }
+    .campaign-progress { width: 100%; flex: 1 1 100%; }
+    .setting-row { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div class="brand-text">Nova Admin<small>控制台</small></div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-section">总览</div>
+      <a class="nav-item" data-route="overview" href="#/overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/>
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>
+        </svg>
+        <span class="nav-label">数据概览</span>
+      </a>
+      <a class="nav-item" data-route="analytics" href="#/analytics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20V11"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M22 20H2"/>
+        </svg>
+        <span class="nav-label">数据分析</span>
+      </a>
+
+      <div class="nav-section">业务</div>
+      <a class="nav-item" data-route="orders" href="#/orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5.5 8h13l-1.1 11.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8L5.5 8Z"/>
+          <path d="M9 8V6.2a3 3 0 0 1 6 0V8"/>
+        </svg>
+        <span class="nav-label">订单管理</span>
+        <span class="nav-badge">12</span>
+      </a>
+      <a class="nav-item" data-route="customers" href="#/customers">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/>
+        </svg>
+        <span class="nav-label">客户管理</span>
+      </a>
+      <a class="nav-item" data-route="products" href="#/products">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M4 7.5 12 12l8-4.5"/><path d="M12 12v9"/>
+        </svg>
+        <span class="nav-label">商品管理</span>
+      </a>
+      <a class="nav-item" data-route="campaigns" href="#/campaigns">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 10v4h3l5 4V6L7 10H4Z"/><path d="M16.5 9.2a4 4 0 0 1 0 5.6"/>
+        </svg>
+        <span class="nav-label">营销活动</span>
+      </a>
+
+      <div class="nav-section">系统</div>
+      <a class="nav-item" data-route="team" href="#/team">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="8" r="3.2"/><path d="M2.8 19.5a6.4 6.4 0 0 1 12.4 0"/>
+          <path d="M16.5 5.3a3.2 3.2 0 0 1 0 5.5"/><path d="M18.5 19.5a6.4 6.4 0 0 0-3-4.9"/>
+        </svg>
+        <span class="nav-label">团队权限</span>
+      </a>
+      <a class="nav-item" data-route="settings" href="#/settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16"/><path d="M4 17h16"/>
+          <circle cx="9.5" cy="7" r="2.4" fill="var(--surface)"/>
+          <circle cx="15" cy="17" r="2.4" fill="var(--surface)"/>
+        </svg>
+        <span class="nav-label">系统设置</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="user-card">
+        <div class="avatar">林</div>
+        <div class="user-meta">
+          <strong>林思远</strong>
+          <span>超级管理员</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+
+    <header class="topbar">
+      <button class="icon-btn" id="navToggle" title="切换导航">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <path d="M3.5 6.5h17"/><path d="M3.5 12h17"/><path d="M3.5 17.5h17"/>
+        </svg>
+      </button>
+
+      <div class="page-title">
+        <h2 id="pageTitle">数据概览</h2>
+        <span id="pageSub">核心指标一览</span>
+      </div>
+
+      <div class="topbar-right">
+        <label class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+            <circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/>
+          </svg>
+          <input type="text" id="globalSearch" placeholder="搜索订单、客户…">
+        </label>
+
+        <button class="icon-btn" id="themeToggle" title="切换主题">
+          <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></svg>
+        </button>
+
+        <button class="icon-btn" id="notifyBtn" title="通知">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5Z"/>
+            <path d="M13.7 19a2 2 0 0 1-3.4 0"/>
+          </svg>
+          <span class="dot-badge"></span>
+        </button>
+
+        <div class="avatar">林</div>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+      <div class="content-inner" id="view"></div>
+    </main>
+  </div>
+</div>
+
+<div class="chart-tooltip" id="chartTooltip"></div>
+
+<div class="modal-scrim" id="modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle">详情</h3>
+      <button class="icon-btn" data-close>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close>关闭</button>
+      <button class="btn primary" id="modalOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ==================================================
+     0. 基础引用
+  ================================================== */
+  const root = document.documentElement;
+  const app = document.getElementById('app');
+  const sidebar = document.getElementById('sidebar');
+  const scrim = document.getElementById('scrim');
+  const navToggle = document.getElementById('navToggle');
+  const nav = document.getElementById('nav');
+  const view = document.getElementById('view');
+  const content = document.getElementById('content');
+  const pageTitle = document.getElementById('pageTitle');
+  const pageSub = document.getElementById('pageSub');
+  const tooltip = document.getElementById('chartTooltip');
+  const modal = document.getElementById('modal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+  const themeIcon = document.getElementById('themeIcon');
+
+  const pad2 = n => (n < 10 ? '0' + n : '' + n);
+  const fmtMoney = n => '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtInt = n => n.toLocaleString('zh-CN');
+  const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+  const $$ = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
+
+  /* ==================================================
+     1. 主题系统
+  ================================================== */
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  let themeMode = 'light';
+  let resolvedTheme = 'light';
+  let syncThemePicker = null;
+
+  const SUN = '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/>';
+  const MOON = '<path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8Z"/>';
+
+  function resolveTheme() {
+    return themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
+  }
+
+  function applyThemeMode(mode, silent) {
+    themeMode = mode;
+    const next = resolveTheme();
+    resolvedTheme = next;
+    root.dataset.theme = next;
+    themeIcon.innerHTML = next === 'dark' ? MOON : SUN;
+    if (typeof syncThemePicker === 'function') syncThemePicker();
+    redrawPage();
+    if (!silent && mode === 'auto') toast('已切换为跟随系统主题', 'ok');
+  }
+
+  mq.addEventListener('change', () => {
+    if (themeMode === 'auto') applyThemeMode('auto', true);
+  });
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    applyThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark', true);
+  });
+
+  function themeColors() {
+    const s = getComputedStyle(root);
+    const v = n => s.getPropertyValue(n).trim();
+    return {
+      grid: v('--chart-grid'),
+      text: v('--chart-text'),
+      textMain: v('--text'),
+      accent: v('--accent'),
+      green: v('--green'),
+      blue: v('--blue'),
+      amber: v('--amber'),
+      surface: v('--surface')
+    };
+  }
+
+  /* ==================================================
+     2. Toast
+  ================================================== */
+  const toastBox = document.getElementById('toasts');
+  const ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/></svg>';
+  const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.4h.01"/></svg>';
+
+  function toast(msg, type) {
+    const el = document.createElement('div');
+    el.className = 'toast ' + (type === 'warn' ? 'warn' : 'ok');
+    el.innerHTML = (type === 'warn' ? ICON_WARN : ICON_OK) + '<span>' + msg + '</span>';
+    toastBox.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('out');
+      setTimeout(() => el.remove(), 240);
+    }, 2400);
+  }
+
+  /* ==================================================
+     3. 模态框
+  ================================================== */
+  let modalOkHandler = null;
+
+  function openModal(title, bodyHTML, okText, okHandler) {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = bodyHTML;
+    const okBtn = document.getElementById('modalOk');
+    okBtn.textContent = okText || '确定';
+    okBtn.style.display = okHandler ? '' : 'none';
+    modalOkHandler = okHandler || null;
+    modal.classList.add('open');
+  }
+
+  function closeModal() {
+    modal.classList.remove('open');
+    modalOkHandler = null;
+  }
+
+  modal.addEventListener('click', e => {
+    if (e.target === modal || e.target.closest('[data-close]')) closeModal();
+  });
+  document.getElementById('modalOk').addEventListener('click', () => {
+    const fn = modalOkHandler;
+    closeModal();
+    if (fn) fn();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  /* ==================================================
+     4. 图表工具
+  ================================================== */
+  let pageRedraws = [];
+
+  function registerRedraw(fn) { pageRedraws.push(fn); }
+
+  function redrawPage() {
+    requestAnimationFrame(() => {
+      pageRedraws.forEach(fn => {
+        try { fn(); } catch (err) { console.error('[redraw]', err); }
+      });
+    });
+  }
+
+  function setupCanvas(cv) {
+    if (!cv) return null;
+    const rect = cv.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return null;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(rect.width * dpr);
+    cv.height = Math.round(rect.height * dpr);
+    const c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { c, w: rect.width, h: rect.height };
+  }
+
+  function hideTooltip() { tooltip.classList.remove('show'); }
+
+  function sparklinePath(values, w, h, pad) {
+    // 修复：空数组保护
+    if (!Array.isArray(values) || values.length < 2) return '';
+    const min = Math.min.apply(null, values);
+    const max = Math.max.apply(null, values);
+    const range = (max - min) || 1;
+    const step = (w - pad * 2) / (values.length - 1);
+    let d = '';
+    for (let i = 0; i < values.length; i++) {
+      const x = pad + i * step;
+      const y = h - pad - ((values[i] - min) / range) * (h - pad * 2);
+      d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+    }
+    return d.trim();
+  }
+
+  /* ---------- 折线图 ---------- */
+  function drawLineChart(cv, cfg) {
+    const fit = setupCanvas(cv);
+    if (!fit) return;
+    const { c, w, h } = fit;
+    const col = themeColors();
+    const { labels, series, colors } = cfg;
+
+    c.clearRect(0, 0, w, h);
+
+    const pad = { t: 14, r: 14, b: 26, l: 46 };
+    const pw = w - pad.l - pad.r;
+    const ph = h - pad.t - pad.b;
+    const n = labels.length;
+
+    let maxV = 0;
+    series.forEach(s => s.forEach(v => { if (v > maxV) maxV = v; }));
+    maxV = Math.ceil(maxV / 20) * 20 + 10;
+
+    const X = i => pad.l + (n === 1 ? pw / 2 : (i / (n - 1)) * pw);
+    const Y = v => pad.t + ph - (v / maxV) * ph;
+
+    c.font = '11px -apple-system, "PingFang SC", sans-serif';
+    c.textAlign = 'right';
+    c.textBaseline = 'middle';
+    const TICKS = 4;
+    for (let i = 0; i <= TICKS; i++) {
+      const v = (maxV / TICKS) * i;
+      const y = Y(v);
+      c.beginPath();
+      c.moveTo(pad.l, y);
+      c.lineTo(w - pad.r, y);
+      c.strokeStyle = col.grid;
+      c.lineWidth = 1;
+      c.stroke();
+      c.fillStyle = col.text;
+      c.fillText(Math.round(v) + (cfg.unit || ''), pad.l - 9, y);
+    }
+
+    c.textAlign = 'center';
+    c.textBaseline = 'top';
+    c.fillStyle = col.text;
+    const skip = n > 8 ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      if (i % skip !== 0 && i !== n - 1) continue;
+      c.fillText(labels[i], X(i), pad.t + ph + 9);
+    }
+
+    const grad = c.createLinearGradient(0, pad.t, 0, pad.t + ph);
+    grad.addColorStop(0, colors[0] + '38');
+    grad.addColorStop(1, colors[0] + '00');
+    c.beginPath();
+    c.moveTo(X(0), Y(series[0][0]));
+    for (let i = 1; i < n; i++) c.lineTo(X(i), Y(series[0][i]));
+    c.lineTo(X(n - 1), pad.t + ph);
+    c.lineTo(X(0), pad.t + ph);
+    c.closePath();
+    c.fillStyle = grad;
+    c.fill();
+
+    series.forEach((s, si) => {
+      c.beginPath();
+      for (let i = 0; i < n; i++) {
+        const x = X(i), y = Y(s[i]);
+        i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+      }
+      c.strokeStyle = colors[si];
+      c.lineWidth = si === 0 ? 2.2 : 1.6;
+      c.lineJoin = 'round';
+      c.lineCap = 'round';
+      if (si > 0) {
+        c.globalAlpha = 0.45;
+        c.setLineDash([4, 4]);
+      }
+      c.stroke();
+      c.setLineDash([]);
+      c.globalAlpha = 1;
+    });
+
+    cv._plot = { X, Y, n, pad, pw, ph, series, labels, colors };
+
+    const idx = cv._hoverIdx;
+    if (idx >= 0 && idx < n) {
+      const hx = X(idx);
+      c.beginPath();
+      c.moveTo(hx, pad.t);
+      c.lineTo(hx, pad.t + ph);
+      c.strokeStyle = col.accent;
+      c.globalAlpha = 0.3;
+      c.lineWidth = 1;
+      c.stroke();
+      c.globalAlpha = 1;
+
+      series.forEach((s, si) => {
+        c.beginPath();
+        c.arc(hx, Y(s[idx]), si === 0 ? 4.5 : 3.2, 0, Math.PI * 2);
+        c.fillStyle = si === 0 ? colors[0] : col.surface;
+        c.fill();
+        c.strokeStyle = si === 0 ? col.surface : colors[si];
+        c.lineWidth = si === 0 ? 2 : 1.6;
+        c.stroke();
+      });
+    }
+  }
+
+  function attachLineHover(cv, seriesNames, unit) {
+    cv.addEventListener('mousemove', e => {
+      const plot = cv._plot;
+      if (!plot) return;
+      const rect = cv.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const { pad, pw, n, X, series, labels, colors } = plot;
+
+      if (mx < pad.l - 14 || mx > pad.l + pw + 14) {
+        if (cv._hoverIdx !== -1) { cv._hoverIdx = -1; cv._redraw(); hideTooltip(); }
+        return;
+      }
+
+      let best = 0, bestD = Infinity;
+      for (let i = 0; i < n; i++) {
+        const d = Math.abs(X(i) - mx);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+
+      if (best !== cv._hoverIdx) { cv._hoverIdx = best; cv._redraw(); }
+
+      let html = '<div class="tt-title">' + labels[best] + '</div>';
+      series.forEach((s, si) => {
+        html += '<div class="tt-row"' + (si ? ' style="margin-top:3px"' : '') + '>' +
+          '<span class="tt-dot" style="background:' + colors[si] + '"></span>' +
+          '<span>' + seriesNames[si] + '</span>' +
+          '<span class="tt-val">' + s[best] + (unit || '') + '</span></div>';
+      });
+      tooltip.innerHTML = html;
+      tooltip.style.left = (rect.left + X(best)) + 'px';
+      tooltip.style.top = (rect.top + 26) + 'px';
+      tooltip.classList.add('show');
+    });
+
+    cv.addEventListener('mouseleave', () => {
+      cv._hoverIdx = -1;
+      cv._redraw();
+      hideTooltip();
+    });
+  }
+
+  /* ---------- 柱状图 ---------- */
+  function drawBarChart(cv, cfg) {
+    const fit = setupCanvas(cv);
+    if (!fit) return;
+    const { c, w, h } = fit;
+    const col = themeColors();
+    const { labels, values, color, unit } = cfg;
+
+    c.clearRect(0, 0, w, h);
+
+    const pad = { t: 16, r: 12, b: 28, l: 46 };
+    const pw = w - pad.l - pad.r;
+    const ph = h - pad.t - pad.b;
+    const n = labels.length;
+
+    let maxV = Math.max.apply(null, values);
+    maxV = Math.ceil(maxV / 10) * 10;
+
+    const Y = v => pad.t + ph - (v / maxV) * ph;
+
+    c.font = '11px -apple-system, "PingFang SC", sans-serif';
+    c.textAlign = 'right';
+    c.textBaseline = 'middle';
+    const TICKS = 4;
+    for (let i = 0; i <= TICKS; i++) {
+      const v = (maxV / TICKS) * i;
+      const y = Y(v);
+      c.beginPath();
+      c.moveTo(pad.l, y);
+      c.lineTo(w - pad.r, y);
+      c.strokeStyle = col.grid;
+      c.lineWidth = 1;
+      c.stroke();
+      c.fillStyle = col.text;
+      c.fillText(Math.round(v) + (unit || ''), pad.l - 9, y);
+    }
+
+    const slot = pw / n;
+    const bw = Math.min(slot * 0.52, 34);
+    const baseY = pad.t + ph;
+
+    for (let i = 0; i < n; i++) {
+      const x = pad.l + slot * i + slot / 2;
+      const y = Y(values[i]);
+      const r = Math.min(5, bw / 2);
+
+      const isHover = cv._hoverIdx === i;
+      const g = c.createLinearGradient(0, y, 0, baseY);
+      g.addColorStop(0, color);
+      g.addColorStop(1, color + '55');
+
+      c.beginPath();
+      c.moveTo(x - bw / 2, baseY);
+      c.lineTo(x - bw / 2, y + r);
+      c.quadraticCurveTo(x - bw / 2, y, x - bw / 2 + r, y);
+      c.lineTo(x + bw / 2 - r, y);
+      c.quadraticCurveTo(x + bw / 2, y, x + bw / 2, y + r);
+      c.lineTo(x + bw / 2, baseY);
+      c.closePath();
+      c.fillStyle = g;
+      c.globalAlpha = isHover ? 1 : 0.82;
+      c.fill();
+      c.globalAlpha = 1;
+
+      c.textAlign = 'center';
+      c.textBaseline = 'top';
+      c.fillStyle = isHover ? col.textMain : col.text;
+      c.fillText(labels[i], x, baseY + 9);
+    }
+
+    cv._plot = { labels, values, slot, pad, pw, n, color, unit };
+  }
+
+  function attachBarHover(cv, name) {
+    cv.addEventListener('mousemove', e => {
+      const plot = cv._plot;
+      if (!plot) return;
+      const rect = cv.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const { pad, pw, n, slot, labels, values, color, unit } = plot;
+
+      if (mx < pad.l || mx > pad.l + pw) {
+        if (cv._hoverIdx !== -1) { cv._hoverIdx = -1; cv._redraw(); hideTooltip(); }
+        return;
+      }
+      const i = Math.min(n - 1, Math.max(0, Math.floor((mx - pad.l) / slot)));
+      if (i !== cv._hoverIdx) { cv._hoverIdx = i; cv._redraw(); }
+
+      tooltip.innerHTML =
+        '<div class="tt-title">' + labels[i] + '</div>' +
+        '<div class="tt-row"><span class="tt-dot" style="background:' + color + '"></span>' +
+        '<span>' + name + '</span><span class="tt-val">' + fmtInt(values[i]) + (unit || '') + '</span></div>';
+      tooltip.style.left = (rect.left + pad.l + slot * i + slot / 2) + 'px';
+      tooltip.style.top = (rect.top + 26) + 'px';
+      tooltip.classList.add('show');
+    });
+
+    cv.addEventListener('mouseleave', () => {
+      cv._hoverIdx = -1;
+      cv._redraw();
+      hideTooltip();
+    });
+  }
+
+  /* ---------- 环形图 ---------- */
+  function drawDonut(cv, segments) {
+    const fit = setupCanvas(cv);
+    if (!fit) return;
+    const { c, w, h } = fit;
+    const col = themeColors();
+
+    c.clearRect(0, 0, w, h);
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const outer = Math.min(w, h) / 2 - 8;
+    const inner = outer * 0.66;
+    const total = segments.reduce((s, t) => s + t.value, 0);
+
+    let start = -Math.PI / 2;
+    const gap = 0.028;
+
+    segments.forEach(seg => {
+      const angle = (seg.value / total) * Math.PI * 2;
+      c.beginPath();
+      c.arc(cx, cy, outer, start + gap / 2, start + angle - gap / 2);
+      c.arc(cx, cy, inner, start + angle - gap / 2, start + gap / 2, true);
+      c.closePath();
+      c.fillStyle = seg.color;
+      c.fill();
+      start += angle;
+    });
+
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = col.textMain;
+    c.font = '700 22px -apple-system, "PingFang SC", sans-serif';
+    c.fillText(total + '%', cx, cy - 7);
+    c.fillStyle = col.text;
+    c.font = '500 11px -apple-system, "PingFang SC", sans-serif';
+    c.fillText('总渠道占比', cx, cy + 13);
+  }
+
+  /* ==================================================
+     5. 假数据
+  ================================================== */
+  const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+  const REVENUE_CUR = [42, 51, 47, 63, 58, 72, 68, 81, 76, 92, 88, 104];
+  const REVENUE_PRE = [35, 38, 41, 44, 46, 52, 55, 58, 62, 66, 70, 74];
+  const ORDERS_BY_MONTH = [186, 214, 198, 263, 241, 302, 284, 336, 318, 382, 364, 428];
+
+  const TRAFFIC = [
+    { label: '直接访问', value: 42, color: '#6366f1' },
+    { label: '搜索引擎', value: 28, color: '#06b6d4' },
+    { label: '社交媒体', value: 18, color: '#f59e0b' },
+    { label: '推荐链接', value: 12, color: '#10b981' }
+  ];
+
+  const KPI_DATA = [
+    {
+      label: '总营收', value: '¥284,920', delta: 12.5, up: true,
+      color: 'var(--accent)', soft: 'var(--accent-soft)',
+      series: [38, 42, 39, 51, 48, 57, 54, 63, 61, 72, 69, 81],
+      icon: '<path d="M12 3v18"/><path d="M16.5 7.5c0-1.7-2-2.8-4.5-2.8s-4.5 1.1-4.5 2.8 2 2.5 4.5 3 4.5 1.3 4.5 3-2 2.8-4.5 2.8-4.5-1.1-4.5-2.8"/>'
+    },
+    {
+      label: '订单总数', value: '3,842', delta: 8.2, up: true,
+      color: 'var(--blue)', soft: 'var(--blue-soft)',
+      series: [22, 25, 24, 30, 28, 33, 31, 36, 38, 35, 42, 45],
+      icon: '<path d="M5.5 8h13l-1.1 11.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8L5.5 8Z"/><path d="M9 8V6.2a3 3 0 0 1 6 0V8"/>'
+    },
+    {
+      label: '新增客户', value: '1,204', delta: -3.1, up: false,
+      color: 'var(--amber)', soft: 'var(--amber-soft)',
+      series: [40, 38, 41, 36, 39, 34, 32, 35, 30, 29, 31, 28],
+      icon: '<circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/>'
+    },
+    {
+      label: '转化率', value: '3.68%', delta: 0.8, up: true,
+      color: 'var(--green)', soft: 'var(--green-soft)',
+      series: [28, 30, 29, 32, 33, 31, 35, 34, 37, 36, 39, 41],
+      icon: '<path d="M4 17 9.5 11l4 4L20 8"/><path d="M15.5 8H20v4.5"/>'
+    }
+  ];
+
+  function kpiHTML(list) {
+    return list.map(k => {
+      const arrow = k.up
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m6 11 6-6 6 6"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg>';
+
+      const path = sparklinePath(k.series, 76, 30, 3);
+      const gid = 'sg-' + Math.random().toString(36).slice(2, 8);
+
+      return `
+        <div class="kpi">
+          <div class="kpi-top">
+            <span class="kpi-label">${k.label}</span>
+            <span class="kpi-icon" style="background:${k.soft};color:${k.color}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${k.icon}</svg>
+            </span>
+          </div>
+          <div class="kpi-value">${k.value}</div>
+          <div class="kpi-foot">
+            <div>
+              <span class="kpi-delta ${k.up ? 'up' : 'down'}">${arrow}${k.up ? '+' : ''}${k.delta}%</span>
+              <span class="kpi-sub">较上月</span>
+            </div>
+            <svg width="76" height="30" viewBox="0 0 76 30" style="flex:0 0 76px">
+              <defs>
+                <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="${k.color}" stop-opacity=".28"/>
+                  <stop offset="100%" stop-color="${k.color}" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="${path} L73 27 L3 27 Z" fill="url(#${gid})"/>
+              <path d="${path}" fill="none" stroke="${k.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ---------- 订单数据 ---------- */
+  const NAMES = ['陈嘉宁','林思远','王雨桐','赵一鸣','刘星宇','孙婉清','周子墨','吴静怡','郑浩然','何若曦','马天宇','黄雅琴','徐子谦','曹梦琪','许文博'];
+  const DOMAINS = ['qq.com','163.com','gmail.com','outlook.com','foxmail.com'];
+  const STATUS = [
+    { key: 'done', label: '已完成', cls: 'ok' },
+    { key: 'pending', label: '处理中', cls: 'warn' },
+    { key: 'unpaid', label: '待付款', cls: 'info' },
+    { key: 'refund', label: '已退款', cls: 'bad' }
+  ];
+  const WEIGHTS = [0, 0, 0, 1, 1, 2, 3];
+
+  function buildOrders() {
+    const list = [];
+    const base = new Date(2026, 9, 16, 14, 32).getTime();
+    for (let i = 0; i < 46; i++) {
+      const name = NAMES[i % NAMES.length];
+      const domain = DOMAINS[i % DOMAINS.length];
+      const st = STATUS[WEIGHTS[i % WEIGHTS.length]];
+      const d = new Date(base - i * (5.6 * 3600 * 1000));
+      const amount = Math.round((180 + Math.random() * 8600) * 100) / 100;
+
+      list.push({
+        id: 'ORD-2026' + String(1048 + i).padStart(4, '0'),
+        customer: name,
+        email: 'user' + (1024 + i * 7) + '@' + domain,
+        date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`,
+        ts: d.getTime(),
+        amount,
+        status: st.key,
+        statusLabel: st.label,
+        statusCls: st.cls,
+        items: 1 + (i % 4),
+        channel: ['官网商城', '小程序', 'APP', '线下门店'][i % 4]
+      });
+    }
+    return list;
+  }
+
+  let orders = buildOrders();
+
+  const customers = [
+    { name: '陈嘉宁', email: 'chenjn@qq.com',      orders: 24, spend: 38620.50, last: '2026-10-15', level: '钻石', cls: 'purple' },
+    { name: '王雨桐', email: 'wangyt@163.com',     orders: 18, spend: 24890.00, last: '2026-10-14', level: '黄金', cls: 'warn' },
+    { name: '赵一鸣', email: 'zhaoym@gmail.com',   orders: 31, spend: 51240.80, last: '2026-10-15', level: '钻石', cls: 'purple' },
+    { name: '刘星宇', email: 'liuxy@outlook.com',  orders: 9,  spend: 9640.20,  last: '2026-10-11', level: '白银', cls: 'plain' },
+    { name: '孙婉清', email: 'sunwq@foxmail.com',  orders: 15, spend: 19870.60, last: '2026-10-13', level: '黄金', cls: 'warn' },
+    { name: '周子墨', email: 'zhouzm@qq.com',      orders: 6,  spend: 5320.00,  last: '2026-10-09', level: '白银', cls: 'plain' },
+    { name: '吴静怡', email: 'wujy@163.com',       orders: 22, spend: 33180.40, last: '2026-10-15', level: '钻石', cls: 'purple' },
+    { name: '郑浩然', email: 'zhenghr@gmail.com',  orders: 12, spend: 14250.90, last: '2026-10-12', level: '黄金', cls: 'warn' },
+    { name: '何若曦', email: 'herx@outlook.com',   orders: 27, spend: 42960.30, last: '2026-10-14', level: '钻石', cls: 'purple' },
+    { name: '马天宇', email: 'maty@foxmail.com',   orders: 4,  spend: 3180.50,  last: '2026-10-05', level: '白银', cls: 'plain' },
+    { name: '黄雅琴', email: 'huangyq@qq.com',     orders: 19, spend: 26340.10, last: '2026-10-13', level: '黄金', cls: 'warn' },
+    { name: '徐子谦', email: 'xuzq@163.com',       orders: 8,  spend: 8460.70,  last: '2026-10-10', level: '白银', cls: 'plain' }
+  ];
+
+  const products = [
+    { name: '无线降噪耳机 Pro', sku: 'SKU-2401', price: 1299, stock: 342, sold: 1820, cat: '数码',  emoji: '🎧', bg: 'var(--accent-soft)' },
+    { name: '智能手表 S9',      sku: 'SKU-2402', price: 2199, stock: 18,  sold: 964,  cat: '数码',  emoji: '⌚', bg: 'var(--blue-soft)' },
+    { name: '机械键盘 87 键',    sku: 'SKU-2403', price: 599,  stock: 0,   sold: 2410, cat: '外设',  emoji: '⌨️', bg: 'var(--amber-soft)' },
+    { name: '便携充电宝 20000',  sku: 'SKU-2404', price: 249,  stock: 1260, sold: 3820, cat: '配件', emoji: '🔋', bg: 'var(--green-soft)' },
+    { name: '4K 显示器 27 寸',   sku: 'SKU-2405', price: 1899, stock: 76,  sold: 512,  cat: '显示',  emoji: '🖥️', bg: 'var(--purple-soft)' },
+    { name: '人体工学椅',        sku: 'SKU-2406', price: 1499, stock: 42,  sold: 328,  cat: '家居',  emoji: '🪑', bg: 'var(--cyan-soft)' },
+    { name: '桌面音箱 2.0',      sku: 'SKU-2407', price: 799,  stock: 210, sold: 1120, cat: '音频',  emoji: '🔊', bg: 'var(--accent-soft)' },
+    { name: '高速固态硬盘 1T',   sku: 'SKU-2408', price: 699,  stock: 5,   sold: 1960, cat: '存储',  emoji: '💾', bg: 'var(--blue-soft)' }
+  ];
+
+  const campaigns = [
+    { name: '双十一全场预热', status: 'running', statusLabel: '进行中', cls: 'ok',
+      start: '2026-10-20', end: '2026-11-11', budget: 120000, used: 48600, conv: 4.2 },
+    { name: '新品耳机首发专享', status: 'running', statusLabel: '进行中', cls: 'ok',
+      start: '2026-10-08', end: '2026-10-31', budget: 60000, used: 51200, conv: 6.8 },
+    { name: '会员日双倍积分', status: 'scheduled', statusLabel: '未开始', cls: 'info',
+      start: '2026-11-01', end: '2026-11-03', budget: 30000, used: 0, conv: 0 },
+    { name: '国庆黄金周大促', status: 'ended', statusLabel: '已结束', cls: 'plain',
+      start: '2026-09-28', end: '2026-10-07', budget: 88000, used: 87600, conv: 5.4 },
+    { name: '老客回归礼包', status: 'ended', statusLabel: '已结束', cls: 'plain',
+      start: '2026-09-10', end: '2026-09-30', budget: 45000, used: 31200, conv: 3.1 },
+    { name: '开学季学生优惠', status: 'paused', statusLabel: '已暂停', cls: 'warn',
+      start: '2026-08-20', end: '2026-09-15', budget: 36000, used: 14800, conv: 2.6 }
+  ];
+
+  const team = [
+    { name: '林思远', email: 'linsy@nova.com',  role: '超级管理员', cls: 'purple', dept: '技术中心', status: 'active',   last: '2026-10-16 09:42' },
+    { name: '陈嘉宁', email: 'chenjn@nova.com', role: '运营主管',   cls: 'info',   dept: '运营部',   status: 'active',   last: '2026-10-16 08:15' },
+    { name: '王雨桐', email: 'wangyt@nova.com', role: '数据分析师', cls: 'ok',     dept: '数据中心', status: 'active',   last: '2026-10-15 18:30' },
+    { name: '赵一鸣', email: 'zhaoym@nova.com', role: '客服专员',   cls: 'plain',  dept: '客服部',   status: 'active',   last: '2026-10-16 10:02' },
+    { name: '刘星宇', email: 'liuxy@nova.com',  role: '仓库管理',   cls: 'plain',  dept: '供应链',   status: 'disabled', last: '2026-09-28 14:20' },
+    { name: '孙婉清', email: 'sunwq@nova.com',  role: '市场专员',   cls: 'info',   dept: '市场部',   status: 'active',   last: '2026-10-15 16:48' },
+    { name: '周子墨', email: 'zhouzm@nova.com', role: '开发工程师', cls: 'ok',     dept: '技术中心', status: 'active',   last: '2026-10-16 11:25' },
+    { name: '吴静怡', email: 'wujy@nova.com',   role: '财务主管',   cls: 'warn',   dept: '财务部',   status: 'active',   last: '2026-10-14 17:10' }
+  ];
+
+  /* ==================================================
+     6. 页面渲染函数
+  ================================================== */
+
+  function renderOverview(host) {
+    host.innerHTML = `
+      <section class="kpis">${kpiHTML(KPI_DATA)}</section>
+
+      <section class="charts">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>营收趋势</h3>
+              <p>近 12 个月收入对比</p>
+            </div>
+            <div class="card-head-right">
+              <button class="chip active" data-range="12">12个月</button>
+              <button class="chip" data-range="6">6个月</button>
+              <button class="chip" data-range="3">3个月</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="cvLine"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>流量来源</h3>
+              <p>本月访问渠道分布</p>
+            </div>
+          </div>
+          <div class="chart-wrap" style="min-height:190px"><canvas id="cvDonut"></canvas></div>
+          <div class="legend">
+            ${TRAFFIC.map(t => `
+              <div class="legend-row">
+                <span class="legend-dot" style="background:${t.color}"></span>
+                <span class="lbl">${t.label}</span>
+                <span class="val">${t.value}%</span>
+              </div>`).join('')}
+          </div>
+        </div>
+      </section>
+
+      <section class="card table-card">
+        <div class="card-head">
+          <div>
+            <h3>最近订单</h3>
+            <p>实时同步的最新 5 笔流水</p>
+          </div>
+          <div class="card-head-right">
+            <button class="btn ghost sm" id="goOrders">
+              查看全部
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:150px">订单号</th>
+                <th>客户</th>
+                <th style="width:160px">下单时间</th>
+                <th style="width:130px">金额</th>
+                <th style="width:110px">状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.slice(0, 5).map(o => `
+                <tr>
+                  <td><span class="cell-id">${o.id}</span></td>
+                  <td>
+                    <div class="cell-customer">
+                      <div class="avatar">${o.customer.charAt(0)}</div>
+                      <div class="meta"><strong>${o.customer}</strong><span>${o.email}</span></div>
+                    </div>
+                  </td>
+                  <td style="color:var(--text-2);font-variant-numeric:tabular-nums">${o.date}</td>
+                  <td class="cell-amount">${fmtMoney(o.amount)}</td>
+                  <td><span class="badge ${o.statusCls}">${o.statusLabel}</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+
+    const goOrdersBtn = $('#goOrders', host);
+    if (goOrdersBtn) goOrdersBtn.addEventListener('click', () => { location.hash = '#/orders'; });
+
+    let range = 12;
+    const cvLine = $('#cvLine', host);
+    const cvDonut = $('#cvDonut', host);
+
+    const drawLine = () => {
+      if (!cvLine) return;
+      const cur = REVENUE_CUR.slice(-range);
+      const pre = REVENUE_PRE.slice(-range);
+      drawLineChart(cvLine, {
+        labels: MONTHS.slice(-range),
+        series: [cur, pre],
+        colors: [themeColors().accent, themeColors().text],
+        unit: 'k'
+      });
+    };
+    if (cvLine) {
+      cvLine._redraw = drawLine;
+      cvLine._hoverIdx = -1;
+      attachLineHover(cvLine, ['今年', '去年'], 'k');
+    }
+
+    const drawDonutCv = () => { if (cvDonut) drawDonut(cvDonut, TRAFFIC); };
+
+    $$('[data-range]', host).forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('[data-range]', host).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        range = parseInt(btn.dataset.range, 10);
+        if (cvLine) cvLine._hoverIdx = -1;
+        hideTooltip();
+        drawLine();
+      });
+    });
+
+    registerRedraw(drawLine);
+    registerRedraw(drawDonutCv);
+    drawLine();
+    drawDonutCv();
+  }
+
+  function renderAnalytics(host) {
+    // 修复：补上缺失的 series 字段
+    const statItems = [
+      { label: '页面浏览量', value: '1,284,600', delta: 15.2, up: true,
+        color: 'var(--accent)', soft: 'var(--accent-soft)',
+        series: [28, 32, 31, 36, 40, 38, 44, 48, 46, 52, 56, 60],
+        icon: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>' },
+      { label: '平均停留时长', value: '4分32秒', delta: 6.4, up: true,
+        color: 'var(--blue)', soft: 'var(--blue-soft)',
+        series: [22, 24, 23, 27, 26, 29, 31, 30, 34, 33, 36, 38],
+        icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>' },
+      { label: '跳出率', value: '38.6%', delta: -4.8, up: true,
+        color: 'var(--green)', soft: 'var(--green-soft)',
+        series: [42, 44, 43, 46, 45, 48, 47, 49, 48, 47, 46, 45],
+        icon: '<path d="M4 17 9.5 11l4 4L20 8"/><path d="M15.5 8H20v4.5"/>' },
+      { label: '客单价', value: '¥742.30', delta: 2.1, up: true,
+        color: 'var(--amber)', soft: 'var(--amber-soft)',
+        series: [30, 31, 29, 33, 32, 35, 34, 37, 36, 39, 38, 41],
+        icon: '<path d="M12 3v18"/><path d="M16.5 7.5c0-1.7-2-2.8-4.5-2.8s-4.5 1.1-4.5 2.8 2 2.5 4.5 3 4.5 1.3 4.5 3-2 2.8-4.5 2.8-4.5-1.1-4.5-2.8"/>' }
+    ];
+
+    host.innerHTML = `
+      <section class="kpis">${kpiHTML(statItems)}</section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>月度订单量</h3>
+            <p>2026 年逐月成交订单数</p>
+          </div>
+          <div class="card-head-right">
+            <span class="chip">单位：单</span>
+          </div>
+        </div>
+        <div class="chart-wrap" style="min-height:280px"><canvas id="cvBar"></canvas></div>
+      </section>
+
+      <section class="charts" style="margin-top:16px">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>渠道转化排名</h3>
+              <p>按成交贡献度排序</p>
+            </div>
+          </div>
+          <div class="rank-list">
+            ${[
+              { n: '官网商城', v: 38.4 },
+              { n: '小程序', v: 26.1 },
+              { n: 'APP 客户端', v: 19.7 },
+              { n: '线下门店', v: 9.2 },
+              { n: '第三方平台', v: 6.6 }
+            ].map((r, i) => `
+              <div class="rank-row">
+                <span class="rank-idx ${i === 0 ? 'top' : ''}">${i + 1}</span>
+                <div class="rank-main">
+                  <div class="rank-top"><span>${r.n}</span><b>${r.v}%</b></div>
+                  <div class="progress"><i style="width:${(r.v / 38.4 * 100).toFixed(1)}%"></i></div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>转化漏斗</h3>
+              <p>从访问到下单的路径</p>
+            </div>
+          </div>
+          <div class="rank-list">
+            ${[
+              { n: '访问商品页', v: '128,400', p: 100 },
+              { n: '加入购物车', v: '42,180', p: 32.9 },
+              { n: '进入结算页', v: '18,640', p: 14.5 },
+              { n: '完成支付', v: '6,842', p: 5.3 }
+            ].map(r => `
+              <div class="rank-row">
+                <div class="rank-main">
+                  <div class="rank-top"><span>${r.n}</span><b>${r.v}</b></div>
+                  <div class="progress"><i style="width:${r.p}%;background:var(--blue)"></i></div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </section>
+    `;
+
+    const cvBar = $('#cvBar', host);
+    const drawBar = () => {
+      if (!cvBar) return;
+      drawBarChart(cvBar, {
+        labels: MONTHS,
+        values: ORDERS_BY_MONTH,
+        color: themeColors().accent,
+        unit: ''
+      });
+    };
+    if (cvBar) {
+      cvBar._redraw = drawBar;
+      cvBar._hoverIdx = -1;
+      attachBarHover(cvBar, '订单量');
+    }
+
+    registerRedraw(drawBar);
+    drawBar();
+  }
+
+  const orderState = { page: 1, pageSize: 8, sortKey: 'date', sortDir: 'desc', query: '', status: 'all' };
+
+  function renderOrders(host) {
+    host.innerHTML = `
+      <section class="card table-card" style="margin-top:0">
+        <div class="card-head">
+          <div>
+            <h3>订单管理</h3>
+            <p>共 ${orders.length} 条订单记录</p>
+          </div>
+          <div class="card-head-right">
+            <button class="btn ghost sm" id="exportOrders">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/>
+              </svg>
+              导出
+            </button>
+          </div>
+        </div>
+
+        <div class="table-toolbar">
+          <label class="table-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+              <circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/>
+            </svg>
+            <input type="text" id="orderSearch" placeholder="搜索订单号或客户…" value="${orderState.query}">
+          </label>
+          <div class="filter-group" id="orderFilter">
+            <button class="chip ${orderState.status === 'all' ? 'active' : ''}" data-status="all">全部</button>
+            <button class="chip ${orderState.status === 'done' ? 'active' : ''}" data-status="done">已完成</button>
+            <button class="chip ${orderState.status === 'pending' ? 'active' : ''}" data-status="pending">处理中</button>
+            <button class="chip ${orderState.status === 'unpaid' ? 'active' : ''}" data-status="unpaid">待付款</button>
+            <button class="chip ${orderState.status === 'refund' ? 'active' : ''}" data-status="refund">已退款</button>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" data-key="id" style="width:150px">
+                  <span class="th-inner">订单号
+                    <svg class="sort-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m5 12 7 7 7-7"/></svg>
+                  </span>
+                </th>
+                <th>客户</th>
+                <th class="sortable" data-key="date" style="width:160px">
+                  <span class="th-inner">下单时间
+                    <svg class="sort-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m5 12 7 7 7-7"/></svg>
+                  </span>
+                </th>
+                <th class="sortable" data-key="amount" style="width:130px">
+                  <span class="th-inner">金额
+                    <svg class="sort-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m5 12 7 7 7-7"/></svg>
+                  </span>
+                </th>
+                <th style="width:110px">状态</th>
+                <th style="width:140px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="orderBody"></tbody>
+          </table>
+        </div>
+
+        <div class="table-foot">
+          <span class="info" id="orderInfo"></span>
+          <div class="pager" id="orderPager"></div>
+        </div>
+      </section>
+    `;
+
+    const body = $('#orderBody', host);
+    const info = $('#orderInfo', host);
+    const pager = $('#orderPager', host);
+
+    function filtered() {
+      let rows = orders.slice();
+      if (orderState.query) {
+        const q = orderState.query.toLowerCase();
+        rows = rows.filter(r =>
+          r.id.toLowerCase().includes(q) ||
+          r.customer.toLowerCase().includes(q) ||
+          r.email.toLowerCase().includes(q));
+      }
+      if (orderState.status !== 'all') rows = rows.filter(r => r.status === orderState.status);
+
+      const dir = orderState.sortDir === 'asc' ? 1 : -1;
+      const key = orderState.sortKey;
+      rows.sort((a, b) => {
+        let av, bv;
+        if (key === 'date') { av = a.ts; bv = b.ts; }
+        else if (key === 'amount') { av = a.amount; bv = b.amount; }
+        else { av = a.id; bv = b.id; }
+        if (typeof av === 'string') return av.localeCompare(bv) * dir;
+        return (av - bv) * dir;
+      });
+      return rows;
+    }
+
+    function renderPager(pages) {
+      const p = orderState.page;
+      let html = `<button data-pg="${p - 1}" ${p === 1 ? 'disabled' : ''}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>
+      </button>`;
+
+      const nums = [];
+      if (pages <= 6) {
+        for (let i = 1; i <= pages; i++) nums.push(i);
+      } else {
+        nums.push(1);
+        if (p > 3) nums.push('…');
+        for (let i = Math.max(2, p - 1); i <= Math.min(pages - 1, p + 1); i++) nums.push(i);
+        if (p < pages - 2) nums.push('…');
+        nums.push(pages);
+      }
+      nums.forEach(n => {
+        if (n === '…') html += '<span class="gap">…</span>';
+        else html += `<button data-pg="${n}" class="${n === p ? 'active' : ''}">${n}</button>`;
+      });
+
+      html += `<button data-pg="${p + 1}" ${p === pages ? 'disabled' : ''}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9.5 6 6 6-6 6"/></svg>
+      </button>`;
+
+      pager.innerHTML = html;
+    }
+
+    function render() {
+      const rows = filtered();
+      const total = rows.length;
+      const pages = Math.max(1, Math.ceil(total / orderState.pageSize));
+      if (orderState.page > pages) orderState.page = pages;
+
+      const start = (orderState.page - 1) * orderState.pageSize;
+      const pageRows = rows.slice(start, start + orderState.pageSize);
+
+      if (!pageRows.length) {
+        body.innerHTML = `<tr><td colspan="6">
+          <div class="empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+            </svg>
+            <p>没有找到匹配的订单</p>
+          </div>
+        </td></tr>`;
+      } else {
+        body.innerHTML = pageRows.map(r => `
+          <tr data-id="${r.id}">
+            <td><span class="cell-id">${r.id}</span></td>
+            <td>
+              <div class="cell-customer">
+                <div class="avatar">${r.customer.charAt(0)}</div>
+                <div class="meta"><strong>${r.customer}</strong><span>${r.email}</span></div>
+              </div>
+            </td>
+            <td style="color:var(--text-2);font-variant-numeric:tabular-nums">${r.date}</td>
+            <td class="cell-amount">${fmtMoney(r.amount)}</td>
+            <td><span class="badge ${r.statusCls}">${r.statusLabel}</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="mini-btn" data-act="view">详情</button>
+                <button class="mini-btn danger" data-act="del">删除</button>
+              </div>
+            </td>
+          </tr>`).join('');
+      }
+
+      $$('th.sortable', host).forEach(th => {
+        th.classList.toggle('sorted', th.dataset.key === orderState.sortKey);
+        th.classList.toggle('desc', th.dataset.key === orderState.sortKey && orderState.sortDir === 'desc');
+      });
+
+      const from = total === 0 ? 0 : start + 1;
+      const to = Math.min(start + orderState.pageSize, total);
+      info.textContent = `显示 ${from}–${to} 条，共 ${total} 条记录`;
+
+      renderPager(pages);
+    }
+
+    pager.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-pg]');
+      if (!btn || btn.disabled) return;
+      const pg = parseInt(btn.dataset.pg, 10);
+      if (pg === orderState.page) return;
+      orderState.page = pg;
+      render();
+    });
+
+    $$('th.sortable', host).forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (orderState.sortKey === key) {
+          orderState.sortDir = orderState.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          orderState.sortKey = key;
+          orderState.sortDir = key === 'id' ? 'asc' : 'desc';
+        }
+        render();
+      });
+    });
+
+    let t = null;
+    $('#orderSearch', host).addEventListener('input', e => {
+      clearTimeout(t);
+      const v = e.target.value.trim();
+      t = setTimeout(() => {
+        orderState.query = v;
+        orderState.page = 1;
+        render();
+      }, 180);
+    });
+
+    $('#orderFilter', host).addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      $$('#orderFilter .chip', host).forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      orderState.status = chip.dataset.status;
+      orderState.page = 1;
+      render();
+    });
+
+    body.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const id = btn.closest('tr').dataset.id;
+      const order = orders.find(o => o.id === id);
+      if (!order) return;
+
+      if (btn.dataset.act === 'view') {
+        openModal('订单详情', `
+          <div class="detail-grid">
+            <div class="detail-item"><label>订单号</label>
+              <div style="font-family:ui-monospace,Menlo,monospace;color:var(--accent);font-weight:650">${order.id}</div></div>
+            <div class="detail-item"><label>状态</label>
+              <div><span class="badge ${order.statusCls}">${order.statusLabel}</span></div></div>
+            <div class="detail-item"><label>客户</label><div>${order.customer}</div></div>
+            <div class="detail-item"><label>联系邮箱</label>
+              <div style="font-size:13px;color:var(--text-2)">${order.email}</div></div>
+            <div class="detail-item"><label>下单时间</label>
+              <div style="font-size:13px">${order.date}</div></div>
+            <div class="detail-item"><label>来源渠道</label><div>${order.channel}</div></div>
+            <div class="detail-item"><label>商品件数</label><div>${order.items} 件</div></div>
+            <div class="detail-item"><label>订单金额</label>
+              <div style="font-size:17px;font-weight:700;color:var(--accent)">${fmtMoney(order.amount)}</div></div>
+          </div>`, '导出 PDF', () => toast('订单 ' + order.id + ' 已导出', 'ok'));
+      } else {
+        openModal('删除订单', `
+          <p style="font-size:13.5px;color:var(--text-2);line-height:1.7">
+            确定要删除订单 <b style="color:var(--accent);font-family:ui-monospace,Menlo,monospace">${order.id}</b> 吗？<br>
+            该操作不可撤销。
+          </p>`, '确认删除', () => {
+          orders = orders.filter(o => o.id !== id);
+          render();
+          toast('订单 ' + id + ' 已删除', 'warn');
+        });
+      }
+    });
+
+    $('#exportOrders', host).addEventListener('click', () => {
+      toast('已导出 ' + filtered().length + ' 条订单记录', 'ok');
+    });
+
+    render();
+  }
+
+  function renderCustomers(host) {
+    const totalSpend = customers.reduce((s, c) => s + c.spend, 0);
+    const avgSpend = totalSpend / customers.length;
+
+    host.innerHTML = `
+      <section class="kpis">
+        ${kpiHTML([
+          { label: '客户总数', value: fmtInt(1204), delta: 5.4, up: true,
+            color: 'var(--accent)', soft: 'var(--accent-soft)',
+            series: [18, 20, 22, 21, 25, 27, 26, 30, 32, 31, 35, 38],
+            icon: '<circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/>' },
+          { label: '活跃客户', value: fmtInt(862), delta: 3.2, up: true,
+            color: 'var(--green)', soft: 'var(--green-soft)',
+            series: [22, 24, 23, 27, 26, 29, 31, 30, 34, 33, 36, 38],
+            icon: '<path d="M4 17 9.5 11l4 4L20 8"/><path d="M15.5 8H20v4.5"/>' },
+          { label: '人均消费', value: fmtMoney(avgSpend), delta: 2.8, up: true,
+            color: 'var(--blue)', soft: 'var(--blue-soft)',
+            series: [30, 31, 29, 33, 32, 35, 34, 37, 36, 39, 38, 41],
+            icon: '<path d="M12 3v18"/><path d="M16.5 7.5c0-1.7-2-2.8-4.5-2.8s-4.5 1.1-4.5 2.8 2 2.5 4.5 3 4.5 1.3 4.5 3-2 2.8-4.5 2.8-4.5-1.1-4.5-2.8"/>' },
+          { label: '复购率', value: '46.8%', delta: -1.2, up: false,
+            color: 'var(--amber)', soft: 'var(--amber-soft)',
+            series: [42, 44, 43, 46, 45, 48, 47, 49, 48, 47, 46, 45],
+            icon: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3 4v5h5"/>' }
+        ])}
+      </section>
+
+      <section class="card table-card" style="margin-top:0">
+        <div class="card-head">
+          <div>
+            <h3>客户档案</h3>
+            <p>按累计消费排序</p>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>客户</th>
+                <th style="width:110px">等级</th>
+                <th style="width:100px">订单数</th>
+                <th style="width:150px">累计消费</th>
+                <th style="width:140px">最近下单</th>
+                <th style="width:120px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${customers.slice().sort((a, b) => b.spend - a.spend).map((c, i) => `
+                <tr data-idx="${i}">
+                  <td>
+                    <div class="cell-customer">
+                      <div class="avatar">${c.name.charAt(0)}</div>
+                      <div class="meta"><strong>${c.name}</strong><span>${c.email}</span></div>
+                    </div>
+                  </td>
+                  <td><span class="badge ${c.cls}">${c.level}</span></td>
+                  <td style="font-variant-numeric:tabular-nums">${c.orders}</td>
+                  <td class="cell-amount">${fmtMoney(c.spend)}</td>
+                  <td style="color:var(--text-2);font-variant-numeric:tabular-nums">${c.last}</td>
+                  <td>
+                    <div class="row-actions">
+                      <button class="mini-btn" data-act="view">详情</button>
+                    </div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+
+    host.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act="view"]');
+      if (!btn) return;
+      const tr = btn.closest('tr');
+      const c = customers.slice().sort((a, b) => b.spend - a.spend)[parseInt(tr.dataset.idx, 10)];
+      openModal('客户详情', `
+        <div class="detail-grid">
+          <div class="detail-item"><label>姓名</label><div>${c.name}</div></div>
+          <div class="detail-item"><label>等级</label>
+            <div><span class="badge ${c.cls}">${c.level}</span></div></div>
+          <div class="detail-item" style="grid-column:1/-1"><label>邮箱</label>
+            <div style="font-size:13px;color:var(--text-2)">${c.email}</div></div>
+          <div class="detail-item"><label>累计订单</label><div>${c.orders} 单</div></div>
+          <div class="detail-item"><label>最近下单</label><div style="font-size:13px">${c.last}</div></div>
+          <div class="detail-item" style="grid-column:1/-1"><label>累计消费</label>
+            <div style="font-size:19px;font-weight:700;color:var(--accent)">${fmtMoney(c.spend)}</div></div>
+        </div>`);
+    });
+  }
+
+  function renderProducts(host) {
+    function stockBadge(p) {
+      if (p.stock === 0) return '<span class="badge bad">缺货</span>';
+      if (p.stock < 20) return '<span class="badge warn">库存紧张</span>';
+      return '<span class="badge ok">库存充足</span>';
+    }
+
+    host.innerHTML = `
+      <section class="kpis">
+        ${kpiHTML([
+          { label: '在售商品', value: fmtInt(products.length), delta: 0, up: true,
+            color: 'var(--accent)', soft: 'var(--accent-soft)',
+            series: [6, 6, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8],
+            icon: '<path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M4 7.5 12 12l8-4.5"/><path d="M12 12v9"/>' },
+          { label: '总销量', value: fmtInt(products.reduce((s, p) => s + p.sold, 0)), delta: 11.3, up: true,
+            color: 'var(--green)', soft: 'var(--green-soft)',
+            series: [30, 34, 33, 38, 42, 41, 46, 50, 49, 54, 58, 62],
+            icon: '<path d="M4 17 9.5 11l4 4L20 8"/><path d="M15.5 8H20v4.5"/>' },
+          { label: '库存预警', value: '2', delta: 0, up: false,
+            color: 'var(--amber)', soft: 'var(--amber-soft)',
+            series: [1, 1, 2, 1, 2, 2, 1, 2, 3, 2, 2, 2],
+            icon: '<path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>' },
+          { label: '库存总值', value: '¥186.4万', delta: 4.6, up: true,
+            color: 'var(--blue)', soft: 'var(--blue-soft)',
+            series: [140, 146, 152, 149, 158, 162, 170, 175, 172, 180, 183, 186],
+            icon: '<path d="M12 3v18"/><path d="M16.5 7.5c0-1.7-2-2.8-4.5-2.8s-4.5 1.1-4.5 2.8 2 2.5 4.5 3 4.5 1.3 4.5 3-2 2.8-4.5 2.8-4.5-1.1-4.5-2.8"/>' }
+        ])}
+      </section>
+
+      <div class="product-grid">
+        ${products.map(p => `
+          <div class="product-card">
+            <div class="product-thumb" style="background:${p.bg}">${p.emoji}</div>
+            <div>
+              <div class="product-name">${p.name}</div>
+              <div class="product-sku">${p.sku} · ${p.cat}</div>
+            </div>
+            <div class="product-foot">
+              <div>
+                <div class="product-price">¥${fmtInt(p.price)}</div>
+                <div class="product-stock">库存 ${p.stock} · 已售 ${fmtInt(p.sold)}</div>
+              </div>
+              ${stockBadge(p)}
+            </div>
+          </div>`).join('')}
+      </div>
+    `;
+  }
+
+  function renderCampaigns(host) {
+    host.innerHTML = `
+      <section class="card" style="margin-top:0">
+        <div class="card-head">
+          <div>
+            <h3>活动列表</h3>
+            <p>共 ${campaigns.length} 个营销活动</p>
+          </div>
+          <div class="card-head-right">
+            <button class="btn primary sm" id="newCampaign">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              新建活动
+            </button>
+          </div>
+        </div>
+        <div class="campaign-list">
+          ${campaigns.map((c, i) => {
+            const pct = Math.min(100, Math.round(c.used / c.budget * 100));
+            return `
+              <div class="campaign-item" data-idx="${i}">
+                <div class="campaign-main">
+                  <div class="campaign-title">
+                    ${c.name}
+                    <span class="badge ${c.cls}">${c.statusLabel}</span>
+                  </div>
+                  <div class="campaign-meta">
+                    <span>${c.start} ~ ${c.end}</span>
+                    <span>预算 ${fmtMoney(c.budget)}</span>
+                    <span>转化率 ${c.conv}%</span>
+                  </div>
+                </div>
+                <div class="campaign-progress">
+                  <div class="lbl"><span>已消耗</span><span>${pct}%</span></div>
+                  <div class="progress"><i style="width:${pct}%;background:${pct > 90 ? 'var(--red)' : pct > 60 ? 'var(--amber)' : 'var(--accent)'}"></i></div>
+                </div>
+                <button class="mini-btn" data-act="view">详情</button>
+              </div>`;
+          }).join('')}
+        </div>
+      </section>
+    `;
+
+    $('#newCampaign', host).addEventListener('click', () => {
+      openModal('新建活动', `
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="field" style="padding:0">
+            <label>活动名称</label>
+            <input class="input" id="cName" placeholder="例如：双十二大促">
+          </div>
+          <div class="field" style="padding:0">
+            <label>预算（元）</label>
+            <input class="input" id="cBudget" type="number" placeholder="50000">
+          </div>
+        </div>`, '创建', () => {
+        const name = ($('#cName') || {}).value || '未命名活动';
+        campaigns.unshift({
+          name, status: 'scheduled', statusLabel: '未开始', cls: 'info',
+          start: '2026-10-20', end: '2026-11-20', budget: 50000, used: 0, conv: 0
+        });
+        renderCampaigns(host);
+        toast('活动「' + name + '」已创建', 'ok');
+      });
+    });
+
+    host.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act="view"]');
+      if (!btn) return;
+      const c = campaigns[parseInt(btn.closest('.campaign-item').dataset.idx, 10)];
+      openModal('活动详情', `
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:1/-1"><label>活动名称</label>
+            <div style="font-size:15px;font-weight:650">${c.name}</div></div>
+          <div class="detail-item"><label>状态</label>
+            <div><span class="badge ${c.cls}">${c.statusLabel}</span></div></div>
+          <div class="detail-item"><label>转化率</label><div>${c.conv}%</div></div>
+          <div class="detail-item"><label>开始日期</label><div style="font-size:13px">${c.start}</div></div>
+          <div class="detail-item"><label>结束日期</label><div style="font-size:13px">${c.end}</div></div>
+          <div class="detail-item"><label>预算</label><div>${fmtMoney(c.budget)}</div></div>
+          <div class="detail-item"><label>已消耗</label><div>${fmtMoney(c.used)}</div></div>
+        </div>`);
+    });
+  }
+
+  function renderTeam(host) {
+    const roleClsMap = { '超级管理员': 'purple', '运营主管': 'info', '数据分析师': 'ok', '财务主管': 'warn' };
+
+    host.innerHTML = `
+      <section class="card table-card" style="margin-top:0">
+        <div class="card-head">
+          <div>
+            <h3>团队成员</h3>
+            <p>共 ${team.length} 位成员</p>
+          </div>
+          <div class="card-head-right">
+            <button class="btn primary sm" id="inviteMember">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              邀请成员
+            </button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>成员</th>
+                <th style="width:130px">角色</th>
+                <th style="width:120px">部门</th>
+                <th style="width:170px">最近登录</th>
+                <th style="width:110px">状态</th>
+                <th style="width:150px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="teamBody">
+              ${team.map((m, i) => `
+                <tr data-idx="${i}">
+                  <td>
+                    <div class="cell-customer">
+                      <div class="avatar">${m.name.charAt(0)}</div>
+                      <div class="meta"><strong>${m.name}</strong><span>${m.email}</span></div>
+                    </div>
+                  </td>
+                  <td><span class="badge ${roleClsMap[m.role] || 'plain'}">${m.role}</span></td>
+                  <td style="color:var(--text-2)">${m.dept}</td>
+                  <td style="color:var(--text-3);font-variant-numeric:tabular-nums">${m.last}</td>
+                  <td>
+                    ${m.status === 'active'
+                      ? '<span class="badge ok">正常</span>'
+                      : '<span class="badge plain">已停用</span>'}
+                  </td>
+                  <td>
+                    <div class="row-actions">
+                      <button class="mini-btn" data-act="toggle">${m.status === 'active' ? '停用' : '启用'}</button>
+                      <button class="mini-btn danger" data-act="remove">移除</button>
+                    </div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+
+    const body = $('#teamBody', host);
+
+    body.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const tr = btn.closest('tr');
+      const i = parseInt(tr.dataset.idx, 10);
+      const m = team[i];
+
+      if (btn.dataset.act === 'toggle') {
+        m.status = m.status === 'active' ? 'disabled' : 'active';
+        renderTeam(host);
+        toast(`${m.name} 已${m.status === 'active' ? '启用' : '停用'}`, m.status === 'active' ? 'ok' : 'warn');
+      } else {
+        openModal('移除成员', `
+          <p style="font-size:13.5px;color:var(--text-2);line-height:1.7">
+            确定要将 <b>${m.name}</b> 移出团队吗？<br>该成员将立即失去系统访问权限。
+          </p>`, '确认移除', () => {
+          team.splice(i, 1);
+          renderTeam(host);
+          toast(m.name + ' 已移出团队', 'warn');
+        });
+      }
+    });
+
+    $('#inviteMember', host).addEventListener('click', () => {
+      openModal('邀请成员', `
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="field" style="padding:0">
+            <label>姓名</label>
+            <input class="input" id="mName" placeholder="输入成员姓名">
+          </div>
+          <div class="field" style="padding:0">
+            <label>邮箱</label>
+            <input class="input" id="mEmail" type="email" placeholder="name@nova.com">
+          </div>
+          <div class="field" style="padding:0">
+            <label>角色</label>
+            <select class="select" id="mRole">
+              <option>运营主管</option>
+              <option>数据分析师</option>
+              <option>客服专员</option>
+              <option>市场专员</option>
+              <option>开发工程师</option>
+            </select>
+          </div>
+        </div>`, '发送邀请', () => {
+        const name = ($('#mName') || {}).value || '新成员';
+        const email = ($('#mEmail') || {}).value || 'new@nova.com';
+        const role = ($('#mRole') || {}).value || '运营主管';
+        team.push({ name, email, role, cls: 'plain', dept: '待分配', status: 'active', last: '—' });
+        renderTeam(host);
+        toast('邀请已发送至 ' + email, 'ok');
+      });
+    });
+  }
+
+  function renderSettings(host) {
+    host.innerHTML = `
+      <div class="settings-grid">
+
+        <section class="card" style="margin-top:0">
+          <div class="card-head">
+            <div><h3>基本信息</h3><p>站点名称与区域偏好</p></div>
+          </div>
+          <div class="field">
+            <label>站点名称</label>
+            <input class="input" id="setSiteName" value="Nova Admin">
+          </div>
+          <div class="field">
+            <label>默认语言</label>
+            <select class="select" id="setLang">
+              <option value="zh-CN">简体中文</option>
+              <option value="zh-TW">繁體中文</option>
+              <option value="en-US">English</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>时区</label>
+            <select class="select" id="setTz">
+              <option>(UTC+08:00) 北京</option>
+              <option>(UTC+09:00) 东京</option>
+              <option>(UTC+00:00) 伦敦</option>
+              <option>(UTC-08:00) 洛杉矶</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="card" style="margin-top:0">
+          <div class="card-head">
+            <div><h3>外观主题</h3><p>选择界面配色方案</p></div>
+          </div>
+          <div class="theme-picker" id="themePicker">
+            <button class="theme-opt" data-mode="light">
+              <span class="swatch" style="background:linear-gradient(135deg,#ffffff,#f1f3f5)"></span>
+              浅色
+            </button>
+            <button class="theme-opt" data-mode="dark">
+              <span class="swatch" style="background:linear-gradient(135deg,#1c2027,#0b0c10)"></span>
+              深色
+            </button>
+            <button class="theme-opt" data-mode="auto">
+              <span class="swatch" style="background:linear-gradient(135deg,#ffffff 0%,#ffffff 49%,#1c2027 51%,#0b0c10 100%)"></span>
+              跟随系统
+            </button>
+          </div>
+        </section>
+
+        <section class="card" style="margin-top:0">
+          <div class="card-head">
+            <div><h3>通知设置</h3><p>控制消息推送方式</p></div>
+          </div>
+          ${[
+            { id: 'nOrder', t: '新订单提醒', d: '有客户下单时立即通知', on: true },
+            { id: 'nStock', t: '库存预警', d: '商品库存低于阈值时提醒', on: true },
+            { id: 'nReport', t: '周报邮件', d: '每周一发送经营数据周报', on: false },
+            { id: 'nMark', t: '营销活动提醒', d: '活动开始与结束时通知', on: false }
+          ].map(n => `
+            <div class="setting-row">
+              <div class="setting-info">
+                <strong>${n.t}</strong>
+                <span>${n.d}</span>
+              </div>
+              <button class="switch ${n.on ? 'on' : ''}" data-switch="${n.id}"></button>
+            </div>`).join('')}
+        </section>
+
+        <section class="card" style="margin-top:0">
+          <div class="card-head">
+            <div><h3>安全与数据</h3><p>账号安全与数据管理</p></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <strong>两步验证</strong>
+              <span>登录时需要额外的验证码</span>
+            </div>
+            <button class="switch on" data-switch="twoFactor"></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <strong>自动备份</strong>
+              <span>每日凌晨备份一次数据库</span>
+            </div>
+            <button class="switch on" data-switch="backup"></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <strong>清除缓存</strong>
+              <span>释放系统缓存，不影响业务数据</span>
+            </div>
+            <button class="btn ghost sm" id="clearCache">清除</button>
+          </div>
+        </section>
+
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+        <button class="btn ghost" id="resetSettings">重置</button>
+        <button class="btn primary" id="saveSettings">保存设置</button>
+      </div>
+    `;
+
+    syncThemePicker = function () {
+      $$('#themePicker .theme-opt', host).forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === themeMode);
+      });
+    };
+    syncThemePicker();
+
+    $('#themePicker', host).addEventListener('click', e => {
+      const opt = e.target.closest('.theme-opt');
+      if (!opt) return;
+      applyThemeMode(opt.dataset.mode, true);
+    });
+
+    host.addEventListener('click', e => {
+      const sw = e.target.closest('.switch');
+      if (!sw) return;
+      sw.classList.toggle('on');
+    });
+
+    $('#clearCache', host).addEventListener('click', () => {
+      toast('缓存已清除，释放 128 MB', 'ok');
+    });
+
+    $('#resetSettings', host).addEventListener('click', () => {
+      openModal('重置设置', `
+        <p style="font-size:13.5px;color:var(--text-2);line-height:1.7">
+          确定要将所有设置恢复为默认值吗？此操作不会影响业务数据。
+        </p>`, '确认重置', () => {
+        applyThemeMode('light', true);
+        renderSettings(host);
+        toast('设置已重置为默认值', 'warn');
+      });
+    });
+
+    $('#saveSettings', host).addEventListener('click', () => {
+      const name = ($('#setSiteName', host) || {}).value || 'Nova Admin';
+      toast('设置已保存', 'ok');
+      document.title = name + ' · 控制台';
+    });
+  }
+
+  /* ==================================================
+     7. 路由
+  ================================================== */
+  const routes = {
+    overview:  { title: '数据概览', sub: '核心指标一览',        render: renderOverview  },
+    analytics: { title: '数据分析', sub: '深度数据洞察',        render: renderAnalytics },
+    orders:    { title: '订单管理', sub: '订单流水与处理',      render: renderOrders    },
+    customers: { title: '客户管理', sub: '客户档案与价值',      render: renderCustomers },
+    products:  { title: '商品管理', sub: '商品与库存',          render: renderProducts  },
+    campaigns: { title: '营销活动', sub: '营销活动效果',        render: renderCampaigns },
+    team:      { title: '团队权限', sub: '成员与权限',          render: renderTeam      },
+    settings:  { title: '系统设置', sub: '系统偏好配置',        render: renderSettings  }
+  };
+
+  let currentRoute = 'overview';
+
+  function routeFromHash() {
+    const h = location.hash.replace(/^#\/?/, '');
+    return routes[h] ? h : 'overview';
+  }
+
+  function navigate() {
+    const key = routeFromHash();
+    const route = routes[key];
+    if (!route) return;
+    currentRoute = key;
+
+    pageTitle.textContent = route.title;
+    pageSub.textContent = route.sub;
+    document.title = route.title + ' · Nova Admin';
+
+    $$('.nav-item', nav).forEach(a => {
+      a.classList.toggle('active', a.dataset.route === key);
+    });
+
+    pageRedraws = [];
+    hideTooltip();
+    syncThemePicker = null;
+
+    view.innerHTML = '';
+    view.classList.remove('view-anim');
+    void view.offsetWidth;
+    view.classList.add('view-anim');
+
+    // 修复：渲染包 try/catch，任何单页错误都不会拖垮整个应用
+    try {
+      route.render(view);
+    } catch (err) {
+      console.error('[route] 渲染失败:', key, err);
+      view.innerHTML = `
+        <div class="card" style="margin-top:0">
+          <div class="empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.4h.01"/>
+            </svg>
+            <p>页面加载失败，请刷新重试</p>
+          </div>
+        </div>`;
+    }
+
+    content.scrollTop = 0;
+    if (window.innerWidth < 1024) app.classList.remove('nav-open');
+
+    redrawPage();
+  }
+
+  nav.addEventListener('click', e => {
+    const item = e.target.closest('.nav-item');
+    if (!item) return;
+    e.preventDefault();
+    const key = item.dataset.route;
+    if (routeFromHash() === key) {
+      navigate();
+      if (window.innerWidth < 1024) app.classList.remove('nav-open');
+    } else {
+      location.hash = '#/' + key;
+    }
+  });
+
+  window.addEventListener('hashchange', navigate);
+
+  /* ==================================================
+     8. 其他交互
+  ================================================== */
+  navToggle.addEventListener('click', () => {
+    if (window.innerWidth >= 1024) sidebar.classList.toggle('collapsed');
+    else app.classList.toggle('nav-open');
+  });
+
+  scrim.addEventListener('click', () => app.classList.remove('nav-open'));
+
+  document.getElementById('notifyBtn').addEventListener('click', () => {
+    toast('您有 12 条待处理订单', 'ok');
+  });
+
+  document.getElementById('globalSearch').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const q = e.target.value.trim();
+    if (!q) return;
+    orderState.query = q;
+    orderState.page = 1;
+    if (routeFromHash() !== 'orders') location.hash = '#/orders';
+    else navigate();
+    toast('已筛选「' + q + '」', 'ok');
+  });
+
+  let rzTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(redrawPage, 140);
+  });
+
+  /* ==================================================
+     9. 启动
+  ================================================== */
+  applyThemeMode('light', true);
+
+  // 修复：file:// 协议下 history.replaceState 会抛 SecurityError，
+  // 导致整个初始化中断。这里用 try/catch 兜底，无论成败都继续走 navigate()。
+  if (!location.hash || !routes[routeFromHash()]) {
+    try {
+      history.replaceState(null, '', '#/overview');
+    } catch (e) {
+      // file:// 协议下忽略，靠 navigate() 的默认 fallback 走到 overview
+      location.hash = '#/overview';
+    }
+  }
+
+  navigate();
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(redrawPage);
+  }
+})();
+</script>
+</body>
+</html>
