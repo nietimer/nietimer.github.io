@@ -2683,29 +2683,7 @@ function duplicateNode(node) {
   return copy;
 }
 
-function autoConnect(newNode) {
-  const def = DEFS[newNode.type];
-  if (!def.outputs.length) return false;
-  const outPort = def.outputs[0];
-  if (!['geo', 'light', 'scene'].includes(outPort.type)) return false;
-
-  const canvasNodes = nodes.filter(n => n.type === 'canvas');
-  for (const cn of canvasNodes) {
-    if (cn.id === newNode.id) continue;
-    const cdef = DEFS.canvas;
-    for (const inp of cdef.inputs) {
-      if (inp.type !== outPort.type) continue;
-      edges = edges.filter(e => !(e.to.node === cn.id && e.to.port === inp.name));
-      edges.push({
-        id: 'e' + (uid++),
-        from: { node: newNode.id, port: outPort.name },
-        to: { node: cn.id, port: inp.name },
-      });
-      return true;
-    }
-  }
-  return false;
-}
+/* 说明：新增节点不再自动连线，需要手动从端口拖拽连接 */
 
 function deleteNode(id) {
   if (fullscreenNodeId === id) exitFullscreen();
@@ -2785,12 +2763,9 @@ function buildPalette() {
       const cy = (rect.height / 2 - panY) / scale - 90;
       const jitter = () => (Math.random() - 0.5) * 100;
 
-      const node = addNode(key, cx + jitter(), cy + jitter());
-      autoConnect(node);
+      /* 只添加节点，不自动连线（addNode 内部已完成 syncNodes / scheduleRebuild） */
+      addNode(key, cx + jitter(), cy + jitter());
 
-      syncNodes();
-      drawWires();
-      scheduleRebuild();
       closePalette();
       hideHint();
     });
