@@ -4,15 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>NodeForge</title>
+
+<!-- 主题预加载：避免刷新时闪一下暗色 -->
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('nodeforge.theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+})();
+</script>
+
 <style>
   :root{
+    /* ---------- 基础 ---------- */
     --bg:#09090a;
+    --topbar:#0e0e10;
+    --editor-bg:#0b0b0d;
+    --grid-line:rgba(255,255,255,.022);
     --panel:#131316;
     --panel-2:#16161a;
     --panel-3:#1c1c20;
     --border:#26262b;
     --border-hi:#35353c;
     --text:#d4d4d8;
+    --text-hi:#e4e4e7;
     --text-mid:#9898a3;
     --text-dim:#6e6e78;
     --accent:#4a7fc9;
@@ -20,6 +36,99 @@
     --r:6px;
     --r-sm:4px;
     --r-xs:3px;
+
+    /* ---------- 控件 ---------- */
+    --ctrl-bg:#18181c;
+    --ctrl-bg-h:#1f1f24;
+    --ctrl-bg-a:#252529;
+    --input-bg:#0d0d0f;
+    --logo-bg:#1c1c20;
+
+    /* ---------- 阴影 ---------- */
+    --shadow-node:0 1px 3px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.22);
+    --shadow-node-drag:0 4px 12px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+    --shadow-panel:0 8px 28px rgba(0,0,0,.6);
+    --shadow-ctl:0 2px 8px rgba(0,0,0,.4);
+
+    /* ---------- 3D 画布容器（始终深色，与场景协调） ---------- */
+    --canvas-bg:#060608;
+    --canvas-fg:#3a3a44;
+    --badge-bg:rgba(0,0,0,.5);
+    --badge-fg:rgba(255,255,255,.5);
+    --tip-bg:rgba(0,0,0,.4);
+    --tip-fg:rgba(255,255,255,.4);
+    --cbtn-bg:rgba(15,15,18,.82);
+    --cbtn-fg:rgba(255,255,255,.7);
+    --cbtn-bd:rgba(255,255,255,.09);
+    --handle-fg:rgba(255,255,255,.28);
+    --handle-fg-h:rgba(200,200,210,.9);
+
+    /* ---------- 滑块 / 滚动条 ---------- */
+    --slider-track:#2a2a30;
+    --slider-thumb:#c8c8ce;
+    --slider-thumb-h:#ffffff;
+    --scroll-thumb:#2a2a30;
+    --scroll-thumb-h:#35353c;
+
+    /* ---------- 全屏 ---------- */
+    --fs-bg:#0a0a0b;
+    --fs-head:#0e0e10;
+    --fs-title:#d8d8de;
+  }
+
+  /* =========================================================
+     亮色主题
+     ========================================================= */
+  html[data-theme="light"]{
+    --bg:#eceef2;
+    --topbar:#ffffff;
+    --editor-bg:#f6f7f9;
+    --grid-line:rgba(20,28,45,.055);
+    --panel:#ffffff;
+    --panel-2:#f6f7f9;
+    --panel-3:#eef0f3;
+    --border:#dcdee3;
+    --border-hi:#bcbfc7;
+    --text:#24262c;
+    --text-hi:#101216;
+    --text-mid:#5b5e68;
+    --text-dim:#8a8d97;
+    --accent:#3d72c2;
+    --accent-hi:#4f84d4;
+
+    --ctrl-bg:#f2f3f6;
+    --ctrl-bg-h:#e8eaef;
+    --ctrl-bg-a:#dee1e7;
+    --input-bg:#ffffff;
+    --logo-bg:#f1f3f6;
+
+    --shadow-node:0 1px 2px rgba(16,22,38,.07), 0 4px 14px rgba(16,22,38,.07);
+    --shadow-node-drag:0 6px 16px rgba(16,22,38,.14), 0 14px 36px rgba(16,22,38,.12);
+    --shadow-panel:0 8px 28px rgba(16,22,38,.16);
+    --shadow-ctl:0 2px 8px rgba(16,22,38,.14);
+
+    /* 3D 画布容器仍为深色 */
+    --canvas-bg:#0b0e14;
+    --canvas-fg:#4a5162;
+    --badge-bg:rgba(0,0,0,.55);
+    --badge-fg:rgba(255,255,255,.55);
+    --tip-bg:rgba(0,0,0,.45);
+    --tip-fg:rgba(255,255,255,.45);
+    --cbtn-bg:rgba(15,15,18,.82);
+    --cbtn-fg:rgba(255,255,255,.72);
+    --cbtn-bd:rgba(255,255,255,.1);
+    --handle-fg:rgba(255,255,255,.3);
+    --handle-fg-h:rgba(200,200,210,.9);
+
+    --slider-track:#d7dae0;
+    --slider-thumb:#7d838f;
+    --slider-thumb-h:#3b414d;
+    --scroll-thumb:#c8ccd4;
+    --scroll-thumb-h:#a9aeba;
+
+    --fs-bg:#eceef2;
+    --fs-head:#ffffff;
+    --fs-title:#24262c;
   }
 
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -47,7 +156,7 @@
     align-items:center;
     justify-content:space-between;
     padding:0 14px;
-    background:#0e0e10;
+    background:var(--topbar);
     border-bottom:1px solid var(--border);
     z-index:60;
     position:relative;
@@ -56,7 +165,7 @@
   .logo{
     width:22px;height:22px;flex-shrink:0;
     border-radius:4px;
-    background:#1c1c20;
+    background:var(--logo-bg);
     border:1px solid var(--border-hi);
     position:relative;
   }
@@ -74,7 +183,7 @@
     font-size:13px;
     font-weight:600;
     letter-spacing:.01em;
-    color:#e4e4e7;
+    color:var(--text-hi);
     white-space:nowrap;
   }
   .brand .sub{
@@ -85,14 +194,14 @@
     border-left:1px solid var(--border);
     white-space:nowrap;
   }
-  .actions{display:flex;gap:6px;flex-shrink:0}
+  .actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
 
   .btn{
     height:28px;
     padding:0 11px;
     border-radius:5px;
     border:1px solid var(--border);
-    background:#18181c;
+    background:var(--ctrl-bg);
     color:var(--text);
     font-size:12px;
     font-weight:500;
@@ -104,11 +213,11 @@
     gap:5px;
   }
   .btn:hover{
-    background:#1f1f24;
+    background:var(--ctrl-bg-h);
     border-color:var(--border-hi);
   }
   .btn:active{
-    background:#252529;
+    background:var(--ctrl-bg-a);
   }
   .btn.primary{
     background:var(--accent);
@@ -120,6 +229,16 @@
     border-color:var(--accent-hi);
   }
 
+  .btn.icon-btn{width:28px;padding:0;justify-content:center;flex-shrink:0}
+  .btn.icon-btn svg{width:14px;height:14px;display:block}
+  html[data-theme="light"] .icon-sun{display:none}
+  html:not([data-theme="light"]) .icon-moon{display:none}
+
+  #importFile{
+    position:fixed;left:-9999px;top:-9999px;
+    width:1px;height:1px;opacity:0;pointer-events:none;
+  }
+
   main{flex:1;display:flex;overflow:hidden;position:relative;min-height:0}
 
   /* ---------- 编辑器 ---------- */
@@ -129,10 +248,10 @@
     overflow:hidden;
     min-width:0;
     touch-action:none;
-    background-color:#0b0b0d;
+    background-color:var(--editor-bg);
     background-image:
-      linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size:22px 22px;
     background-position:0 0;
     cursor:grab;
@@ -182,7 +301,7 @@
     background:var(--panel);
     border:1px solid var(--border);
     border-radius:var(--r);
-    box-shadow:0 1px 3px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.22);
+    box-shadow:var(--shadow-node);
     user-select:none;
     will-change:transform;
     transition:border-color .12s, box-shadow .12s;
@@ -198,7 +317,7 @@
   }
   .node.dragging{
     border-color:var(--border-hi);
-    box-shadow:0 4px 12px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+    box-shadow:var(--shadow-node-drag);
   }
 
   .node-head{
@@ -227,7 +346,7 @@
     font-size:11.5px;
     font-weight:500;
     letter-spacing:.01em;
-    color:#d8d8de;
+    color:var(--text-hi);
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
@@ -275,7 +394,7 @@
     width:10px;
     height:10px;
     border-radius:50%;
-    background:#0d0d0f;
+    background:var(--input-bg);
     border:1.5px solid var(--c);
     cursor:crosshair;
     transition:transform .12s, background .12s;
@@ -315,7 +434,7 @@
   }
   .param-head .val-input{
     width:52px;
-    background:#0d0d0f;
+    background:var(--input-bg);
     border:1px solid var(--border);
     border-radius:var(--r-xs);
     color:var(--text-mid);
@@ -335,7 +454,7 @@
   }
   .param-head .val-input:focus{
     border-color:var(--c);
-    color:#fff;
+    color:var(--text-hi);
   }
   .param-head .val-input::-webkit-outer-spin-button,
   .param-head .val-input::-webkit-inner-spin-button{
@@ -358,7 +477,7 @@
   input[type=range]::-webkit-slider-runnable-track{
     height:3px;
     border-radius:2px;
-    background:#2a2a30;
+    background:var(--slider-track);
   }
   input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none;
@@ -366,24 +485,24 @@
     width:11px;
     height:11px;
     border-radius:50%;
-    background:#c8c8ce;
+    background:var(--slider-thumb);
     margin-top:-4px;
     transition:background .12s;
   }
   input[type=range]::-webkit-slider-thumb:hover{
-    background:#fff;
+    background:var(--slider-thumb-h);
   }
   input[type=range]::-moz-range-track{
     height:3px;
     border-radius:2px;
-    background:#2a2a30;
+    background:var(--slider-track);
   }
   input[type=range]::-moz-range-thumb{
     width:11px;
     height:11px;
     border-radius:50%;
     border:none;
-    background:#c8c8ce;
+    background:var(--slider-thumb);
   }
 
   input[type=color]{
@@ -413,7 +532,7 @@
     width:28px;
     height:15px;
     border-radius:8px;
-    background:#2a2a30;
+    background:var(--slider-track);
     cursor:pointer;
     transition:background .15s;
     flex-shrink:0;
@@ -426,7 +545,7 @@
     width:12px;
     height:12px;
     border-radius:50%;
-    background:#c8c8ce;
+    background:var(--slider-thumb);
     transition:transform .18s cubic-bezier(.34,1.2,.64,1), background .15s;
   }
   .toggle-switch.on{
@@ -449,8 +568,8 @@
     padding:0 9px;
     border-radius:var(--r-xs);
     border:1px solid var(--border-hi);
-    background:#1c1c20;
-    color:#c8c8ce;
+    background:var(--ctrl-bg);
+    color:var(--text-mid);
     font-size:10.5px;
     font-weight:500;
     font-family:inherit;
@@ -460,12 +579,12 @@
     white-space:nowrap;
   }
   .file-btn:hover{
-    background:#252529;
-    border-color:#4a4a52;
-    color:#fff;
+    background:var(--ctrl-bg-a);
+    border-color:var(--border-hi);
+    color:var(--text-hi);
   }
   .file-btn:active{
-    background:#2e2e34;
+    background:var(--ctrl-bg-a);
   }
   .file-btn:disabled{
     opacity:.55;
@@ -489,7 +608,7 @@
     position:relative;
     margin:6px 10px 6px;
     border-radius:var(--r-sm);
-    background:#060608;
+    background:var(--canvas-bg);
     overflow:hidden;
     border:1px solid var(--border);
   }
@@ -505,8 +624,8 @@
     left:7px;
     font-size:9.5px;
     letter-spacing:.01em;
-    color:rgba(255,255,255,.5);
-    background:rgba(0,0,0,.5);
+    color:var(--badge-fg);
+    background:var(--badge-bg);
     padding:2px 6px;
     border-radius:var(--r-xs);
     pointer-events:none;
@@ -519,8 +638,8 @@
     left:7px;
     font-size:9px;
     letter-spacing:.02em;
-    color:rgba(255,255,255,.4);
-    background:rgba(0,0,0,.4);
+    color:var(--tip-fg);
+    background:var(--tip-bg);
     padding:2px 5px;
     border-radius:var(--r-xs);
     pointer-events:none;
@@ -538,7 +657,7 @@
     justify-content:center;
     flex-direction:column;
     gap:5px;
-    color:#3a3a44;
+    color:var(--canvas-fg);
     font-size:10.5px;
     letter-spacing:.02em;
     pointer-events:none;
@@ -564,9 +683,9 @@
     width:22px;
     height:22px;
     border-radius:var(--r-xs);
-    border:1px solid rgba(255,255,255,.09);
-    background:rgba(15,15,18,.82);
-    color:rgba(255,255,255,.7);
+    border:1px solid var(--cbtn-bd);
+    background:var(--cbtn-bg);
+    color:var(--cbtn-fg);
     cursor:pointer;
     display:flex;
     align-items:center;
@@ -601,7 +720,7 @@
     align-items:flex-end;
     justify-content:flex-end;
     padding:3px;
-    color:rgba(255,255,255,.28);
+    color:var(--handle-fg);
     touch-action:none;
     transition:color .12s;
   }
@@ -614,7 +733,7 @@
     border-radius:0 0 2px 0;
   }
   .node-canvas .resize-handle:hover{
-    color:rgba(200,200,210,.9);
+    color:var(--handle-fg-h);
   }
 
   /* ---------- 全屏 ---------- */
@@ -622,7 +741,7 @@
     position:fixed;
     inset:0;
     z-index:9999;
-    background:#0a0a0b;
+    background:var(--fs-bg);
     display:flex;
     flex-direction:column;
     opacity:0;
@@ -641,13 +760,13 @@
     padding:0 16px;
     border-bottom:1px solid var(--border);
     flex-shrink:0;
-    background:#0e0e10;
+    background:var(--fs-head);
   }
   .canvas-fullscreen .fs-title{
     font-size:12.5px;
     font-weight:500;
     letter-spacing:.01em;
-    color:#d8d8de;
+    color:var(--fs-title);
   }
   .canvas-fullscreen .fs-stats{
     font-size:11px;
@@ -665,7 +784,7 @@
     padding:0 11px;
     border-radius:5px;
     border:1px solid var(--border);
-    background:#18181c;
+    background:var(--ctrl-bg);
     color:var(--text);
     font-size:11.5px;
     font-weight:500;
@@ -678,11 +797,11 @@
     gap:5px;
   }
   .canvas-fullscreen .fs-btn:hover{
-    background:#202025;
+    background:var(--ctrl-bg-h);
     border-color:var(--border-hi);
   }
   .canvas-fullscreen .fs-btn:active{
-    background:#26262b;
+    background:var(--ctrl-bg-a);
   }
   .canvas-fullscreen .fs-btn.close:hover{
     background:rgba(200,60,60,.18);
@@ -710,7 +829,7 @@
     transform:translateX(-50%);
     padding:5px 11px;
     border-radius:var(--r-sm);
-    background:#131316;
+    background:var(--panel);
     border:1px solid var(--border);
     font-size:10.5px;
     color:var(--text-dim);
@@ -733,9 +852,9 @@
     z-index:30;
     border:1px solid var(--border);
     border-radius:var(--r);
-    background:#131316;
+    background:var(--panel);
     overflow:hidden;
-    box-shadow:0 2px 8px rgba(0,0,0,.4);
+    box-shadow:var(--shadow-ctl);
   }
   .zoomctl button{
     width:32px;
@@ -755,11 +874,11 @@
     border-bottom:1px solid var(--border);
   }
   .zoomctl button:hover{
-    background:#1f1f24;
-    color:#e4e4e7;
+    background:var(--ctrl-bg-h);
+    color:var(--text-hi);
   }
   .zoomctl button:active{
-    background:#26262b;
+    background:var(--ctrl-bg-a);
   }
   .zoomctl button svg{display:block}
 
@@ -772,7 +891,7 @@
     height:40px;
     border-radius:var(--r);
     border:1px solid var(--border);
-    background:#18181c;
+    background:var(--ctrl-bg);
     color:var(--text);
     font-size:18px;
     font-weight:400;
@@ -785,17 +904,17 @@
     z-index:40;
     font-family:inherit;
     padding:0;
-    box-shadow:0 2px 8px rgba(0,0,0,.4);
+    box-shadow:var(--shadow-ctl);
   }
   .fab:hover{
-    background:#202025;
+    background:var(--ctrl-bg-h);
     border-color:var(--border-hi);
   }
   .fab:active{
-    background:#26262b;
+    background:var(--ctrl-bg-a);
   }
   .fab.open{
-    background:#26262b;
+    background:var(--ctrl-bg-a);
     border-color:var(--border-hi);
   }
 
@@ -806,10 +925,10 @@
     bottom:62px;
     width:244px;
     max-height:min(62vh,460px);
-    background:#131316;
+    background:var(--panel);
     border:1px solid var(--border);
     border-radius:var(--r);
-    box-shadow:0 8px 28px rgba(0,0,0,.6);
+    box-shadow:var(--shadow-panel);
     padding:10px;
     overflow-y:auto;
     z-index:50;
@@ -824,11 +943,11 @@
   }
   .palette::-webkit-scrollbar{width:5px}
   .palette::-webkit-scrollbar-thumb{
-    background:#2a2a30;
+    background:var(--scroll-thumb);
     border-radius:3px;
   }
   .palette::-webkit-scrollbar-thumb:hover{
-    background:#35353c;
+    background:var(--scroll-thumb-h);
   }
 
   .pal-group{margin-bottom:12px}
@@ -863,11 +982,11 @@
     letter-spacing:.01em;
   }
   .pal-item:hover{
-    background:#1c1c20;
-    color:#e4e4e7;
+    background:var(--ctrl-bg-h);
+    color:var(--text-hi);
   }
   .pal-item:active{
-    background:#232328;
+    background:var(--ctrl-bg-a);
   }
   .pal-item .pi{
     width:16px;
@@ -930,6 +1049,11 @@
       font-size:11px;
     }
   }
+  @media (max-width: 620px){
+    .actions{gap:4px}
+    .btn{padding:0 7px;font-size:11px;height:26px}
+    .btn.icon-btn{width:26px}
+  }
   @media (max-width: 420px){
     .node{width:180px}
   }
@@ -954,6 +1078,17 @@
       <span class="sub">程序化 3D 编辑器</span>
     </div>
     <div class="actions">
+      <button class="btn icon-btn" id="btnTheme" title="切换主题" aria-label="切换主题">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        </svg>
+      </button>
+      <button class="btn" id="btnImport" title="导入项目 JSON">导入</button>
+      <button class="btn" id="btnSave" title="保存项目为 JSON">保存</button>
       <button class="btn" id="btnReset">重置</button>
       <button class="btn primary" id="btnAdd">添加节点</button>
     </div>
@@ -1017,6 +1152,8 @@
   </main>
 </div>
 
+<input type="file" id="importFile" accept=".json,application/json">
+
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1045,7 +1182,7 @@ const CANVAS_MIN_W = 150, CANVAS_MIN_H = 110;
 const CANVAS_MAX_W = 1000, CANVAS_MAX_H = 760;
 const CANVAS_DEF_W = 280, CANVAS_DEF_H = 200;
 
-/* 分类配色（克制的低饱和方案） */
+/* 分类配色 */
 const CATS = {
   geo:      { color:'#65b88a', label:'几何体' },
   modifier: { color:'#d9a04f', label:'修改器' },
@@ -1061,6 +1198,27 @@ DEFAULT_MAT.userData.keep = true;
 
 /* 模型缓存 */
 const modelCache = new Map();
+
+/* =========================================================
+   主题
+   ========================================================= */
+const THEME_KEY = 'nodeforge.theme';
+
+function currentTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+}
+function applyTheme(theme) {
+  const t = theme === 'light' ? 'light' : 'dark';
+  if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+  try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+  const btn = $('btnTheme');
+  if (btn) {
+    const label = t === 'light' ? '切换为暗色主题' : '切换为亮色主题';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+}
 
 /* =========================================================
    节点定义表
@@ -1338,9 +1496,31 @@ let lastCanvasScale = -1;
 /* =========================================================
    模型加载
    ========================================================= */
-async function loadModelFromFile(nodeId, file) {
-  const ext = (file.name.split('.').pop() || '').toLowerCase();
-  const url = URL.createObjectURL(file);
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error || new Error('读取失败'));
+    r.readAsDataURL(file);
+  });
+}
+
+function dataUrlToBlob(dataUrl) {
+  const parts = String(dataUrl).split(',');
+  const head = parts[0] || '';
+  const body = parts[1] || '';
+  const m = /:(.*?);/.exec(head);
+  const mime = m ? m[1] : 'application/octet-stream';
+  const bin = atob(body);
+  const len = bin.length;
+  const arr = new Uint8Array(len);
+  for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+async function loadModelFromBlob(nodeId, blob, fileName) {
+  const ext = (fileName.split('.').pop() || '').toLowerCase();
+  const url = URL.createObjectURL(blob);
 
   let object = null;
   let error = null;
@@ -1390,10 +1570,25 @@ async function loadModelFromFile(nodeId, file) {
   const entry = {
     object,
     error,
-    fileName: file.name,
+    fileName: fileName || 'model',
     status: error ? 'error' : 'ready',
+    dataUrl: null,
   };
   modelCache.set(nodeId, entry);
+  return entry;
+}
+
+async function loadModelFromFile(nodeId, file) {
+  /* 先把原始文件读成 dataURL，便于保存 / 导入还原 */
+  let dataUrl = null;
+  try {
+    dataUrl = await readFileAsDataURL(file);
+  } catch (e) {
+    console.warn('读取模型文件失败:', e);
+  }
+
+  const entry = await loadModelFromBlob(nodeId, file, file.name);
+  if (dataUrl) entry.dataUrl = dataUrl;
   return entry;
 }
 
@@ -1917,6 +2112,7 @@ function createParamEl(node, p) {
       nameEl.textContent = entry.fileName;
       nameEl.title = entry.fileName;
       nameEl.classList.add(entry.error ? 'err' : 'ok');
+      btn.textContent = entry.error ? '重新选择' : '更换文件';
     } else {
       nameEl.textContent = '未选择';
     }
@@ -2683,8 +2879,6 @@ function duplicateNode(node) {
   return copy;
 }
 
-/* 说明：新增节点不再自动连线，需要手动从端口拖拽连接 */
-
 function deleteNode(id) {
   if (fullscreenNodeId === id) exitFullscreen();
   nodes = nodes.filter(n => n.id !== id);
@@ -2763,7 +2957,6 @@ function buildPalette() {
       const cy = (rect.height / 2 - panY) / scale - 90;
       const jitter = () => (Math.random() - 0.5) * 100;
 
-      /* 只添加节点，不自动连线（addNode 内部已完成 syncNodes / scheduleRebuild） */
       addNode(key, cx + jitter(), cy + jitter());
 
       closePalette();
@@ -2851,23 +3044,251 @@ function animate() {
 requestAnimationFrame(animate);
 
 /* =========================================================
-   默认场景
+   项目序列化 / 反序列化
    ========================================================= */
-function resetGraph() {
-  if (fsOverlay) exitFullscreen();
+function timestamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() +
+    pad(d.getMonth() + 1) +
+    pad(d.getDate()) + '-' +
+    pad(d.getHours()) +
+    pad(d.getMinutes()) +
+    pad(d.getSeconds());
+}
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function serializeGraph() {
+  const data = {
+    app: 'NodeForge',
+    version: 1,
+    savedAt: new Date().toISOString(),
+    view: { panX, panY, scale },
+    nodes: [],
+    edges: edges.map(e => ({
+      id: e.id,
+      from: { node: e.from.node, port: e.from.port },
+      to:   { node: e.to.node,   port: e.to.port },
+    })),
+  };
+
+  for (const n of nodes) {
+    const nd = {
+      id: n.id,
+      type: n.type,
+      x: Math.round(n.x),
+      y: Math.round(n.y),
+      params: JSON.parse(JSON.stringify(n.params)),
+    };
+
+    if (n.type === 'canvas') {
+      nd.canvasW = n.canvasW;
+      nd.canvasH = n.canvasH;
+    }
+
+    if (n.type === 'model') {
+      const entry = modelCache.get(n.id);
+      if (entry && entry.fileName) {
+        nd.modelFile = {
+          name: entry.fileName,
+          dataUrl: entry.dataUrl || null,
+        };
+      }
+    }
+
+    data.nodes.push(nd);
+  }
+
+  return data;
+}
+
+function saveProject() {
+  try {
+    const data = serializeGraph();
+    const json = JSON.stringify(data);
+    const sizeMB = json.length / (1024 * 1024);
+    if (sizeMB > 40) {
+      if (!confirm(`项目文件约 ${sizeMB.toFixed(1)} MB（包含模型数据），继续保存？`)) return;
+    }
+    downloadBlob(new Blob([json], { type: 'application/json' }), `nodeforge-${timestamp()}.json`);
+  } catch (err) {
+    console.error(err);
+    alert('保存失败：' + err.message);
+  }
+}
+
+function disposeEverything() {
+  if (fsOverlay) exitFullscreen();
   for (const id of [...canvasNodeData.keys()]) disposeCanvasData(id);
   modelCache.clear();
+  wireGroups.forEach(g => g.remove());
   wireGroups.clear();
   if (tempWireEl) { tempWireEl.remove(); tempWireEl = null; }
   while (wiresEl.firstChild) wiresEl.removeChild(wiresEl.firstChild);
-
+  nodesLayer.innerHTML = '';
+  nodeEls.clear();
   nodes = [];
   edges = [];
   uid = 0;
-  nodesLayer.innerHTML = '';
-  nodeEls.clear();
   closePalette();
+}
+
+async function loadProject(data) {
+  if (!data || !Array.isArray(data.nodes)) {
+    throw new Error('不是有效的 NodeForge 项目文件');
+  }
+
+  disposeEverything();
+
+  const idMap = new Map();
+  const pendingModels = [];
+
+  for (const nd of data.nodes) {
+    if (!nd || !nd.id) continue;
+    const def = DEFS[nd.type];
+    if (!def) continue;
+
+    const params = {};
+    def.params.forEach(p => { params[p.key] = p.value; });
+
+    if (nd.params && typeof nd.params === 'object') {
+      for (const k of Object.keys(params)) {
+        if (nd.params[k] !== undefined && nd.params[k] !== null) {
+          params[k] = nd.params[k];
+        }
+      }
+    }
+
+    /* 参数类型矫正 */
+    def.params.forEach(p => {
+      if (p.type === 'range') {
+        const v = parseFloat(params[p.key]);
+        params[p.key] = isNaN(v) ? p.value : clamp(v, p.min, p.max);
+      } else if (p.type === 'color') {
+        if (!/^#[0-9a-fA-F]{6}$/.test(String(params[p.key]))) params[p.key] = p.value;
+      } else if (p.type === 'toggle') {
+        params[p.key] = !!params[p.key];
+      }
+    });
+
+    const node = {
+      id: String(nd.id),
+      type: nd.type,
+      x: Number(nd.x) || 0,
+      y: Number(nd.y) || 0,
+      params,
+    };
+
+    if (nd.type === 'canvas') {
+      node.canvasW = clamp(Number(nd.canvasW) || CANVAS_DEF_W, CANVAS_MIN_W, CANVAS_MAX_W);
+      node.canvasH = clamp(Number(nd.canvasH) || CANVAS_DEF_H, CANVAS_MIN_H, CANVAS_MAX_H);
+    }
+
+    nodes.push(node);
+    idMap.set(node.id, node);
+
+    if (nd.type === 'model' && nd.modelFile && nd.modelFile.dataUrl) {
+      pendingModels.push({
+        nodeId: node.id,
+        name: nd.modelFile.name || 'model.glb',
+        dataUrl: nd.modelFile.dataUrl,
+      });
+    }
+  }
+
+  /* 还原模型 */
+  for (const pm of pendingModels) {
+    try {
+      const blob = dataUrlToBlob(pm.dataUrl);
+      await loadModelFromBlob(pm.nodeId, blob, pm.name);
+    } catch (err) {
+      console.warn('模型还原失败:', pm.nodeId, err);
+    }
+  }
+
+  /* 还原连线 */
+  const validIds = new Set(nodes.map(n => n.id));
+  const usedEdgeIds = new Set();
+  let tmpUid = 0;
+
+  edges = (data.edges || [])
+    .filter(e => e && e.from && e.to &&
+                 validIds.has(e.from.node) && validIds.has(e.to.node) &&
+                 e.from.port && e.to.port)
+    .map(e => {
+      let id = e.id;
+      if (!id || usedEdgeIds.has(id)) {
+        id = 'e' + (tmpUid++);
+        while (usedEdgeIds.has(id)) id = 'e' + (tmpUid++);
+      }
+      usedEdgeIds.add(id);
+      return {
+        id,
+        from: { node: e.from.node, port: e.from.port },
+        to:   { node: e.to.node,   port: e.to.port },
+      };
+    });
+
+  /* 还原 uid */
+  let maxId = tmpUid;
+  nodes.forEach(n => {
+    const m = /^n(\d+)$/.exec(n.id);
+    if (m) maxId = Math.max(maxId, parseInt(m[1], 10) + 1);
+  });
+  edges.forEach(e => {
+    const m = /^e(\d+)$/.exec(e.id);
+    if (m) maxId = Math.max(maxId, parseInt(m[1], 10) + 1);
+  });
+  uid = maxId;
+
+  /* 视图 */
+  const hasView = data.view && isFinite(data.view.scale);
+  if (hasView) {
+    scale = clamp(Number(data.view.scale) || 1, 0.25, 2.6);
+    panX  = Number(data.view.panX) || 0;
+    panY  = Number(data.view.panY) || 0;
+  }
+
+  syncNodes();
+  applyTransform();
+  drawWires();
+  rebuild();
+
+  if (!hasView) fitView();
+
+  requestAnimationFrame(() => {
+    drawWires();
+    for (const d of canvasNodeData.values()) updateCanvasResolution(d);
+    setTimeout(drawWires, 100);
+  });
+}
+
+async function importProjectFile(file) {
+  const text = await file.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    throw new Error('JSON 解析失败');
+  }
+  await loadProject(data);
+}
+
+/* =========================================================
+   默认场景
+   ========================================================= */
+function resetGraph() {
+  disposeEverything();
 
   const knot = addNode('torusKnot', 40, 40, { r: 0.95, t: 0.26, p: 2, q: 3 });
   const tr   = addNode('transform', 320, 40, { ry: 0 });
@@ -2902,9 +3323,54 @@ function resetGraph() {
 $('btnReset').addEventListener('click', resetGraph);
 
 /* =========================================================
+   主题 / 保存 / 导入 按钮
+   ========================================================= */
+applyTheme(currentTheme());
+
+$('btnTheme').addEventListener('click', e => {
+  e.stopPropagation();
+  applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
+  hideHint();
+});
+
+$('btnSave').addEventListener('click', e => {
+  e.stopPropagation();
+  saveProject();
+  hideHint();
+});
+
+const importFileEl = $('importFile');
+
+$('btnImport').addEventListener('click', e => {
+  e.stopPropagation();
+  importFileEl.click();
+  hideHint();
+});
+
+importFileEl.addEventListener('change', async () => {
+  const file = importFileEl.files && importFileEl.files[0];
+  importFileEl.value = '';
+  if (!file) return;
+  try {
+    await importProjectFile(file);
+  } catch (err) {
+    console.error(err);
+    alert('导入失败：' + err.message);
+  }
+});
+
+/* =========================================================
    键盘
    ========================================================= */
 window.addEventListener('keydown', e => {
+  /* Ctrl / Cmd + S 保存，Ctrl / Cmd + O 导入（输入框内也生效） */
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod) {
+    const k = e.key.toLowerCase();
+    if (k === 's') { e.preventDefault(); saveProject(); return; }
+    if (k === 'o') { e.preventDefault(); importFileEl.click(); return; }
+  }
+
   if (e.key === 'Escape') {
     if (fsOverlay) { exitFullscreen(); return; }
     closePalette();
