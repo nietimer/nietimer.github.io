@@ -483,6 +483,87 @@ select option{background:var(--panel);color:var(--text)}
   font-variant-numeric:tabular-nums;z-index:2;opacity:0;transition:opacity .15s}
 .node-canvas:hover .size-tip{opacity:1}
 
+/* ---------- 滑动分割覆盖层 ---------- */
+.node-canvas .split-overlay{
+  position:absolute;
+  pointer-events:none;
+  z-index:4;
+  display:none;
+}
+.node-canvas .split-line{
+  position:absolute;
+  top:0;bottom:0;
+  width:2px;
+  margin-left:-1px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 8px rgba(0,0,0,.45);
+  pointer-events:auto;
+  cursor:ew-resize;
+  touch-action:none;
+}
+.node-canvas .split-line:hover{background:#fff}
+.node-canvas .split-handle{
+  position:absolute;
+  top:50%;
+  width:22px;height:22px;
+  margin-left:-11px;
+  margin-top:-11px;
+  border-radius:50%;
+  background:rgba(255,255,255,.96);
+  box-shadow:0 1px 4px rgba(0,0,0,.5);
+  pointer-events:auto;
+  cursor:ew-resize;
+  touch-action:none;
+  color:#2b2b31;
+}
+.node-canvas .split-handle::before,
+.node-canvas .split-handle::after{
+  content:'';
+  position:absolute;
+  top:50%;
+  width:0;height:0;
+  margin-top:-4px;
+  border-top:4px solid transparent;
+  border-bottom:4px solid transparent;
+}
+.node-canvas .split-handle::before{
+  left:4px;
+  border-right:5px solid currentColor;
+}
+.node-canvas .split-handle::after{
+  right:4px;
+  border-left:5px solid currentColor;
+}
+
+/* ---------- 图片对比统计 ---------- */
+.compare-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  padding:1px 12px 6px;
+}
+.compare-stats .cs-item{
+  display:inline-flex;
+  align-items:baseline;
+  gap:4px;
+  padding:2px 6px;
+  border-radius:var(--r-xs);
+  border:1px solid var(--border);
+  background:var(--panel-3);
+  font-size:9.5px;
+  color:var(--text-dim);
+  letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.compare-stats .cs-item i{font-style:normal;color:var(--text-dim)}
+.compare-stats .cs-item b{font-weight:600;color:var(--text-hi)}
+.compare-stats .cs-item.hi b{color:#e88888}
+.compare-stats .cs-empty{
+  font-size:10px;color:var(--text-dim);font-style:italic;
+  letter-spacing:.01em;padding:2px 0;
+}
+
 /* 导出按钮 */
 .node-canvas .export-btn{
   position:absolute;
@@ -727,9 +808,11 @@ function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
-/* 把 <img> 按最大边长缩放绘制到 canvas */
+/* 把 <img> 绘制到 canvas。
+   默认按原始尺寸处理（不再缩到 1024）；maxSize 仅作为浏览器 canvas
+   物理尺寸上限的保护（超过后 canvas 创建会失败），正常图片不会触发。 */
 function imageToCanvas(img, maxSize) {
-  const MAX = maxSize || 1024;
+  const MAX = maxSize || 16384;
   let w = img.naturalWidth || img.width;
   let h = img.naturalHeight || img.height;
   const s = Math.min(1, MAX / Math.max(w, h));
@@ -1497,6 +1580,50 @@ function createCodeEditor(node, paramKey, onCommit) {
 }
 
 /* =========================================================
+   图片对比：合成工具
+   ========================================================= */
+function getAlignedB(node, A, B) {
+  const w = A.width, h = A.height;
+  if (node._bAligned &&
+      node._bAlignedFor === B &&
+      node._bAligned.w === w && node._bAligned.h === h) {
+    return node._bAligned;
+  }
+  const c = newCanvas(w, h);
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(B, 0, 0, w, h);
+  node._bAligned = c;
+  node._bAlignedFor = B;
+  return c;
+}
+
+function compositeCompare(node, A, B, splitPct) {
+  const w = A.width, h = A.height;
+  const bAligned = getAlignedB(node, A, B);
+  const c = newCanvas(w, h);
+  const ctx = c.getContext('2d');
+
+  /* 先铺满对比图 B，再用分割线左侧裁切显示底图 A：
+     - 分割线在最左（0%）→ 全部显示 B
+     - 分割线在最右（100%）→ 全部显示 A
+     - 中间 → 左侧 A、右侧 B */
+  ctx.drawImage(bAligned, 0, 0);
+
+  const sx = Math.round(w * clamp(splitPct, 0, 100) / 100);
+  if (sx > 0) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, sx, h);
+    ctx.clip();
+    ctx.drawImage(A, 0, 0);
+    ctx.restore();
+  }
+  return c;
+}
+
+/* =========================================================
    节点定义
    ========================================================= */
 const DEFS = {
@@ -1873,6 +2000,52 @@ const DEFS = {
       return c;
     },
   },
+
+  /* =====================================================
+     图片对比节点
+     —— 输出与画布输出一致：可调整尺寸、可拖动分割
+     ===================================================== */
+  compare: {
+    label:'图片对比', cat:'transform', icon:'⇄',
+    inputs: [
+      { name:'a', label:'底图 A', type:'img' },
+      { name:'b', label:'对比 B', type:'img' },
+    ],
+    outputs: [{ name:'out', label:'对比图', type:'img' }],
+    params: [
+      /* split 不在面板中显示，直接拖动画布上的分割条调整 */
+      { key:'split', label:'分割位置', type:'split', value:50 },
+    ],
+    eval(node, inputs) {
+      const A = inputs.a, B = inputs.b;
+      node._srcA = A || null;
+      node._srcB = B || null;
+
+      if (!A && !B) { node._stats = null; return null; }
+      if (!A) { node._stats = { single: true }; return copyCanvas(B); }
+      if (!B) { node._stats = { single: true }; return copyCanvas(A); }
+
+      /* 统计差异 */
+      const w = A.width, h = A.height;
+      const bAligned = getAlignedB(node, A, B);
+      const aData = A.getContext('2d').getImageData(0, 0, w, h).data;
+      const bData = bAligned.getContext('2d').getImageData(0, 0, w, h).data;
+      const total = w * h;
+      let diffPixels = 0;
+      let sumDiff = 0;
+      for (let i = 0; i < aData.length; i += 4) {
+        const d = (Math.abs(aData[i]     - bData[i]) +
+                   Math.abs(aData[i + 1] - bData[i + 1]) +
+                   Math.abs(aData[i + 2] - bData[i + 2])) / 3;
+        sumDiff += d;
+        if (d > 10) diffPixels++;
+      }
+      node._stats = { total, diffPixels, avgDiff: sumDiff / total };
+
+      return compositeCompare(node, A, B, node.params.split);
+    },
+  },
+
   output: {
     label:'画布输出', cat:'output', icon:'▢',
     inputs: [{ name:'in', label:'图像', type:'img' }],
@@ -1900,7 +2073,7 @@ function exportNodeOutput(nodeId) {
   const data = canvasNodeData.get(nodeId);
   const result = data && data._lastResult;
   if (!result || !result.width) {
-    alert('该输出节点没有图像');
+    alert('该节点没有图像');
     return;
   }
   result.toBlob(blob => {
@@ -1963,7 +2136,7 @@ function serializeGraph() {
       nd.inputCount  = n.inputCount || 1;
       nd.outputCount = n.outputCount || 0;
     }
-    if (n.type === 'output') {
+    if (n.type === 'output' || n.type === 'compare') {
       nd.canvasW = n.canvasW;
       nd.canvasH = n.canvasH;
     }
@@ -2040,6 +2213,9 @@ async function loadProject(data) {
         if (!/^#[0-9a-fA-F]{6}$/.test(String(params[p.key]))) params[p.key] = p.value;
       } else if (p.type === 'code') {
         if (typeof params[p.key] !== 'string') params[p.key] = p.value;
+      } else if (p.type === 'split') {
+        const v = parseFloat(params[p.key]);
+        params[p.key] = isNaN(v) ? p.value : clamp(v, 0, 100);
       }
     });
 
@@ -2067,7 +2243,7 @@ async function loadProject(data) {
       params,
     };
 
-    if (nd.type === 'output') {
+    if (nd.type === 'output' || nd.type === 'compare') {
       node.canvasW = clamp(Number(nd.canvasW) || CANVAS_DEF_W, CANVAS_MIN_W, CANVAS_MAX_W);
       node.canvasH = clamp(Number(nd.canvasH) || CANVAS_DEF_H, CANVAS_MIN_H, CANVAS_MAX_H);
     }
@@ -2087,7 +2263,8 @@ async function loadProject(data) {
     if (!node) continue;
     try {
       const img = await loadImageEl(nd.image);
-      node._canvas = imageToCanvas(img, 1024);
+      /* 不再预缩放到 1024，按原始尺寸恢复 */
+      node._canvas = imageToCanvas(img);
       node._fileName = nd.fileName || 'image.png';
     } catch (err) {
       console.warn('图像恢复失败：', nd.id, err);
@@ -2279,6 +2456,7 @@ function updateOutputCanvas(data, result) {
     emptyMsg.style.display = 'flex';
     badge.textContent = '无输入';
     if (exportBtn) exportBtn.disabled = true;
+    if (data.syncOverlay) data.syncOverlay(null, pr);
     return;
   }
   emptyMsg.style.display = 'none';
@@ -2295,6 +2473,8 @@ function updateOutputCanvas(data, result) {
   ctx.drawImage(result, dx, dy, dw, dh);
 
   badge.textContent = `${result.width} × ${result.height}`;
+
+  if (data.syncOverlay) data.syncOverlay({ dx, dy, dw, dh }, pr);
 }
 
 function scheduleCanvasResolutionUpdate() {
@@ -2305,6 +2485,35 @@ function scheduleCanvasResolutionUpdate() {
       if (w > 0 && h > 0) updateOutputCanvas(data, data._lastResult);
     }
   });
+}
+
+/* =========================================================
+   图片对比统计显示
+   ========================================================= */
+function updateCompareStats(node) {
+  const el = nodeEls.get(node.id);
+  if (!el) return;
+  const box = el.querySelector('.compare-stats');
+  if (!box) return;
+
+  const s = node._stats;
+
+  let html;
+  if (!s || s.single) {
+    html = `<span class="cs-empty">${s && s.single ? '需要两张图像' : '等待图像输入'}</span>`;
+  } else {
+    const diffPct = s.total ? (s.diffPixels / s.total) * 100 : 0;
+    const avgPct  = (s.avgDiff / 255) * 100;
+    html =
+      `<span class="cs-item hi"><i>差异</i><b>${diffPct.toFixed(1)}%</b></span>` +
+      `<span class="cs-item"><i>平均差</i><b>${avgPct.toFixed(1)}%</b></span>` +
+      `<span class="cs-item"><i>相似</i><b>${(100 - diffPct).toFixed(1)}%</b></span>`;
+  }
+
+  if (box._html !== html) {
+    box.innerHTML = html;
+    box._html = html;
+  }
 }
 
 /* =========================================================
@@ -2348,12 +2557,17 @@ function rebuild() {
   }
 
   for (const node of nodes) {
-    if (node.type !== 'output') continue;
-    const data = canvasNodeData.get(node.id);
-    if (!data) continue;
-    const result = cache.get(node.id);
-    data._lastResult = result;
-    updateOutputCanvas(data, result);
+    if (node.type === 'output' || node.type === 'compare') {
+      const data = canvasNodeData.get(node.id);
+      if (data) {
+        const result = cache.get(node.id);
+        data._lastResult = result;
+        updateOutputCanvas(data, result);
+      }
+    }
+    if (node.type === 'compare') {
+      updateCompareStats(node);
+    }
   }
 
   if (portsChanged) {
@@ -2385,6 +2599,9 @@ function fmt(v) {
 }
 
 function createParamEl(node, p) {
+  /* 分割位置不在参数面板显示，直接在画布上拖动 */
+  if (p.type === 'split') return null;
+
   const wrap = document.createElement('div');
   wrap.className = 'param';
 
@@ -2523,7 +2740,8 @@ function createParamEl(node, p) {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        node._canvas = imageToCanvas(img, 1024);
+        /* 不再预缩放到 1024，按原始尺寸载入 */
+        node._canvas = imageToCanvas(img);
         node._fileName = file.name;
         nameEl.textContent = file.name.length > 16
           ? file.name.slice(0, 14) + '…' : file.name;
@@ -2815,9 +3033,24 @@ function createNodeEl(node) {
     });
   }
 
-  def.params.forEach(p => body.appendChild(createParamEl(node, p)));
+  def.params.forEach(p => {
+    const pe = createParamEl(node, p);
+    if (pe) body.appendChild(pe);
+  });
 
-  if (node.type === 'output') {
+  /* ---------- 图片对比：统计信息 ---------- */
+  if (node.type === 'compare') {
+    const stats = document.createElement('div');
+    stats.className = 'compare-stats';
+    stats.innerHTML = '<span class="cs-empty">等待图像输入</span>';
+    body.appendChild(stats);
+  }
+
+  /* ---------- 预览画布（画布输出 / 图片对比） ---------- */
+  if (node.type === 'output' || node.type === 'compare') {
+    const isOutput = node.type === 'output';
+    const isCompare = node.type === 'compare';
+
     const box = document.createElement('div');
     box.className = 'node-canvas';
     box.style.width  = node.canvasW + 'px';
@@ -2829,7 +3062,9 @@ function createNodeEl(node) {
 
     const emptyMsg = document.createElement('div');
     emptyMsg.className = 'empty-msg';
-    emptyMsg.innerHTML = '<div class="big">▢</div><div>连接图像</div>';
+    emptyMsg.innerHTML = isOutput
+      ? '<div class="big">▢</div><div>连接图像</div>'
+      : '<div class="big">⇄</div><div>连接两张图像</div>';
     box.appendChild(emptyMsg);
 
     const badge = document.createElement('div');
@@ -2863,6 +3098,76 @@ function createNodeEl(node) {
     });
     box.appendChild(exportBtn);
 
+    /* ---------- 图片对比：滑动分割覆盖层 ---------- */
+    let overlay = null;
+    let updateOverlayPos = null;
+
+    if (isCompare) {
+      overlay = document.createElement('div');
+      overlay.className = 'split-overlay';
+
+      const lineEl = document.createElement('div');
+      lineEl.className = 'split-line';
+
+      const handleEl = document.createElement('div');
+      handleEl.className = 'split-handle';
+
+      overlay.append(lineEl, handleEl);
+      box.appendChild(overlay);
+
+      updateOverlayPos = () => {
+        const v = clamp(node.params.split, 0, 100);
+        lineEl.style.left = v + '%';
+        handleEl.style.left = v + '%';
+      };
+      updateOverlayPos();
+
+      /* 拖动中快速重绘（只重绘本节点画布，不重算整条链路） */
+      let fastRaf = null;
+      const fastRedraw = () => {
+        if (fastRaf) return;
+        fastRaf = requestAnimationFrame(() => {
+          fastRaf = null;
+          const d = canvasNodeData.get(node.id);
+          if (!d) return;
+          const A = node._srcA, B = node._srcB;
+          let result = null;
+          if (A && B) result = compositeCompare(node, A, B, node.params.split);
+          else if (A) result = A;
+          else if (B) result = B;
+          updateOutputCanvas(d, result);
+        });
+      };
+
+      const startSplitDrag = (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+
+        const rect = overlay.getBoundingClientRect();
+        if (rect.width <= 0) return;
+
+        const onMove = (e2) => {
+          const v = ((e2.clientX - rect.left) / rect.width) * 100;
+          node.params.split = clamp(v, 0, 100);
+          updateOverlayPos();
+          fastRedraw();
+        };
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointercancel', onUp);
+          scheduleRebuild();
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+      };
+
+      handleEl.addEventListener('pointerdown', startSplitDrag);
+      lineEl.addEventListener('pointerdown', startSplitDrag);
+    }
+
+    /* ---------- 尺寸手柄 ---------- */
     const handle = document.createElement('div');
     handle.className = 'resize-handle';
     handle.title = '拖拽调整画布尺寸';
@@ -2901,10 +3206,9 @@ function createNodeEl(node) {
     });
 
     body.appendChild(box);
-
     el.style.width = (node.canvasW + 22) + 'px';
 
-    canvasNodeData.set(node.id, {
+    const dataEntry = {
       nodeId: node.id,
       containerEl: box,
       canvas, ctx,
@@ -2912,7 +3216,24 @@ function createNodeEl(node) {
       exportBtn,
       _lastResult: null,
       ro: null,
-    });
+    };
+
+    if (isCompare) {
+      dataEntry.syncOverlay = (rect, pr) => {
+        if (!rect) {
+          overlay.style.display = 'none';
+          return;
+        }
+        overlay.style.display = 'block';
+        overlay.style.left = (rect.dx / pr) + 'px';
+        overlay.style.top = (rect.dy / pr) + 'px';
+        overlay.style.width = (rect.dw / pr) + 'px';
+        overlay.style.height = (rect.dh / pr) + 'px';
+        updateOverlayPos();
+      };
+    }
+
+    canvasNodeData.set(node.id, dataEntry);
   }
 
   if (isScript) {
@@ -3169,6 +3490,7 @@ function onPointerDown(e) {
   if (e.target.closest('.resize-handle')) return;
   if (e.target.closest('.port-controls')) return;
   if (e.target.closest('.export-btn')) return;
+  if (e.target.closest('.split-line') || e.target.closest('.split-handle')) return;
 
   const wireHit = e.target.closest('.wire-hit');
   if (wireHit) { e.stopPropagation(); return; }
@@ -3419,7 +3741,7 @@ function addNode(type, x, y, overrides) {
 
   const node = { id: 'n' + (uid++), type, x, y, params };
 
-  if (type === 'output') {
+  if (type === 'output' || type === 'compare') {
     node.canvasW = CANVAS_DEF_W;
     node.canvasH = CANVAS_DEF_H;
   }
@@ -3445,7 +3767,7 @@ function duplicateNode(node) {
   };
   if (node._canvas) copy._canvas = node._canvas;
   if (node._fileName) copy._fileName = node._fileName;
-  if (node.type === 'output') {
+  if (node.type === 'output' || node.type === 'compare') {
     copy.canvasW = node.canvasW;
     copy.canvasH = node.canvasH;
   }
