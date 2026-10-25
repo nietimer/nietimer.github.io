@@ -226,15 +226,39 @@ select:hover{border-color:var(--ink-3);background-color:var(--paper-2)}
 .chip.blank{border-style:dashed;color:var(--ink-3)}
 .chip.blank.active{background:var(--steel);color:var(--paper);border-color:var(--steel);border-style:solid}
 
+/* ---- 类别数选择 ---- */
+.class-row{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.class-label{
+  font-family:var(--mono);font-size:10px;letter-spacing:1.4px;
+  color:var(--ink-3);text-transform:uppercase;white-space:nowrap;
+}
+.class-btns{display:flex;gap:4px;flex-wrap:wrap}
+.cls-btn{
+  min-width:28px;height:26px;padding:0 6px;
+  border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);
+  font-family:var(--mono);font-size:12px;font-weight:600;
+  cursor:pointer;transition:.15s;line-height:1;
+}
+.cls-btn:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+.cls-btn.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
 .data-tools{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
 .tool{
   flex:1;min-width:66px;padding:7px 8px;
   border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);
   font-family:var(--sans);font-size:11.5px;font-weight:500;
   cursor:pointer;transition:.15s;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
 }
 .tool:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
 .tool.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tool .dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  flex:0 0 auto;box-shadow:0 0 0 1px rgba(250,246,236,.6);
+}
 .tool.danger{color:var(--rust);border-color:var(--rust);flex:0 0 auto}
 .tool.danger:hover{background:var(--rust);color:var(--paper)}
 .tool.danger:disabled{opacity:.35;cursor:not-allowed;background:transparent;color:var(--rust)}
@@ -267,13 +291,18 @@ select:hover{border-color:var(--ink-3);background-color:var(--paper-2)}
   border:1px solid var(--rule-2);background:var(--paper-2);
   font-family:var(--mono);font-size:11.5px;
   color:var(--ink-2);text-align:center;letter-spacing:.2px;
-  transition:.2s;
+  transition:.2s;line-height:1.7;
 }
 .probe-bar b{font-weight:600}
 .probe-bar b.rust{color:var(--rust)}
 .probe-bar b.steel{color:var(--steel)}
 .probe-bar.warn{background:#f7e6df;border-color:var(--rust);color:var(--rust)}
 .probe-bar.success{background:#e6f2e2;border-color:var(--forest);color:var(--forest)}
+.cls-badge{
+  display:inline-block;padding:2px 8px;border-radius:2px;
+  color:#faf6ec;font-weight:600;font-family:var(--mono);
+  font-size:11px;letter-spacing:.3px;line-height:1.5;
+}
 
 .loss-wrap{
   margin-top:14px;border:1px solid var(--ink);background:#faf6ec;position:relative;
@@ -476,7 +505,7 @@ input[type=range]::-moz-range-thumb{
         <span class="arrow">→</span>
         <span id="hiddenInfo">隐藏层</span>
         <span class="arrow">→</span>
-        <span class="tag out">输出 · 1 · σ</span>
+        <span class="tag out" id="outTag">输出 · 2 · softmax</span>
       </div>
 
       <div class="layer-list" id="layerList"></div>
@@ -498,19 +527,18 @@ input[type=range]::-moz-range-thumb{
       <div class="chips" id="chips">
         <button class="chip active" data-ds="circle">同心圆</button>
         <button class="chip" data-ds="xor">XOR</button>
-        <button class="chip" data-ds="spiral">双螺旋</button>
-        <button class="chip" data-ds="moons">双月</button>
+        <button class="chip" data-ds="spiral">螺旋</button>
+        <button class="chip" data-ds="moons">月牙</button>
         <button class="chip" data-ds="blobs">高斯团</button>
         <button class="chip blank" data-ds="blank">空白</button>
       </div>
 
-      <div class="data-tools" id="dataTools">
-        <button class="tool active" data-mode="inspect">查看</button>
-        <button class="tool" data-mode="addPos">＋ 类别 1</button>
-        <button class="tool" data-mode="addNeg">＋ 类别 0</button>
-        <button class="tool" data-mode="erase">删除点</button>
-        <button class="tool danger" id="clearCustom" disabled>清空</button>
+      <div class="class-row">
+        <span class="class-label">类别数</span>
+        <div class="class-btns" id="classBtns"></div>
       </div>
+
+      <div class="data-tools" id="dataTools"></div>
 
       <div class="data-io" id="dataIO">
         <button class="io-btn export" id="exportFile" disabled title="将自定义点导出为 JSON 文件">↓ 导出文件</button>
@@ -558,7 +586,7 @@ input[type=range]::-moz-range-thumb{
         <button class="ghost-btn big" id="stepBtn" title="单步训练一个轮次">⏭</button>
       </div>
 
-      <div class="hint">修改网络结构会重置权重 · 空格键快速开始 / 暂停</div>
+      <div class="hint">修改网络结构 / 类别数会重置权重 · 空格键快速开始 / 暂停</div>
     </section>
 
   </main>
@@ -601,6 +629,20 @@ const C = {
   forest:'#4d7a3a', gold:'#b8891f',
 };
 
+/* 类别调色板（最多 8 类） */
+const CLASS_COLORS = [
+  { hex: '#3d6a82', rgb: [61, 106, 130] },   // steel
+  { hex: '#b8442a', rgb: [184, 68, 42] },    // rust
+  { hex: '#4d7a3a', rgb: [77, 122, 58] },    // forest
+  { hex: '#b8891f', rgb: [184, 137, 31] },   // gold
+  { hex: '#6b4a8a', rgb: [107, 74, 138] },   // purple
+  { hex: '#2f7d7a', rgb: [47, 125, 122] },   // teal
+  { hex: '#a03a6a', rgb: [160, 58, 106] },   // magenta
+  { hex: '#7a5a2a', rgb: [122, 90, 42] },    // brown
+];
+const MAX_CLASSES = 8;
+const MIN_CLASSES = 2;
+
 function fitCanvas(cv) {
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const rect = cv.getBoundingClientRect();
@@ -614,7 +656,7 @@ function fitCanvas(cv) {
 }
 
 /* =========================================================
-   1. 激活函数
+   1. 激活函数（输出层固定 softmax）
    ========================================================= */
 const ACT = {
   relu:    { name: 'ReLU',    f: v => v > 0 ? v : 0,          d: v => v > 0 ? 1 : 0 },
@@ -628,6 +670,7 @@ const ACT = {
    2. 全局状态
    ========================================================= */
 const state = {
+  K: 2,                                   /* 类别数（输出维度） */
   layers: [ { n: 8, act: 'relu' }, { n: 6, act: 'tanh' } ],
   baseData: [],
   customPoints: [],
@@ -647,14 +690,15 @@ const state = {
   probe: null,
   acc: null,
   mode: 'inspect',
+  addLabel: 0,
   hoverNeuron: null,
   pinnedNeuron: null,
   netLayout: null,
   warnTimer: null,
 };
 
-const getSizes = () => [2, ...state.layers.map(l => l.n), 1];
-const getActNames = () => [...state.layers.map(l => l.act), 'sigmoid'];
+const getSizes = () => [2, ...state.layers.map(l => l.n), state.K];
+const getHiddenActNames = () => state.layers.map(l => l.act);
 
 /* =========================================================
    3. 网络初始化
@@ -682,13 +726,15 @@ function initNet() {
 }
 
 /* =========================================================
-   4. 前向 / 反向
+   4. 前向 / 反向（softmax + 交叉熵）
    ========================================================= */
 function forward(x) {
   const acts = [x], zs = [];
   let a = x;
-  const names = getActNames();
-  for (let l = 0; l < state.W.length; l++) {
+  const names = getHiddenActNames();
+  const L = state.W.length;
+
+  for (let l = 0; l < L; l++) {
     const Wl = state.W[l], bl = state.b[l];
     const z = new Array(Wl.length);
     for (let j = 0; j < Wl.length; j++) {
@@ -698,41 +744,64 @@ function forward(x) {
       z[j] = s;
     }
     zs.push(z);
-    const A = ACT[names[l]] || ACT.sigmoid;
-    const out = new Array(z.length);
-    for (let j = 0; j < z.length; j++) out[j] = A.f(z[j]);
+
+    let out;
+    if (l === L - 1) {
+      /* softmax */
+      let mx = -Infinity;
+      for (let j = 0; j < z.length; j++) if (z[j] > mx) mx = z[j];
+      let sum = 0;
+      out = new Array(z.length);
+      for (let j = 0; j < z.length; j++) { const e = Math.exp(z[j] - mx); out[j] = e; sum += e; }
+      for (let j = 0; j < z.length; j++) out[j] /= sum;
+    } else {
+      const A = ACT[names[l]] || ACT.relu;
+      out = new Array(z.length);
+      for (let j = 0; j < z.length; j++) out[j] = A.f(z[j]);
+    }
+
     a = out;
     acts.push(a);
   }
   return { acts, zs };
 }
 
-function predictProb(x, y) {
-  if (!state.W.length) return 0.5;
+/** 返回长度为 K 的概率数组 */
+function predictProbs(x, y) {
+  if (!state.W.length) {
+    const u = new Array(state.K).fill(1 / state.K);
+    return u;
+  }
   const { acts } = forward([x, y]);
-  const last = acts[acts.length - 1];
-  return last ? last[0] : 0.5;
+  return acts[acts.length - 1];
+}
+
+function argmax(arr) {
+  let bi = 0, best = arr[0];
+  for (let i = 1; i < arr.length; i++) if (arr[i] > best) { best = arr[i]; bi = i; }
+  return bi;
 }
 
 function trainBatch(batchIdx) {
   const L = state.W.length;
   if (!L) return 0;
-  const names = getActNames();
+  const names = getHiddenActNames();
   const dW = state.W.map(l => l.map(row => new Float64Array(row.length)));
   const db = state.b.map(r => new Float64Array(r.length));
   let loss = 0;
-  const eps = 1e-7;
+  const eps = 1e-9;
 
   for (let bi = 0; bi < batchIdx.length; bi++) {
     const sample = state.data[batchIdx[bi]];
     if (!sample) continue;
     const { acts, zs } = forward(sample.x);
-    const out = acts[L][0];
+    const out = acts[L];
     const y = sample.y;
-    loss += -(y * Math.log(out + eps) + (1 - y) * Math.log(1 - out + eps));
+    loss -= Math.log(Math.max(out[y] || eps, eps));
 
-    let delta = new Float64Array(1);
-    delta[0] = out - y;
+    /* softmax + 交叉熵 → delta = out - onehot */
+    let delta = new Float64Array(out.length);
+    for (let j = 0; j < out.length; j++) delta[j] = out[j] - (j === y ? 1 : 0);
 
     for (let l = L - 1; l >= 0; l--) {
       const aPrev = acts[l];
@@ -749,7 +818,7 @@ function trainBatch(batchIdx) {
 
       if (l > 0) {
         const nd = new Float64Array(aPrev.length);
-        const Aprev = ACT[names[l - 1]] || ACT.sigmoid;
+        const Aprev = ACT[names[l - 1]] || ACT.relu;
         const zPrev = zs[l - 1];
         for (let k = 0; k < aPrev.length; k++) {
           let s = 0;
@@ -800,73 +869,126 @@ function computeAcc() {
   if (!state.data.length) return 0;
   let ok = 0;
   for (const d of state.data) {
-    const p = predictProb(d.x[0], d.x[1]);
-    if ((p > 0.5 ? 1 : 0) === d.y) ok++;
+    const p = predictProbs(d.x[0], d.x[1]);
+    if (argmax(p) === d.y) ok++;
   }
   return ok / state.data.length;
 }
 
 /* =========================================================
-   5. 数据集
+   5. 数据集（支持 K 类）
    ========================================================= */
 function generateBaseData() {
+  const K = state.K;
   const n = state.samples;
   const N = state.noise;
   const pts = [];
   const jit = () => randn() * N * 0.2;
   const add = (x, y, l) => pts.push({ x: [x + jit(), y + jit()], y: l });
-  const per = Math.floor(n / 2);
+  const per = Math.max(28, Math.floor(n / K));
+
+  if (state.dataset === 'blank') { state.baseData = []; return; }
 
   switch (state.dataset) {
-    case 'blank':
-      state.baseData = [];
-      return;
+
+    /* ---------- 同心圆 / 同心环 ---------- */
     case 'circle': {
-      for (let i = 0; i < per; i++) {
-        const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 0.42;
-        add(Math.cos(a) * r, Math.sin(a) * r, 0);
-      }
-      for (let i = 0; i < per; i++) {
-        const a = Math.random() * TAU, r = 0.66 + Math.random() * 0.32;
-        add(Math.cos(a) * r, Math.sin(a) * r, 1);
+      if (K === 2) {
+        for (let i = 0; i < per; i++) {
+          const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 0.42;
+          add(Math.cos(a) * r, Math.sin(a) * r, 0);
+        }
+        for (let i = 0; i < per; i++) {
+          const a = Math.random() * TAU, r = 0.66 + Math.random() * 0.32;
+          add(Math.cos(a) * r, Math.sin(a) * r, 1);
+        }
+      } else {
+        for (let c = 0; c < K; c++) {
+          const r0 = 0.06 + (c / K) * 0.90;
+          const r1 = 0.06 + ((c + 1) / K) * 0.90;
+          const rr0 = r0 * r0;
+          const rr1 = (r0 + (r1 - r0) * 0.86) ** 2;
+          for (let i = 0; i < per; i++) {
+            const a = Math.random() * TAU;
+            const r = Math.sqrt(rr0 + Math.random() * (rr1 - rr0));
+            add(Math.cos(a) * r, Math.sin(a) * r, c);
+          }
+        }
       }
       break;
     }
+
+    /* ---------- XOR / 象限 ---------- */
     case 'xor': {
-      const C_ = [[-0.6, -0.6, 0], [0.6, 0.6, 0], [-0.6, 0.6, 1], [0.6, -0.6, 1]];
-      for (let i = 0; i < n; i++) {
-        const c = C_[i % 4];
-        const s = 0.09 + N * 0.2;
-        add(c[0] + randn() * s, c[1] + randn() * s, c[2]);
+      const quads = [[-0.6, -0.6], [0.6, 0.6], [-0.6, 0.6], [0.6, -0.6]];
+      const pat = K === 2 ? [0, 0, 1, 1]
+                : K === 3 ? [0, 1, 2, 0]
+                : [0, 1, 2, 3].map(v => v % K);
+      const perQ = Math.max(18, Math.floor(n / 4));
+      const s = 0.09 + N * 0.2;
+      for (let i = 0; i < perQ * 4; i++) {
+        const qi = i % 4;
+        const q = quads[qi];
+        add(q[0] + randn() * s, q[1] + randn() * s, pat[qi]);
       }
       break;
     }
+
+    /* ---------- 螺旋（K 条臂） ---------- */
     case 'spiral': {
-      for (let c = 0; c < 2; c++) {
+      for (let c = 0; c < K; c++) {
         for (let i = 0; i < per; i++) {
           const t = i / per;
           const r = 0.12 + t * 0.82;
-          const ang = t * 3.5 + c * Math.PI;
+          const ang = t * 3.5 + c * (TAU / K);
           add(Math.cos(ang) * r, Math.sin(ang) * r, c);
         }
       }
       break;
     }
+
+    /* ---------- 月牙（K 个弧） ---------- */
     case 'moons': {
-      for (let i = 0; i < per; i++) {
-        const t = Math.random() * Math.PI;
-        add(Math.cos(t) * 0.74 - 0.26, Math.sin(t) * 0.74 - 0.2, 0);
-      }
-      for (let i = 0; i < per; i++) {
-        const t = Math.random() * Math.PI;
-        add(-Math.cos(t) * 0.74 + 0.26, -Math.sin(t) * 0.74 + 0.2, 1);
+      if (K === 2) {
+        for (let i = 0; i < per; i++) {
+          const t = Math.random() * Math.PI;
+          add(Math.cos(t) * 0.74 - 0.26, Math.sin(t) * 0.74 - 0.2, 0);
+        }
+        for (let i = 0; i < per; i++) {
+          const t = Math.random() * Math.PI;
+          add(-Math.cos(t) * 0.74 + 0.26, -Math.sin(t) * 0.74 + 0.2, 1);
+        }
+      } else {
+        for (let c = 0; c < K; c++) {
+          const rot = c * TAU / K - Math.PI / 2;
+          const cx = Math.cos(rot) * 0.42, cy = Math.sin(rot) * 0.42;
+          const cr = Math.cos(rot), sr = Math.sin(rot);
+          for (let i = 0; i < per; i++) {
+            const t = Math.random() * Math.PI;
+            const lx = Math.cos(t) * 0.30;
+            const ly = Math.sin(t) * 0.30;
+            add(cx + lx * cr - ly * sr, cy + lx * sr + ly * cr, c);
+          }
+        }
       }
       break;
     }
+
+    /* ---------- 高斯团 ---------- */
     case 'blobs': {
       const s = 0.2 + N * 0.18;
-      for (let i = 0; i < per; i++) add(-0.48 + randn() * s, -0.36 + randn() * s, 0);
-      for (let i = 0; i < per; i++) add(0.48 + randn() * s, 0.36 + randn() * s, 1);
+      for (let c = 0; c < K; c++) {
+        let cx, cy;
+        if (K === 2) {
+          cx = c === 0 ? -0.48 : 0.48;
+          cy = c === 0 ? -0.36 : 0.36;
+        } else {
+          const a = c * TAU / K - Math.PI / 2;
+          cx = Math.cos(a) * 0.58;
+          cy = Math.sin(a) * 0.58;
+        }
+        for (let i = 0; i < per; i++) add(cx + randn() * s, cy + randn() * s, c);
+      }
       break;
     }
   }
@@ -943,6 +1065,7 @@ function drawNet() {
   const hl = state.pinnedNeuron || state.hoverNeuron;
   const hlKey = hl ? `${hl.layer}-${hl.index}` : null;
 
+  /* ---- 连接线 ---- */
   ctx.lineCap = 'round';
   for (let l = 0; l < state.W.length; l++) {
     const A = cols[l], B = cols[l + 1];
@@ -984,6 +1107,7 @@ function drawNet() {
     }
   }
 
+  /* ---- 神经元 ---- */
   for (let li = 0; li < nL; li++) {
     const isIn = li === 0, isOut = li === nL - 1;
     for (let i = 0; i < cols[li].length; i++) {
@@ -994,9 +1118,14 @@ function drawNet() {
       const r = isHl ? R * 1.3 : R;
 
       let fill, stroke;
-      if (isIn) { fill = C.steel; stroke = C.steel; }
-      else if (isOut) { fill = C.rust; stroke = C.rust; }
-      else { fill = C.paper; stroke = C.ink; }
+      if (isIn) {
+        fill = C.steel; stroke = C.steel;
+      } else if (isOut) {
+        const cc = CLASS_COLORS[i] || CLASS_COLORS[0];
+        fill = cc.hex; stroke = cc.hex;
+      } else {
+        fill = C.paper; stroke = C.ink;
+      }
 
       if (dim) ctx.globalAlpha = 0.28;
 
@@ -1031,6 +1160,7 @@ function drawNet() {
     }
   }
 
+  /* ---- 列标签 ---- */
   ctx.font = '600 9.5px ui-monospace, SFMono-Regular, Menlo, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -1070,15 +1200,8 @@ let lastInspectorHTML = '';
 
 function updateInspector() {
   const n = state.pinnedNeuron || state.hoverNeuron;
-  if (!n) {
-    if (lastInspectorHTML !== '') {
-      inspector.classList.remove('show');
-      lastInspectorHTML = '';
-    }
-    return;
-  }
   const sizes = getSizes();
-  if (n.layer >= sizes.length || n.index >= sizes[n.layer]) {
+  if (!n || n.layer >= sizes.length || n.index >= sizes[n.layer]) {
     if (lastInspectorHTML !== '') {
       inspector.classList.remove('show');
       lastInspectorHTML = '';
@@ -1086,9 +1209,10 @@ function updateInspector() {
     return;
   }
 
+  const isOut = n.layer === sizes.length - 1;
   let name;
   if (n.layer === 0) name = `输入节点 x${n.index + 1}`;
-  else if (n.layer === sizes.length - 1) name = '输出节点 ŷ';
+  else if (isOut) name = `输出节点 · 类别 ${n.index}`;
   else name = `隐藏层 ${n.layer} · 神经元 ${n.index + 1}`;
 
   let extra;
@@ -1097,7 +1221,9 @@ function updateInspector() {
     const layerActs = acts[n.layer];
     let a = null;
     if (layerActs && n.index < layerActs.length) a = layerActs[n.index];
-    extra = a != null ? `激活值 <i>${a.toFixed(3)}</i>` : '激活值 —';
+    extra = a != null
+      ? `${isOut ? '概率' : '激活值'} <i>${a.toFixed(3)}</i>`
+      : '激活值 —';
   } else {
     extra = '<span style="opacity:.6">点击数据画布设探针</span>';
   }
@@ -1162,6 +1288,7 @@ function drawData() {
   const WORLD = 2.6;
   const toPx = (x, y) => [ (x / WORLD + 0.5) * w, (0.5 - y / WORLD) * h ];
 
+  /* ---- 决策背景 ---- */
   if (state.W.length && state.data.length) {
     const N = w > 500 ? 112 : 80;
     if (!offCanvas) offCanvas = document.createElement('canvas');
@@ -1169,26 +1296,26 @@ function drawData() {
     const octx = offCanvas.getContext('2d');
     const img = octx.createImageData(N, N);
     const d = img.data;
+    const K = state.K;
+    const invK = 1 / K;
+    const norm = K > 1 ? 1 / (1 - invK) : 1;
 
     for (let i = 0; i < N; i++) {
       const wy = WORLD / 2 - (i + 0.5) / N * WORLD;
       for (let j = 0; j < N; j++) {
         const wx = -WORLD / 2 + (j + 0.5) / N * WORLD;
-        const p = predictProb(wx, wy);
+        const p = predictProbs(wx, wy);
+
+        let bi = 0, best = p[0];
+        for (let k = 1; k < K; k++) if (p[k] > best) { best = p[k]; bi = k; }
+
+        const conf = (best - invK) * norm;
+        const alpha = 0.05 + Math.pow(Math.max(0, conf), 0.72) * 0.92;
+        const c = CLASS_COLORS[bi] ? CLASS_COLORS[bi].rgb : CLASS_COLORS[0].rgb;
         const o = (i * N + j) * 4;
-
-        const conf = Math.abs(p - 0.5) * 2;
-        const alpha = 0.05 + Math.pow(conf, 0.72) * 0.92;
-
-        if (p > 0.5) {
-          d[o]     = 184;
-          d[o + 1] = 68;
-          d[o + 2] = 42;
-        } else {
-          d[o]     = 48;
-          d[o + 1] = 100;
-          d[o + 2] = 138;
-        }
+        d[o]     = c[0];
+        d[o + 1] = c[1];
+        d[o + 2] = c[2];
         d[o + 3] = Math.round(alpha * 255);
       }
     }
@@ -1201,6 +1328,7 @@ function drawData() {
     ctx.restore();
   }
 
+  /* ---- 网格 ---- */
   ctx.lineWidth = 1;
   ctx.strokeStyle = 'rgba(30,27,23,.05)';
   for (let i = 1; i < 6; i++) {
@@ -1219,25 +1347,29 @@ function drawData() {
     ctx.fillText('空白画布', w / 2, h / 2 - 14);
     ctx.font = '500 10.5px ui-monospace, Menlo, monospace';
     ctx.fillStyle = 'rgba(30,27,23,.35)';
-    ctx.fillText('选择添加模式后点击创建数据点', w / 2, h / 2 + 10);
+    ctx.fillText('选择下方类别按钮后点击创建数据点', w / 2, h / 2 + 10);
     return;
   }
 
+  /* ---- 数据点 ---- */
   const rad = clamp(w / 82, 3, 5.4);
   for (const d of state.data) {
     const [px, py] = toPx(d.x[0], d.x[1]);
+    const cc = CLASS_COLORS[d.y] || CLASS_COLORS[0];
 
     if (d.custom) {
       ctx.beginPath();
       ctx.arc(px, py, rad + 4, 0, TAU);
-      ctx.strokeStyle = d.y === 1 ? 'rgba(184,68,42,.6)' : 'rgba(48,100,138,.6)';
+      ctx.strokeStyle = cc.hex;
+      ctx.globalAlpha = 0.55;
       ctx.lineWidth = 1.3;
       ctx.stroke();
+      ctx.globalAlpha = 1;
     }
 
     ctx.beginPath();
     ctx.arc(px, py, rad, 0, TAU);
-    ctx.fillStyle = d.y === 1 ? C.rust : C.steel;
+    ctx.fillStyle = cc.hex;
     ctx.fill();
 
     ctx.beginPath();
@@ -1255,8 +1387,8 @@ function drawData() {
     }
   }
 
+  /* ---- 探针 ---- */
   if (state.probe) {
-    state.probe.p = predictProb(state.probe.x, state.probe.y);
     const [px, py] = toPx(state.probe.x, state.probe.y);
 
     ctx.strokeStyle = C.ink;
@@ -1282,10 +1414,11 @@ function drawData() {
     updateProbeBar();
   }
 
+  /* ---- 模式提示 ---- */
   if (state.mode !== 'inspect') {
-    const txt = state.mode === 'addPos' ? '＋ 点击添加「类别 1」数据点'
-              : state.mode === 'addNeg' ? '＋ 点击添加「类别 0」数据点'
-              : '🗑 点击删除最近的自定义点';
+    const txt = state.mode === 'add'
+      ? `＋ 点击添加「类别 ${state.addLabel}」数据点`
+      : '🗑 点击删除最近的自定义点';
     ctx.font = '500 11px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -1367,16 +1500,23 @@ function updateStats() {
 function updateProbeBar() {
   let html, warn = false;
   if (!state.data.length) {
-    html = '空白画布 · 请使用「类别 0 / 类别 1」添加数据点';
+    html = '空白画布 · 请使用下方类别按钮添加数据点';
     warn = true;
   } else if (!state.probe) {
     html = '点击画布任意位置，实时查看该点的预测结果';
   } else {
-    const p = state.probe.p;
-    const cls = p > 0.5 ? 1 : 0;
-    const conf = (Math.max(p, 1 - p) * 100).toFixed(1);
-    html = `点位 (${state.probe.x.toFixed(2)}, ${state.probe.y.toFixed(2)}) → ` +
-           `<b class="${cls ? 'rust' : 'steel'}">类别 ${cls}</b> · 置信度 ${conf}%`;
+    const probs = predictProbs(state.probe.x, state.probe.y);
+    const bi = argmax(probs);
+    const conf = (probs[bi] * 100).toFixed(1);
+    const col = CLASS_COLORS[bi] || CLASS_COLORS[0];
+    html = `点位 (${state.probe.x.toFixed(2)}, ${state.probe.y.toFixed(2)}) → `
+         + `<span class="cls-badge" style="background:${col.hex}">类别 ${bi}</span> `
+         + `置信度 ${conf}%`;
+    if (state.K <= 4) {
+      html += ' &nbsp;<span style="opacity:.8">'
+           + probs.map((v, i) => `${i}:${(v * 100).toFixed(0)}%`).join(' · ')
+           + '</span>';
+    }
   }
   if (html !== lastProbeText) {
     probeBar.innerHTML = html;
@@ -1400,14 +1540,81 @@ function flashProbe(text, type = 'warn') {
 }
 
 function updateDataButtons() {
-  const hasPoints = state.customPoints.length > 0;
-  $('clearCustom').disabled = !hasPoints;
-  $('exportFile').disabled = !hasPoints;
-  $('copyPoints').disabled = !hasPoints;
+  const has = state.customPoints.length > 0;
+  const clr = $('clearCustom');
+  if (clr) clr.disabled = !has;
+  $('exportFile').disabled = !has;
+  $('copyPoints').disabled = !has;
 }
 
 /* =========================================================
-   10. 模态框
+   10. 类别数 / 数据工具动态渲染
+   ========================================================= */
+function renderClassButtons() {
+  const wrap = $('classBtns');
+  if (!wrap) return;
+  let html = '';
+  for (let k = MIN_CLASSES; k <= MAX_CLASSES; k++) {
+    html += `<button class="cls-btn${k === state.K ? ' active' : ''}" data-k="${k}">${k}</button>`;
+  }
+  wrap.innerHTML = html;
+}
+
+function renderDataTools() {
+  const wrap = $('dataTools');
+  if (!wrap) return;
+  let html = `<button class="tool${state.mode === 'inspect' ? ' active' : ''}" data-mode="inspect">查看</button>`;
+  for (let k = 0; k < state.K; k++) {
+    const col = CLASS_COLORS[k] || CLASS_COLORS[0];
+    const on = state.mode === 'add' && state.addLabel === k;
+    html += `<button class="tool${on ? ' active' : ''}" data-mode="add" data-label="${k}">`
+         +  `<span class="dot" style="background:${col.hex}"></span>类别 ${k}</button>`;
+  }
+  html += `<button class="tool${state.mode === 'erase' ? ' active' : ''}" data-mode="erase">删除点</button>`;
+  html += `<button class="tool danger" id="clearCustom"${state.customPoints.length ? '' : ' disabled'}>清空</button>`;
+  wrap.innerHTML = html;
+}
+
+function updateOutInfo() {
+  const el = $('outTag');
+  if (el) el.textContent = `输出 · ${state.K} · softmax`;
+}
+
+function setClassCount(k) {
+  k = clamp(k | 0, MIN_CLASSES, MAX_CLASSES);
+  if (k === state.K) return;
+  setRunning(false);
+  state.K = k;
+
+  /* 丢弃越界的自定义点 */
+  state.customPoints = state.customPoints.filter(p => p.y < k);
+  if (state.addLabel >= k) state.addLabel = 0;
+
+  generateBaseData();
+  rebuildData();
+  initNet();
+  state.pinnedNeuron = null;
+  state.hoverNeuron = null;
+  updateInspector();
+
+  renderClassButtons();
+  renderDataTools();
+  updateOutInfo();
+
+  drawData();
+  drawNet();
+  drawLoss();
+  updateStats();
+}
+
+$('classBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.cls-btn');
+  if (!btn) return;
+  setClassCount(+btn.dataset.k);
+});
+
+/* =========================================================
+   11. 模态框
    ========================================================= */
 const ioModal = $('ioModal');
 const ioModalTitle = $('ioModalTitle');
@@ -1436,7 +1643,6 @@ function openModal(opts) {
   ioModal.classList.add('show');
   document.body.style.overflow = 'hidden';
 
-  /* 用 rAF 确保元素已渲染可聚焦 */
   requestAnimationFrame(() => {
     if (opts.selectAll) {
       ioModalText.focus();
@@ -1463,7 +1669,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* =========================================================
-   11. 层列表
+   12. 层列表
    ========================================================= */
 const layerList = $('layerList'), hiddenInfo = $('hiddenInfo');
 
@@ -1512,7 +1718,7 @@ layerList.addEventListener('change', e => {
 });
 
 /* =========================================================
-   12. 重建
+   13. 重建
    ========================================================= */
 function validatePinned() {
   const n = state.pinnedNeuron;
@@ -1533,6 +1739,8 @@ function rebuild(resetWeights) {
     validatePinned();
   }
   renderLayers();
+  renderDataTools();
+  updateOutInfo();
   drawNet();
   drawData();
   drawLoss();
@@ -1540,7 +1748,7 @@ function rebuild(resetWeights) {
 }
 
 /* =========================================================
-   13. 训练循环
+   14. 训练循环
    ========================================================= */
 const trainBtn = $('trainBtn');
 let rafId = null;
@@ -1641,7 +1849,7 @@ $('stepBtn').addEventListener('click', () => {
 });
 
 /* =========================================================
-   14. 网络结构控件
+   15. 网络结构控件
    ========================================================= */
 $('addLayer').addEventListener('click', () => {
   if (state.layers.length >= 6) {
@@ -1657,7 +1865,7 @@ $('randomNet').addEventListener('click', () => {
   const keys = Object.keys(ACT);
   state.layers = Array.from({ length: depth }, () => ({
     n: 2 + Math.floor(Math.random() * 11),
-    act: keys[Math.floor(Math.random() * (keys.length - 1))],
+    act: keys[Math.floor(Math.random() * keys.length)],
   }));
   rebuild(true);
 });
@@ -1674,12 +1882,12 @@ $('resetWeights').addEventListener('click', () => {
 });
 
 /* =========================================================
-   15. 数据控件
+   16. 数据控件
    ========================================================= */
 $('regen').addEventListener('click', () => {
   setRunning(false);
   if (state.dataset === 'blank') {
-    flashProbe('⬜ 空白模式无内置数据，请使用「类别 0 / 类别 1」手动添加');
+    flashProbe('⬜ 空白模式无内置数据，请使用下方类别按钮手动添加');
     return;
   }
   generateBaseData();
@@ -1704,42 +1912,46 @@ $('chips').addEventListener('click', e => {
   state.pinnedNeuron = null;
   state.hoverNeuron = null;
   updateInspector();
-  drawData();
-  drawNet();
-  drawLoss();
 
   if (state.dataset === 'blank') {
-    document.querySelectorAll('.tool[data-mode]').forEach(b => b.classList.remove('active'));
-    const addBtn = document.querySelector('.tool[data-mode="addPos"]');
-    if (addBtn) addBtn.classList.add('active');
-    state.mode = 'addPos';
+    state.mode = 'add';
+    state.addLabel = 0;
     dataCanvas.style.cursor = 'copy';
   } else {
-    document.querySelectorAll('.tool[data-mode]').forEach(b => b.classList.remove('active'));
-    const inspectBtn = document.querySelector('.tool[data-mode="inspect"]');
-    if (inspectBtn) inspectBtn.classList.add('active');
     state.mode = 'inspect';
     dataCanvas.style.cursor = 'crosshair';
   }
+  renderDataTools();
+
+  drawData();
+  drawNet();
+  drawLoss();
+  updateStats();
 });
 
 $('dataTools').addEventListener('click', e => {
+  /* 清空 */
+  if (e.target.closest('#clearCustom')) {
+    if (!state.customPoints.length) return;
+    state.customPoints = [];
+    rebuildData();
+    drawData();
+    updateInspector();
+    flashProbe('已清空全部自定义点', 'success');
+    return;
+  }
+
   const btn = e.target.closest('.tool[data-mode]');
   if (!btn) return;
+
+  state.mode = btn.dataset.mode;
+  if (state.mode === 'add') state.addLabel = +btn.dataset.label;
+
   document.querySelectorAll('.tool[data-mode]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  state.mode = btn.dataset.mode;
+
   dataCanvas.style.cursor = state.mode === 'inspect' ? 'crosshair' : 'copy';
   drawData();
-});
-
-$('clearCustom').addEventListener('click', () => {
-  if (!state.customPoints.length) return;
-  state.customPoints = [];
-  rebuildData();
-  drawData();
-  updateInspector();
-  flashProbe('已清空全部自定义点', 'success');
 });
 
 /* ---- 滑块 ---- */
@@ -1782,7 +1994,7 @@ $('noise').addEventListener('change', () => {
 });
 
 /* =========================================================
-   16. 数据画布交互
+   17. 数据画布交互
    ========================================================= */
 function eventToWorld(e) {
   const rect = dataCanvas.getBoundingClientRect();
@@ -1797,14 +2009,14 @@ dataCanvas.addEventListener('pointerdown', e => {
   if (!world) return;
 
   if (state.mode === 'inspect') {
-    state.probe = { x: world.x, y: world.y, p: predictProb(world.x, world.y) };
+    state.probe = { x: world.x, y: world.y };
     drawData();
     updateInspector();
     return;
   }
 
-  if (state.mode === 'addPos' || state.mode === 'addNeg') {
-    const label = state.mode === 'addPos' ? 1 : 0;
+  if (state.mode === 'add') {
+    const label = clamp(state.addLabel | 0, 0, state.K - 1);
     let tooClose = false;
     for (const p of state.customPoints) {
       const dx = p.x[0] - world.x, dy = p.x[1] - world.y;
@@ -1813,7 +2025,7 @@ dataCanvas.addEventListener('pointerdown', e => {
     if (!tooClose) {
       state.customPoints.push({ x: [world.x, world.y], y: label, custom: true });
       rebuildData();
-      state.probe = { x: world.x, y: world.y, p: predictProb(world.x, world.y) };
+      state.probe = { x: world.x, y: world.y };
       drawData();
       updateInspector();
     }
@@ -1854,20 +2066,21 @@ dataCanvas.addEventListener('pointermove', e => {
   if (e.pointerType !== 'mouse' || state.mode !== 'inspect') return;
   const world = eventToWorld(e);
   if (!world) return;
-  state.probe = { x: world.x, y: world.y, p: predictProb(world.x, world.y) };
+  state.probe = { x: world.x, y: world.y };
   scheduleDataDraw();
 });
 
 /* =========================================================
-   17. 自定义点导出 / 导入
+   18. 自定义点导出 / 导入
    ========================================================= */
 function buildExportData() {
   return {
     app: 'NeuroForge',
     type: 'custom-points',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     dataset: state.dataset,
+    classes: state.K,
     count: state.customPoints.length,
     points: state.customPoints.map(p => ({
       x: +p.x[0].toFixed(6),
@@ -1907,12 +2120,31 @@ function importFromText(text) {
     return;
   }
 
+  /* 先探测最大标签，必要时自动扩展类别数 */
+  let maxLabel = 0;
+  for (const p of data.points) {
+    if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') continue;
+    const l = Math.round(Number(p.label));
+    if (isFinite(l) && l > maxLabel) maxLabel = l;
+  }
+  const neededK = clamp(Math.floor(maxLabel) + 1, MIN_CLASSES, MAX_CLASSES);
+
+  if (neededK > state.K) {
+    state.K = neededK;
+    renderClassButtons();
+    renderDataTools();
+    updateOutInfo();
+    initNet();
+  }
+
   const newPoints = [];
   for (const p of data.points) {
     if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') continue;
     if (!isFinite(p.x) || !isFinite(p.y)) continue;
     if (p.x < -1.3 || p.x > 1.3 || p.y < -1.3 || p.y > 1.3) continue;
-    const label = (p.label === 1) ? 1 : 0;
+    let label = Math.round(Number(p.label));
+    if (!isFinite(label) || label < 0) label = 0;
+    if (label > state.K - 1) label = state.K - 1;
     newPoints.push({ x: [p.x, p.y], y: label, custom: true });
   }
 
@@ -1924,6 +2156,7 @@ function importFromText(text) {
   state.customPoints = newPoints;
   rebuildData();
   drawData();
+  drawNet();
   updateInspector();
   flashProbe(`✓ 已导入 ${newPoints.length} 个自定义点`, 'success');
 }
@@ -1950,8 +2183,6 @@ function importFile() {
 
 /* ---- 复制 ---- */
 function legacyCopy(json) {
-  /* 方案 A：临时 textarea + execCommand（用 left:-9999px 而不是 opacity:0，
-     保证元素仍然被视为可见，execCommand 才有效） */
   try {
     const ta = document.createElement('textarea');
     ta.value = json;
@@ -1966,7 +2197,7 @@ function legacyCopy(json) {
     ta.style.outline = 'none';
     ta.style.boxShadow = 'none';
     ta.style.background = 'transparent';
-    ta.style.fontSize = '16px';   /* 防止 iOS 自动缩放 */
+    ta.style.fontSize = '16px';
     document.body.appendChild(ta);
     ta.focus();
     ta.select();
@@ -1977,7 +2208,7 @@ function legacyCopy(json) {
       flashProbe(`✓ 已复制 ${state.customPoints.length} 个点到剪贴板`, 'success');
       return true;
     }
-  } catch (err) { /* 落下去 */ }
+  } catch (err) { /* fallthrough */ }
   return false;
 }
 
@@ -1985,14 +2216,11 @@ function copyPoints() {
   if (!state.customPoints.length) return;
   const json = JSON.stringify(buildExportData());
 
-  /* 优先使用现代 Clipboard API —— 必须在用户手势内同步发起 */
   if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
     navigator.clipboard.writeText(json).then(() => {
       flashProbe(`✓ 已复制 ${state.customPoints.length} 个点到剪贴板`, 'success');
     }).catch(() => {
-      /* Clipboard API 被拒绝，尝试降级方案 A */
       if (legacyCopy(json)) return;
-      /* 都失败 → 弹出模态框让用户手动复制 */
       openModal({
         title: '手动复制',
         desc: '浏览器拒绝了自动剪贴板访问，请手动选择下方文本并复制（Ctrl / Cmd + C），然后保存到文本文件或用「粘贴」按钮导入。',
@@ -2007,7 +2235,6 @@ function copyPoints() {
     return;
   }
 
-  /* 没有 Clipboard API —— 直接走降级 */
   if (legacyCopy(json)) return;
 
   openModal({
@@ -2024,23 +2251,18 @@ function copyPoints() {
 
 /* ---- 粘贴 ---- */
 function pastePoints() {
-  /* 优先使用现代 Clipboard API 的 readText */
   if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
     navigator.clipboard.readText().then(text => {
       if (text && text.trim()) {
         importFromText(text);
       } else {
-        /* 剪贴板为空 → 打开模态框让用户手动粘贴 */
         openPasteModal();
       }
     }).catch(() => {
-      /* 被拒绝（常见于 file:// 或未授权）→ 打开模态框 */
       openPasteModal();
     });
     return;
   }
-
-  /* 没有 Clipboard API → 直接打开模态框 */
   openPasteModal();
 }
 
@@ -2072,12 +2294,10 @@ $('copyPoints').addEventListener('click', copyPoints);
 $('pastePoints').addEventListener('click', pastePoints);
 
 /* =========================================================
-   18. 快捷键 & 尺寸
+   19. 快捷键 & 尺寸
    ========================================================= */
 window.addEventListener('keydown', e => {
-  /* 模态框打开时，不处理快捷键（由模态框自己的 Escape 监听负责） */
   if (ioModal.classList.contains('show')) return;
-
   if (e.code !== 'Space') return;
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'TEXTAREA') return;
@@ -2103,13 +2323,16 @@ window.addEventListener('resize', () => {
 });
 
 /* =========================================================
-   19. 启动
+   20. 启动
    ========================================================= */
 function boot() {
   generateBaseData();
   rebuildData();
   initNet();
   renderLayers();
+  renderClassButtons();
+  renderDataTools();
+  updateOutInfo();
   drawNet();
   drawData();
   drawLoss();
