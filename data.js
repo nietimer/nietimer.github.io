@@ -30,6 +30,7 @@ const DATA = [
       { name: "Pixel Music Canvas", href: "pixel_music_canvas.html" },
       { name: "JSON 数据分析",      href: "json_insight.html" },
       { name: "图片混淆器",         href: "image_scrambler.html" },
+      { name: "ApiLite", href: "api_lite.html" }
     ],
   },
   {
