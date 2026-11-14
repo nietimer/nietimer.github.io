@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#08090b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>空间音乐场</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    width:100%;height:100%;overflow:hidden;background:#08090b;color:#dfe4ea;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    user-select:none;-webkit-user-select:none;
+  }
+  #app{position:fixed;inset:0;}
+  #app canvas{display:block;touch-action:none;cursor:grab;}
+
+  /* ---- 顶部 ---- */
+  .hud{
+    position:fixed;top:0;left:0;right:0;z-index:10;pointer-events:none;
+    padding:calc(env(safe-area-inset-top,0px) + 18px) 20px 0;
+  }
+  .hud h1{
+    font-size:14px;font-weight:600;letter-spacing:.14em;color:#dbe2ea;
+  }
+  .hud p{
+    margin-top:8px;font-size:11.5px;line-height:1.75;color:#5f6873;letter-spacing:.02em;
+    max-width:330px;
+  }
+
+  /* ---- 底部操作 ---- */
+  .dock{
+    position:fixed;left:0;right:0;bottom:0;z-index:10;
+    display:flex;gap:8px;justify-content:center;
+    padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 18px);
+    background:linear-gradient(to top,rgba(8,9,11,.9),rgba(8,9,11,0));
+  }
+  .btn{
+    appearance:none;font:inherit;font-size:13px;letter-spacing:.05em;
+    color:#c6cfd9;background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.13);
+    padding:11px 22px;border-radius:8px;cursor:pointer;
+    transition:background .16s ease,border-color .16s ease,color .16s ease;
+  }
+  .btn:active{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.22);}
+  .btn.active{
+    color:#eaf4ff;background:rgba(110,170,230,.22);
+    border-color:rgba(150,200,255,.55);
+    box-shadow:0 0 0 3px rgba(110,170,230,.1);
+  }
+
+  /* ---- 音响面板 ---- */
+  .panel{
+    position:fixed;left:50%;z-index:12;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 82px);
+    width:min(440px,calc(100vw - 24px));
+    transform:translate(-50%,8px);
+    background:rgba(17,19,23,.94);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:10px;
+    padding:12px 14px 14px;
+    opacity:0;pointer-events:none;
+    transition:opacity .18s ease,transform .18s ease;
+  }
+  .panel.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+  .panel-row{display:flex;align-items:center;gap:9px;}
+  .panel-row + .panel-row{margin-top:12px;}
+  .tag{font-size:11.5px;letter-spacing:.1em;color:#6b7480;flex:0 0 auto;}
+  .tag b{color:#aab6c3;font-weight:600;letter-spacing:.06em;}
+  .spacer{flex:1;}
+  .track{
+    flex:1;min-width:0;
+    font-size:12px;letter-spacing:.02em;color:#7c8794;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .track.has{color:#c6cfd9;}
+  .val{
+    flex:0 0 auto;width:36px;text-align:right;
+    font-size:11.5px;color:#8d99a6;font-variant-numeric:tabular-nums;
+  }
+
+  .chip{
+    flex:0 0 auto;
+    appearance:none;font:inherit;font-size:11.5px;letter-spacing:.04em;
+    color:#aab6c3;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.11);
+    padding:6px 12px;border-radius:6px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,border-color .15s ease;
+  }
+  .chip:active{background:rgba(255,255,255,.14);}
+  .chip.on{background:rgba(255,255,255,.16);color:#eef3f8;border-color:rgba(255,255,255,.28);}
+  .chip:disabled{opacity:.35;pointer-events:none;}
+  .chip.accent{color:#d6e8f8;border-color:rgba(150,200,255,.34);background:rgba(110,170,230,.14);}
+
+  /* 音量滑块 */
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    flex:1;min-width:0;height:3px;border-radius:2px;
+    background:rgba(255,255,255,.16);
+    outline:none;margin:0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:15px;height:15px;border-radius:50%;
+    background:#e9eff6;border:none;
+    box-shadow:0 1px 5px rgba(0,0,0,.6);
+    cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:15px;height:15px;border-radius:50%;
+    background:#e9eff6;border:none;
+    box-shadow:0 1px 5px rgba(0,0,0,.6);
+    cursor:pointer;
+  }
+
+  /* ---- 提示 ---- */
+  #toast{
+    position:fixed;left:50%;z-index:30;
+    top:calc(env(safe-area-inset-top,0px) + 104px);
+    transform:translate(-50%,-6px);
+    background:rgba(22,24,29,.96);
+    border:1px solid rgba(255,255,255,.1);
+    color:#c6cfd9;font-size:12.5px;letter-spacing:.03em;
+    padding:9px 16px;border-radius:7px;white-space:nowrap;
+    opacity:0;pointer-events:none;
+    transition:opacity .22s ease,transform .22s ease;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+
+  .vignette{
+    position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:radial-gradient(ellipse at 50% 42%,rgba(0,0,0,0) 45%,rgba(0,0,0,.5) 100%);
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="vignette"></div>
+
+<div class="hud">
+  <h1>空间音乐场</h1>
+  <p>点击「添加音响」，再点地面放置 · 拖动音响调整位置 · 选中后可上传音频与调节音量 · 拖动空白旋转视角 · 双指缩放</p>
+</div>
+
+<div class="panel" id="panel">
+  <div class="panel-row">
+    <span class="tag">音响 <b id="pIdx">01</b></span>
+    <div class="spacer"></div>
+    <button class="chip" id="muteBtn">静音</button>
+    <button class="chip" id="delBtn">删除</button>
+  </div>
+  <div class="panel-row">
+    <span class="tag">音量</span>
+    <input type="range" id="volSlider" min="0" max="100" step="1" value="80">
+    <span class="val" id="volVal">80</span>
+  </div>
+  <div class="panel-row">
+    <span class="tag">音频</span>
+    <span class="track" id="trackName">未载入</span>
+    <button class="chip accent" id="uploadBtn">上传</button>
+  </div>
+</div>
+
+<div class="dock">
+  <button class="btn" id="addBtn">添加音响</button>
+  <button class="btn" id="clearBtn">清空场景</button>
+</div>
+
+<input type="file" id="fileInput" accept="audio/*" style="display:none">
+<div id="toast"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================
+   参数
+   ========================================================= */
+const MAX_SPEAKERS = 10;
+const BOUND = 25;
+const OUT_LEVEL = 0.8;
+
+/* 低饱和色相，按序号轮换 */
+const HUE_STEPS = [0.55, 0.09, 0.63, 0.30, 0.04, 0.48];
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+/* =========================================================
+   音频引擎
+   ========================================================= */
+let audioCtx = null;
+let masterGain = null;
+let busGain = null;
+
+function initAudio() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return;
+  }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) { toast('当前浏览器不支持 Web Audio'); return; }
+
+  audioCtx = new AC();
+
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.9;
+  masterGain.connect(audioCtx.destination);
+
+  // 总线压缩，防止多个音响叠加削波
+  const comp = audioCtx.createDynamicsCompressor();
+  comp.threshold.value = -18;
+  comp.knee.value = 24;
+  comp.ratio.value = 3;
+  comp.attack.value = 0.004;
+  comp.release.value = 0.25;
+
+  busGain = audioCtx.createGain();
+  busGain.gain.value = 0.9;
+  busGain.connect(comp);
+  comp.connect(masterGain);
+
+  // 反馈延迟混响
+  const delay = audioCtx.createDelay(1.0);
+  delay.delayTime.value = 0.31;
+  const fb = audioCtx.createGain();
+  fb.gain.value = 0.36;
+  const damp = audioCtx.createBiquadFilter();
+  damp.type = 'lowpass';
+  damp.frequency.value = 1800;
+  const wet = audioCtx.createGain();
+  wet.gain.value = 0.26;
+
+  busGain.connect(delay);
+  delay.connect(damp);
+  damp.connect(fb);
+  fb.connect(delay);
+  damp.connect(wet);
+  wet.connect(masterGain);
+
+  updateListener();
+}
+
+/* 兼容新旧监听器 API */
+function setPannerPos(panner, x, y, z) {
+  if (panner.positionX) {
+    panner.positionX.value = x;
+    panner.positionY.value = y;
+    panner.positionZ.value = z;
+  } else {
+    panner.setPosition(x, y, z);
+  }
+}
+
+function updateListener() {
+  if (!audioCtx || !camera) return;
+  camera.updateMatrixWorld();
+  const l = audioCtx.listener;
+  const p = camera.position;
+  const e = camera.matrixWorld.elements;
+  const fx = -e[8], fy = -e[9], fz = -e[10];
+  const ux = e[4], uy = e[5], uz = e[6];
+
+  if (l.positionX) {
+    l.positionX.value = p.x; l.positionY.value = p.y; l.positionZ.value = p.z;
+    l.forwardX.value = fx;   l.forwardY.value = fy;   l.forwardZ.value = fz;
+    l.upX.value = ux;        l.upY.value = uy;        l.upZ.value = uz;
+  } else {
+    l.setPosition(p.x, p.y, p.z);
+    l.setOrientation(fx, fy, fz, ux, uy, uz);
+  }
+}
+
+/* decodeAudioData 的 Promise 封装（兼容旧 Safari） */
+function decodeAudio(ctx, arrayBuffer) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const ok = b => { if (!settled) { settled = true; resolve(b); } };
+    const bad = e => { if (!settled) { settled = true; reject(e); } };
+    try {
+      const p = ctx.decodeAudioData(arrayBuffer, ok, bad);
+      if (p && typeof p.then === 'function') p.then(ok).catch(bad);
+    } catch (e) { bad(e); }
+  });
+}
+
+/* 同一文件只解码一次，多个音响共享 */
+const bufferCache = new Map();
+
+async function getBuffer(file) {
+  const key = (file.name || '') + '|' + file.size + '|' + (file.lastModified || 0);
+  const cached = bufferCache.get(key);
+  if (cached) return cached;
+
+  const ab = await file.arrayBuffer();
+  const buf = await decodeAudio(audioCtx, ab);
+  bufferCache.set(key, buf);
+  return buf;
+}
+
+/* =========================================================
+   场景
+   ========================================================= */
+const container = document.getElementById('app');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x08090b);
+scene.fog = new THREE.FogExp2(0x08090b, 0.019);
+
+const camera = new THREE.PerspectiveCamera(56, innerWidth / innerHeight, 0.1, 300);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+const canvas = renderer.domElement;
+
+/* 灯光 */
+scene.add(new THREE.HemisphereLight(0x5b6a7d, 0x0a0c10, 1.0));
+
+const key = new THREE.DirectionalLight(0xcfdae6, 0.9);
+key.position.set(7, 15, 9);
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0x3d5166, 0.5);
+fill.position.set(-9, 6, -8);
+scene.add(fill);
+
+/* 地面 */
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(160, 160),
+  new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 0.86, metalness: 0.25 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.002;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(90, 90, 0x22303d, 0x111820);
+grid.material.transparent = true;
+grid.material.opacity = 0.55;
+scene.add(grid);
+
+/* 浮尘 */
+const PCOUNT = 260;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(PCOUNT * 3);
+for (let i = 0; i < PCOUNT; i++) {
+  pPos[i * 3] = (Math.random() - 0.5) * 70;
+  pPos[i * 3 + 1] = Math.random() * 20;
+  pPos[i * 3 + 2] = (Math.random() - 0.5) * 70;
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({
+  color: 0x7e93a8, size: 0.07, transparent: true, opacity: 0.4,
+  depthWrite: false, sizeAttenuation: true
+}));
+scene.add(particles);
+
+/* 放置预览圈 */
+const ghostMat = new THREE.MeshBasicMaterial({
+  color: 0x9fd4ff, transparent: true, opacity: 0.8,
+  side: THREE.DoubleSide, depthWrite: false
+});
+const ghost = new THREE.Mesh(new THREE.RingGeometry(0.46, 0.58, 44), ghostMat);
+ghost.rotation.x = -Math.PI / 2;
+ghost.position.y = 0.02;
+ghost.visible = false;
+scene.add(ghost);
+
+/* =========================================================
+   音响
+   ========================================================= */
+const speakers = [];
+let speakerIndex = 0;
+let selected = null;
+
+class Speaker {
+  constructor(pos, idx) {
+    this.idx = idx;
+    this.muted = false;
+    this.volume = 0.8;
+    this.buffer = null;
+    this.fileName = '';
+    this.source = null;
+    this.level = 0;
+
+    this.color = new THREE.Color().setHSL(
+      HUE_STEPS[idx % HUE_STEPS.length], 0.38, 0.62
+    );
+
+    this.group = new THREE.Group();
+    this.group.position.copy(pos);
+    this.group.userData.speaker = this;
+    this._buildMesh();
+    scene.add(this.group);
+
+    this._buildAudio(pos);
+  }
+
+  /* ---------- 外观 ---------- */
+  _buildMesh() {
+    const g = this.group;
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.66, 1.06, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x1a1d24, roughness: 0.5, metalness: 0.55 })
+    );
+    body.position.y = 0.53;
+    g.add(body);
+
+    const panel = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.58, 0.96),
+      new THREE.MeshStandardMaterial({ color: 0x0b0d11, roughness: 0.95 })
+    );
+    panel.position.set(0, 0.53, 0.251);
+    g.add(panel);
+
+    this.wooferMat = new THREE.MeshStandardMaterial({
+      color: this.color.clone().multiplyScalar(0.32),
+      emissive: this.color,
+      emissiveIntensity: 0.3,
+      roughness: 0.6
+    });
+    this.woofer = new THREE.Mesh(new THREE.CircleGeometry(0.185, 32), this.wooferMat);
+    this.woofer.position.set(0, 0.4, 0.256);
+    g.add(this.woofer);
+
+    const twMat = new THREE.MeshStandardMaterial({
+      color: this.color.clone().multiplyScalar(0.3),
+      emissive: this.color,
+      emissiveIntensity: 0.35,
+      roughness: 0.5
+    });
+    const tw = new THREE.Mesh(new THREE.CircleGeometry(0.07, 20), twMat);
+    tw.position.set(0, 0.84, 0.256);
+    g.add(tw);
+
+    const frame = new THREE.Mesh(
+      new THREE.TorusGeometry(0.185, 0.018, 8, 36),
+      new THREE.MeshStandardMaterial({ color: 0x32373f, roughness: 0.45, metalness: 0.8 })
+    );
+    frame.position.set(0, 0.4, 0.26);
+    g.add(frame);
+
+    this.haloMat = new THREE.MeshBasicMaterial({
+      color: this.color, transparent: true, opacity: 0.05,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    this.halo = new THREE.Mesh(new THREE.CircleGeometry(1.0, 32), this.haloMat);
+    this.halo.rotation.x = -Math.PI / 2;
+    this.halo.position.y = 0.008;
+    g.add(this.halo);
+
+    this.baseRingMat = new THREE.MeshBasicMaterial({
+      color: this.color, transparent: true, opacity: 0.18,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    this.baseRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.012, 6, 40), this.baseRingMat);
+    this.baseRing.rotation.x = -Math.PI / 2;
+    this.baseRing.position.y = 0.014;
+    g.add(this.baseRing);
+
+    this.selRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.55, 0.6, 48),
+      new THREE.MeshBasicMaterial({
+        color: 0xffffff, transparent: true, opacity: 0.55,
+        side: THREE.DoubleSide, depthWrite: false
+      })
+    );
+    this.selRing.rotation.x = -Math.PI / 2;
+    this.selRing.position.y = 0.018;
+    this.selRing.visible = false;
+    g.add(this.selRing);
+  }
+
+  /* ---------- 音频节点 ---------- */
+  _buildAudio(pos) {
+    this.panner = audioCtx.createPanner();
+    this.panner.panningModel = 'HRTF';
+    this.panner.distanceModel = 'inverse';
+    this.panner.refDistance = 1.8;
+    this.panner.maxDistance = 90;
+    this.panner.rolloffFactor = 1.0;
+    setPannerPos(this.panner, pos.x, 0.6, pos.z);
+
+    this.filter = audioCtx.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 18000;
+    this.filter.Q.value = 0.4;
+
+    this.outGain = audioCtx.createGain();
+    this.outGain.gain.value = this.volume * OUT_LEVEL;
+
+    // 实时电平，用于驱动视觉脉冲
+    this.analyser = audioCtx.createAnalyser();
+    this.analyser.fftSize = 64;
+    this.analyser.smoothingTimeConstant = 0.55;
+    this._data = new Uint8Array(this.analyser.fftSize);
+
+    this.filter.connect(this.outGain);
+    this.outGain.connect(this.analyser);
+    this.analyser.connect(this.panner);
+    this.panner.connect(busGain);
+  }
+
+  /* ---------- 载入音频 ---------- */
+  async loadFile(file) {
+    if (!audioCtx) initAudio();
+    if (!audioCtx) throw new Error('audio unavailable');
+    if (audioCtx.state === 'suspended') {
+      try { await audioCtx.resume(); } catch (e) {}
+    }
+
+    const buf = await getBuffer(file);
+
+    this._stopSource();
+    this.buffer = buf;
+    this.fileName = (file.name || '音频').replace(/\.[^.]+$/, '') || '音频';
+    this._startSource();
+    this._applyGain();
+  }
+
+  _startSource() {
+    if (!this.buffer) return;
+    this._stopSource();
+    const src = audioCtx.createBufferSource();
+    src.buffer = this.buffer;
+    src.loop = true;
+    src.connect(this.filter);
+    try { src.start(); } catch (e) { console.warn(e); }
+    this.source = src;
+  }
+
+  _stopSource() {
+    if (this.source) {
+      try { this.source.stop(); this.source.disconnect(); } catch (e) {}
+      this.source = null;
+    }
+  }
+
+  /* ---------- 音量 / 静音 ---------- */
+  _applyGain() {
+    if (!this.outGain || !audioCtx) return;
+    const v = this.muted ? 0.0001 : Math.max(0.0001, this.volume * OUT_LEVEL);
+    this.outGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.035);
+  }
+
+  setVolume(v) {
+    this.volume = clamp(v, 0, 1);
+    this._applyGain();
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    this._applyGain();
+  }
+
+  /* ---------- 位置 ---------- */
+  setPosition(x, z) {
+    this.group.position.x = x;
+    this.group.position.z = z;
+    setPannerPos(this.panner, x, 0.6, z);
+  }
+
+  /* ---------- 每帧 ---------- */
+  update(dt) {
+    // 采样实时电平
+    let target = 0;
+    if (this.source && this.analyser) {
+      this.analyser.getByteTimeDomainData(this._data);
+      let sum = 0;
+      const n = this._data.length;
+      for (let i = 0; i < n; i++) {
+        const v = (this._data[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / n);
+      target = Math.min(1, rms * 3.8);
+    }
+    this.level += (target - this.level) * Math.min(1, dt * 14);
+
+    const m = this.muted ? 0.14 : 1;
+    const p = this.level;
+
+    this.wooferMat.emissiveIntensity = (0.28 + p * 3.0) * m;
+    this.baseRingMat.opacity = (0.16 + p * 0.62) * m;
+    this.haloMat.opacity = (0.035 + p * 0.22) * m;
+
+    const s = 1 + p * 0.14;
+    this.woofer.scale.set(s, s, 1);
+    this.baseRing.scale.setScalar(1 + p * 0.14);
+    this.selRing.visible = (selected === this);
+  }
+
+  dispose() {
+    this._stopSource();
+    scene.remove(this.group);
+    this.group.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
+    try {
+      this.filter.disconnect();
+      this.outGain.disconnect();
+      this.analyser.disconnect();
+      this.panner.disconnect();
+    } catch (e) {}
+  }
+}
+
+/* =========================================================
+   音响增删
+   ========================================================= */
+function addSpeaker(x, z) {
+  if (speakers.length >= MAX_SPEAKERS) {
+    toast('最多 ' + MAX_SPEAKERS + ' 个音响');
+    return null;
+  }
+  initAudio();
+  if (!audioCtx) return null;
+
+  const s = new Speaker(new THREE.Vector3(x, 0, z), speakerIndex++);
+  speakers.push(s);
+  s.level = 1;
+  return s;
+}
+
+function removeSpeaker(s) {
+  const i = speakers.indexOf(s);
+  if (i >= 0) speakers.splice(i, 1);
+  if (selected === s) selected = null;
+  s.dispose();
+}
+
+/* =========================================================
+   相机
+   ========================================================= */
+const cam = {
+  target: new THREE.Vector3(0, 0.8, 0),
+  radius: 11,
+  theta: 0.7,
+  phi: Math.PI * 0.37,
+  minRadius: 2.2,
+  maxRadius: 38,
+  minPhi: 0.12,
+  maxPhi: Math.PI * 0.49
+};
+
+function updateCamera() {
+  const sp = Math.sin(cam.phi);
+  camera.position.set(
+    cam.target.x + cam.radius * sp * Math.sin(cam.theta),
+    cam.target.y + cam.radius * Math.cos(cam.phi),
+    cam.target.z + cam.radius * sp * Math.cos(cam.theta)
+  );
+  camera.lookAt(cam.target);
+}
+
+const _right = new THREE.Vector3();
+const _up = new THREE.Vector3();
+
+function panBy(dx, dy) {
+  _right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+  _up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+  const s = cam.radius * 0.0015;
+  cam.target.addScaledVector(_right, -dx * s);
+  cam.target.addScaledVector(_up, dy * s);
+}
+
+/* =========================================================
+   拾取
+   ========================================================= */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+function setRay(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+}
+
+function pickSpeaker(clientX, clientY) {
+  if (!speakers.length) return null;
+  setRay(clientX, clientY);
+  const hits = raycaster.intersectObjects(speakers.map(s => s.group), true);
+  if (!hits.length) return null;
+  let o = hits[0].object;
+  while (o && !o.userData.speaker) o = o.parent;
+  return o ? o.userData.speaker : null;
+}
+
+function screenToGround(clientX, clientY, out) {
+  setRay(clientX, clientY);
+  return raycaster.ray.intersectPlane(groundPlane, out) !== null;
+}
+
+/* =========================================================
+   放置模式
+   ========================================================= */
+let placing = false;
+const addBtn = document.getElementById('addBtn');
+
+function setPlacing(v) {
+  placing = v;
+  addBtn.textContent = placing ? '点击地面放置…' : '添加音响';
+  addBtn.classList.toggle('active', placing);
+  canvas.style.cursor = placing ? 'crosshair' : 'grab';
+  if (!placing) { ghost.visible = false; }
+}
+
+function updateGhost(clientX, clientY) {
+  const hit = new THREE.Vector3();
+  if (!screenToGround(clientX, clientY, hit)) {
+    ghost.visible = false;
+    return;
+  }
+  const inBounds = Math.abs(hit.x) <= BOUND && Math.abs(hit.z) <= BOUND;
+  ghost.position.set(hit.x, 0.02, hit.z);
+  ghost.visible = true;
+  ghostMat.color.setHex(inBounds ? 0x9fd4ff : 0xff7a7a);
+  ghostMat.opacity = inBounds ? 0.85 : 0.4;
+}
+
+/* =========================================================
+   指针交互
+   ========================================================= */
+const pointers = new Map();
+let mode = null;
+let dragSpeaker = null;
+const dragOffset = new THREE.Vector3();
+let dragMoved = 0;
+let downTime = 0;
+let pinchDist = 1;
+let pinchRadius = 11;
+let pinchMid = null;
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('pointerdown', e => {
+  initAudio();
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 1) {
+    dragMoved = 0;
+    downTime = performance.now();
+
+    const sp = placing ? null : pickSpeaker(e.clientX, e.clientY);
+    if (sp) {
+      mode = 'drag';
+      dragSpeaker = sp;
+      selectSpeaker(sp);
+      const hit = new THREE.Vector3();
+      if (screenToGround(e.clientX, e.clientY, hit)) {
+        dragOffset.set(sp.group.position.x - hit.x, 0, sp.group.position.z - hit.z);
+      } else {
+        dragOffset.set(0, 0, 0);
+      }
+    } else {
+      mode = 'rotate';
+      if (placing) updateGhost(e.clientX, e.clientY);
+    }
+  } else if (pointers.size === 2) {
+    mode = 'pinch';
+    dragSpeaker = null;
+    ghost.visible = false;
+    const pts = [...pointers.values()];
+    pinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+    pinchRadius = cam.radius;
+    pinchMid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+  }
+});
+
+canvas.addEventListener('pointermove', e => {
+  const prev = pointers.get(e.pointerId);
+  if (!prev) {
+    // 桌面端悬停预览
+    if (placing) updateGhost(e.clientX, e.clientY);
+    return;
+  }
+
+  const dx = e.clientX - prev.x;
+  const dy = e.clientY - prev.y;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size >= 2) {
+    const pts = [...pointers.values()];
+    const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+    cam.radius = clamp(pinchRadius * pinchDist / d, cam.minRadius, cam.maxRadius);
+
+    const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+    if (pinchMid) panBy(mid.x - pinchMid.x, mid.y - pinchMid.y);
+    pinchMid = mid;
+    return;
+  }
+
+  if (mode === 'drag' && dragSpeaker) {
+    dragMoved += Math.abs(dx) + Math.abs(dy);
+    const hit = new THREE.Vector3();
+    if (screenToGround(e.clientX, e.clientY, hit)) {
+      dragSpeaker.setPosition(
+        clamp(hit.x + dragOffset.x, -BOUND, BOUND),
+        clamp(hit.z + dragOffset.z, -BOUND, BOUND)
+      );
+    }
+    return;
+  }
+
+  if (mode === 'rotate') {
+    dragMoved += Math.abs(dx) + Math.abs(dy);
+    cam.theta -= dx * 0.006;
+    cam.phi = clamp(cam.phi - dy * 0.006, cam.minPhi, cam.maxPhi);
+    if (placing) updateGhost(e.clientX, e.clientY);
+  }
+});
+
+function onPointerEnd(e) {
+  const wasOne = pointers.size === 1;
+  pointers.delete(e.pointerId);
+
+  if (pointers.size === 0) {
+    const quickTap = wasOne && mode === 'rotate'
+      && dragMoved < 10 && performance.now() - downTime < 420;
+
+    if (quickTap) {
+      handleTap(e.clientX, e.clientY);
+    }
+    mode = null;
+    dragSpeaker = null;
+    pinchMid = null;
+    ghost.visible = false;
+  }
+}
+canvas.addEventListener('pointerup', onPointerEnd);
+canvas.addEventListener('pointercancel', e => {
+  pointers.delete(e.pointerId);
+  if (pointers.size === 0) {
+    mode = null;
+    dragSpeaker = null;
+    pinchMid = null;
+    ghost.visible = false;
+  }
+});
+
+canvas.addEventListener('pointerleave', () => {
+  if (placing && pointers.size === 0) ghost.visible = false;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  cam.radius = clamp(cam.radius * (1 + e.deltaY * 0.0012), cam.minRadius, cam.maxRadius);
+}, { passive: false });
+
+/* 轻点处理 */
+function handleTap(clientX, clientY) {
+  // 放置模式：点地面放音响
+  if (placing) {
+    if (speakers.length >= MAX_SPEAKERS) {
+      toast('最多 ' + MAX_SPEAKERS + ' 个音响');
+      setPlacing(false);
+      return;
+    }
+    const sp = pickSpeaker(clientX, clientY);
+    if (sp) {
+      toast('这里已经有音响了');
+      return;
+    }
+    const hit = new THREE.Vector3();
+    if (!screenToGround(clientX, clientY, hit)) return;
+    if (Math.abs(hit.x) > BOUND || Math.abs(hit.z) > BOUND) {
+      toast('超出可放置范围');
+      return;
+    }
+    const s = addSpeaker(hit.x, hit.z);
+    if (s) {
+      setPlacing(false);
+      selectSpeaker(s);
+      toast('已放置，可在面板上传音频');
+    }
+    return;
+  }
+
+  // 普通模式：点空白处取消选中
+  const sp = pickSpeaker(clientX, clientY);
+  if (!sp && selected) {
+    selected = null;
+    syncPanel();
+  }
+}
+
+/* =========================================================
+   面板
+   ========================================================= */
+const panel = document.getElementById('panel');
+const pIdx = document.getElementById('pIdx');
+const muteBtn = document.getElementById('muteBtn');
+const delBtn = document.getElementById('delBtn');
+const trackName = document.getElementById('trackName');
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const volSlider = document.getElementById('volSlider');
+const volVal = document.getElementById('volVal');
+
+function selectSpeaker(s) {
+  selected = s;
+  syncPanel();
+}
+
+function syncPanel() {
+  if (!selected) {
+    panel.classList.remove('show');
+    return;
+  }
+  panel.classList.add('show');
+
+  pIdx.textContent = String(selected.idx + 1).padStart(2, '0');
+
+  muteBtn.textContent = selected.muted ? '取消静音' : '静音';
+  muteBtn.classList.toggle('on', selected.muted);
+
+  const pct = Math.round(selected.volume * 100);
+  volSlider.value = String(pct);
+  volVal.textContent = pct;
+
+  const has = !!selected.fileName;
+  trackName.textContent = has ? selected.fileName : '未载入';
+  trackName.classList.toggle('has', has);
+  uploadBtn.textContent = has ? '更换' : '上传';
+}
+
+volSlider.addEventListener('input', () => {
+  if (!selected) return;
+  const v = Number(volSlider.value) / 100;
+  selected.setVolume(v);
+  volVal.textContent = String(Math.round(v * 100));
+});
+
+muteBtn.addEventListener('click', () => {
+  if (!selected) return;
+  selected.toggleMute();
+  syncPanel();
+});
+
+delBtn.addEventListener('click', () => {
+  if (!selected) return;
+  const s = selected;
+  selected = null;
+  removeSpeaker(s);
+  syncPanel();
+  toast('已删除音响');
+});
+
+/* ---- 上传音频 ---- */
+uploadBtn.addEventListener('click', () => {
+  if (!selected) return;
+  initAudio();
+  fileInput.value = '';
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const target = selected;
+  if (!target) return;
+
+  uploadBtn.disabled = true;
+  const oldLabel = uploadBtn.textContent;
+  uploadBtn.textContent = '载入…';
+
+  try {
+    await target.loadFile(file);
+    if (speakers.includes(target)) {
+      toast('已载入：' + target.fileName);
+      if (selected === target) syncPanel();
+    }
+  } catch (err) {
+    console.warn(err);
+    toast('无法载入该音频，请换一个文件');
+  } finally {
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = oldLabel;
+    if (selected) syncPanel();
+  }
+});
+
+/* =========================================================
+   提示
+   ========================================================= */
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1700);
+}
+
+/* =========================================================
+   底部按钮
+   ========================================================= */
+addBtn.addEventListener('click', () => {
+  initAudio();
+  if (speakers.length >= MAX_SPEAKERS) {
+    toast('最多 ' + MAX_SPEAKERS + ' 个音响');
+    return;
+  }
+  if (!audioCtx) return;
+  setPlacing(!placing);
+  if (placing) toast('点击地面放置音响');
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (!speakers.length) { toast('场景里还没有音响'); return; }
+  selected = null;
+  while (speakers.length) speakers.pop().dispose();
+  speakerIndex = 0;
+  setPlacing(false);
+  syncPanel();
+  toast('已清空');
+});
+
+/* =========================================================
+   主循环
+   ========================================================= */
+const clock = new THREE.Clock();
+let elapsed = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  elapsed += dt;
+
+  for (let i = 0; i < speakers.length; i++) speakers[i].update(dt);
+
+  particles.rotation.y += dt * 0.01;
+
+  // 预览圈轻微呼吸
+  if (ghost.visible) {
+    const k = 1 + Math.sin(elapsed * 4) * 0.05;
+    ghost.scale.set(k, k, 1);
+  }
+
+  updateCamera();
+  updateListener();
+
+  renderer.render(scene, camera);
+}
+updateCamera();
+animate();
+
+/* =========================================================
+   自适应
+   ========================================================= */
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', onResize);
+addEventListener('orientationchange', () => setTimeout(onResize, 220));
+
+/* 任意手势恢复音频上下文（iOS） */
+addEventListener('pointerdown', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+}, { passive: true });
+
+/* 首次提示 */
+setTimeout(() => {
+  if (!speakers.length) toast('先点击「添加音响」');
+}, 900);
+</script>
+</body>
+</html>

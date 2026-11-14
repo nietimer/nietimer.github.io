@@ -30,7 +30,8 @@ const DATA = [
       { name: "Pixel Music Canvas", href: "pixel_music_canvas.html" },
       { name: "JSON 数据分析",      href: "json_insight.html" },
       { name: "图片混淆器",         href: "image_scrambler.html" },
-      { name: "ApiLite", href: "api_lite.html" }
+      { name: "ApiLite", href: "api_lite.html" },
+      { name: "空间音乐场", href:"spatial_music_field.html"}
     ],
   },
   {
@@ -50,6 +51,7 @@ const DATA = [
     items: [
       { name: "设计网页 0", href: "page_0.html" },
       { name: "设计网页 1", href: "page_1.html" },
+      { name: "设计网页 2", href: "page_2.html" },
       { name: "后台 0",  href: "nova_admin_0.html" },
     ],
   },
