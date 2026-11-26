@@ -55,4 +55,11 @@ const DATA = [
       { name: "后台 0",  href: "nova_admin_0.html" },
     ],
   },
+  {
+    group: "其他收集（收集别处作品，有问题可反馈）",
+    items: [
+      { name: "几猫国产3A大作", href: "collect/几猫国产3A大作.html" },
+      { name: "The Last Boring Slide", href: "collect/The_Last_Boring_Slide.html" },
+    ],
+  },
 ];
